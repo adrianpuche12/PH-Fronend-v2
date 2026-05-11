@@ -1,40 +1,45 @@
+let currentHost = 'localhost';
+let currentPort = '';
 
-let currentHost = 'localhost'; // Valor por defecto
-
-// Verificar si estamos en un entorno de navegador antes de usar window
-if (typeof window !== 'undefined' && window.location && window.location.hostname) {
+if (typeof window !== 'undefined' && window.location) {
     currentHost = window.location.hostname;
+    currentPort = window.location.port;
 }
 
-let keycloakAdapterUrl, apiUrl, imageUrl;
+let keycloakUrl: string;
+let keycloakRealm: string;
+let apiUrl: string;
+let imageUrl: string;
 
-if (currentHost === '178.18.253.253') {
-    if (window.location.port === '8054') {
-        // DESARROLLO (frontend en puerto 8054)
-        keycloakAdapterUrl = 'http://178.18.253.253:8092';  // Adapter dev
-        apiUrl = 'http://178.18.253.253:8097';              // Backend dev
-        imageUrl = 'http://178.18.253.253:3030';
+if (currentHost === '62.171.160.238') {
+    keycloakUrl = 'http://62.171.160.238:8095';
+    imageUrl    = 'http://62.171.160.238:3030';
+
+    if (currentPort === '8103') {
+        // Frontend DEV en servidor
+        keycloakRealm = 'proyecto-h-dev';
+        apiUrl        = 'http://62.171.160.238:8101';
     } else {
-        // PRODUCCIÓN (frontend en puerto 8052)
-        keycloakAdapterUrl = 'http://178.18.253.253:8089';  // Nginx proxy (CORREGIDO)
-        apiUrl = 'http://178.18.253.253:8099';              // Backend prod (puerto 8099)
-        imageUrl = 'http://178.18.253.253:3030';
+        // Frontend PROD en servidor (:8102)
+        keycloakRealm = 'proyecto-h-prod';
+        apiUrl        = 'http://62.171.160.238:8100';
     }
 } else {
-    // DESARROLLO LOCAL (frontend en localhost) y CUALQUIER OTRO HOST
-    keycloakAdapterUrl = 'http://178.18.253.253:8089';  // Nginx proxy (CORREGIDO)
-    apiUrl = 'http://178.18.253.253:8099';              // Backend prod
-    imageUrl = 'http://178.18.253.253:3030';
+    // Desarrollo local → Keycloak remoto, backend local
+    keycloakUrl   = 'http://62.171.160.238:8095';
+    keycloakRealm = 'proyecto-h-dev';
+    apiUrl        = 'http://localhost:8080';
+    imageUrl      = 'http://62.171.160.238:3030';
 }
 
-export const API_KEYCLOAK_ADAPTER_URL = keycloakAdapterUrl;
+export const KEYCLOAK_URL      = keycloakUrl;
+export const KEYCLOAK_REALM    = keycloakRealm;
 export const REACT_APP_API_URL = apiUrl;
-export const IMAGE_SERVER_URL = imageUrl;
+export const IMAGE_SERVER_URL  = imageUrl;
 
-// Solo loguear si estamos en un entorno de navegador
+// Endpoint de token Keycloak (OpenID Connect directo)
+export const API_KEYCLOAK_ADAPTER_URL = `${keycloakUrl}/realms/${keycloakRealm}/protocol/openid-connect`;
+
 if (typeof window !== 'undefined') {
-    console.log('Configuración de API:', {
-        API_KEYCLOAK_ADAPTER_URL: keycloakAdapterUrl,
-        REACT_APP_API_URL: apiUrl
-    });
+    console.log('Config:', { keycloakUrl, keycloakRealm, apiUrl });
 }

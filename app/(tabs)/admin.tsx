@@ -1,6 +1,6 @@
 import React from 'react';
-import Admin from '../../screens/AdminScreen';
+import AdminDashboard from '../../screens/AdminDashboard';
 
-export default function AdminScreen() {
-  return <Admin />;
+export default function AdminTab() {
+  return <AdminDashboard />;
 }

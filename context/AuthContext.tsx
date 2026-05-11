@@ -142,11 +142,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         refreshToken = storedRefreshToken;
       }
       const response = await axios.post(
-        `${API_KEYCLOAK_ADAPTER_URL}/refresh`,
+        `${API_KEYCLOAK_ADAPTER_URL}/token`,
         new URLSearchParams({
           grant_type: 'refresh_token',
           refresh_token: refreshToken,
-          client_id: 'proyecto-h',
+          client_id: 'proyecto-h-client',
         }),
         { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
       );
@@ -192,11 +192,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
       const response = await axios.post(
-        `${API_KEYCLOAK_ADAPTER_URL}/login`,
+        `${API_KEYCLOAK_ADAPTER_URL}/token`,
         new URLSearchParams({
+          grant_type: 'password',
           username,
           password,
-          client_id: 'proyecto-h',
+          client_id: 'proyecto-h-client',
         }),
         { 
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, 

@@ -258,31 +258,13 @@ const CompactDateFilters = ({
           />
         </View>
 
-        {/* Botones */}
-        <View style={isLargeScreen ? styles.buttonGroupWeb : styles.compactButtonsRow}>
-          {(startDate || endDate || selectedStore || showAdminExpenses) && (
-            <Button
-              mode="outlined"
-              compact
-              onPress={() => {
-                setStartDate(undefined);
-                setEndDate(undefined);
-                setSelectedStore(null);
-                if (showAdminExpenses) {
-                  onToggleAdminExpenses();
-                }
-              }}
-              style={styles.compactClearButton}
-              color="#D4A72B"
-            >
-              Limpiar
-            </Button>
-          )}
+        {/* Botones — grid 2 columnas para que no se corten en mobile */}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 4, marginTop: 4 }}>
           <Button
             mode={showAdminExpenses ? "contained" : "outlined"}
             compact
             onPress={onToggleAdminExpenses}
-            style={styles.compactAdminButton}
+            style={{ flex: 1, minWidth: '45%' }}
             icon="bank"
             buttonColor={showAdminExpenses ? "#FF9800" : "transparent"}
             textColor={showAdminExpenses ? "white" : "#FF9800"}
@@ -292,14 +274,8 @@ const CompactDateFilters = ({
           <Button
             mode="contained"
             compact
-            onPress={() => {
-              if (showAdminExpenses) {
-                fetchData(startDate, endDate, selectedStore);
-              } else {
-                fetchData(startDate, endDate, selectedStore);
-              }
-            }}
-            style={styles.compactRefreshButton}
+            onPress={() => fetchData(startDate, endDate, selectedStore)}
+            style={{ flex: 1, minWidth: '45%' }}
             icon="refresh"
             buttonColor="#2196F3"
           >
@@ -309,12 +285,28 @@ const CompactDateFilters = ({
             mode="contained"
             compact
             onPress={onExcelPress}
-            style={styles.compactExcelButton}
+            style={{ flex: 1, minWidth: '45%' }}
             icon="microsoft-excel"
             buttonColor="#28a745"
           >
             Excel
           </Button>
+          {(startDate || endDate || selectedStore || showAdminExpenses) && (
+            <Button
+              mode="outlined"
+              compact
+              onPress={() => {
+                setStartDate(undefined);
+                setEndDate(undefined);
+                setSelectedStore(null);
+                if (showAdminExpenses) onToggleAdminExpenses();
+              }}
+              style={{ flex: 1, minWidth: '45%' }}
+              textColor="#D4A72B"
+            >
+              Limpiar
+            </Button>
+          )}
         </View>
       </View>
     </View>
@@ -331,6 +323,8 @@ const AdminScreen = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedStore, setSelectedStore] = useState<number | null>(null);
   const [showAdminExpenses, setShowAdminExpenses] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
 
   // Estados para el modal de edición
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -571,9 +565,18 @@ const AdminScreen = () => {
     }
   };
 
+  // Filtro por tipo de transacción
+  const INCOME_TYPES = ['income', 'CLOSING'];
+  const EXPENSE_TYPES = ['expense', 'SALARY', 'SUPPLIER', 'GASTO_ADMIN', 'gasto_admin'];
+  const filteredByType = typeFilter === 'all'
+    ? transactions
+    : typeFilter === 'income'
+      ? transactions.filter(tx => INCOME_TYPES.includes(tx.type))
+      : transactions.filter(tx => EXPENSE_TYPES.includes(tx.type));
+
   // Paginación
-  const totalPages = Math.ceil(transactions.length / ITEMS_PER_PAGE);
-  const paginatedTransactions = transactions.slice(
+  const totalPages = Math.ceil(filteredByType.length / ITEMS_PER_PAGE);
+  const paginatedTransactions = filteredByType.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
@@ -1306,51 +1309,126 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
 
   return (
     <ThemedView style={styles.container}>
-      <ThemedText style={styles.title}>Todas las Operaciones.</ThemedText>
 
-      {/* Botón de Logout */}
-      <LogoutButton />
+      {/* ── CABECERA MOBILE: siempre visible ── */}
+      {!isLargeScreen && (
+        <View style={{ backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e8ecf2' }}>
+          {/* Fila: título + botón colapsar */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingTop: 10, paddingBottom: 6 }}>
+            <ThemedText style={[styles.title, { marginBottom: 0 }]}>Operaciones</ThemedText>
+            <Button
+              mode="outlined"
+              onPress={() => setFiltersExpanded(v => !v)}
+              textColor="#53606d"
+              style={{ borderColor: '#e8ecf2', minWidth: 0 }}
+              labelStyle={{ fontSize: 12 }}
+            >
+              {filtersExpanded ? 'Cerrar ▲' : 'Filtros ▼'}
+            </Button>
+          </View>
 
-      {/* Para pantallas móviles, utilizamos componentes compactos */}
-      {!isLargeScreen ? (
-        <View style={styles.mobileControlsContainer}>
-          <CompactDateFilters
-            startDate={startDate}
-            endDate={endDate}
-            selectedStore={selectedStore}
-            setStartDate={setStartDate}
-            setEndDate={setEndDate}
-            setSelectedStore={setSelectedStore}
-            fetchData={fetchData}
-            setDatePickerOpen={setDatePickerOpen}
-            setSelectedDateInput={setSelectedDateInput}
-            onExcelPress={() => setShowExcelManager(true)}
-            showAdminExpenses={showAdminExpenses}
-            onToggleAdminExpenses={handleToggleAdminExpenses}
-          />
-          <CollapsibleBalanceCard transactions={transactions} />
+          {/* Filtro tipo: siempre visible */}
+          <View style={{ flexDirection: 'row', marginHorizontal: 12, marginBottom: 8, borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: '#e8ecf2' }}>
+            {(['all', 'income', 'expense'] as const).map((f) => (
+              <View key={f} style={{ flex: 1 }}>
+                <Button
+                  mode="contained"
+                  onPress={() => { setTypeFilter(f); setCurrentPage(1); }}
+                  buttonColor={typeFilter === f ? '#ffd43b' : '#f4f6f8'}
+                  textColor={typeFilter === f ? '#161616' : '#6b7581'}
+                  style={{ borderRadius: 0, margin: 0 }}
+                  labelStyle={{ fontSize: 13, fontWeight: '700' }}
+                >
+                  {f === 'all' ? 'Todos' : f === 'income' ? 'Ingresos' : 'Egresos'}
+                </Button>
+              </View>
+            ))}
+          </View>
+
+          {/* Filtros colapsables con scroll */}
+          {filtersExpanded && (
+            <ScrollView
+              style={{ maxHeight: 320 }}
+              showsVerticalScrollIndicator={true}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={styles.mobileControlsContainer}>
+                <CompactDateFilters
+                  startDate={startDate}
+                  endDate={endDate}
+                  selectedStore={selectedStore}
+                  setStartDate={setStartDate}
+                  setEndDate={setEndDate}
+                  setSelectedStore={setSelectedStore}
+                  fetchData={fetchData}
+                  setDatePickerOpen={setDatePickerOpen}
+                  setSelectedDateInput={setSelectedDateInput}
+                  onExcelPress={() => setShowExcelManager(true)}
+                  showAdminExpenses={showAdminExpenses}
+                  onToggleAdminExpenses={handleToggleAdminExpenses}
+                />
+                <BalanceCard transactions={filteredByType} />
+              </View>
+            </ScrollView>
+          )}
         </View>
-      ) : (
-        // Para pantallas grandes, utilizamos el diseño original
-        <View style={styles.controlsContainer}>
-          {/* Filtros horizontales */}
-          <CompactDateFilters
-            startDate={startDate}
-            endDate={endDate}
-            selectedStore={selectedStore}
-            setStartDate={setStartDate}
-            setEndDate={setEndDate}
-            setSelectedStore={setSelectedStore}
-            fetchData={fetchData}
-            setDatePickerOpen={setDatePickerOpen}
-            setSelectedDateInput={setSelectedDateInput}
-            onExcelPress={() => setShowExcelManager(true)}
-            showAdminExpenses={showAdminExpenses}
-            onToggleAdminExpenses={handleToggleAdminExpenses}
-          />
+      )}
 
-          {/* Balance General desplegable */}
-          <CollapsibleBalanceCard transactions={transactions} />
+      {/* ── DESKTOP ── */}
+      {isLargeScreen && (
+        <View style={{ backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e8ecf2' }}>
+          {/* Fila: título + filtro tipo + botón colapsar */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8, gap: 12 }}>
+            <ThemedText style={[styles.title, { marginBottom: 0 }]}>Todas las Operaciones.</ThemedText>
+
+            {/* Filtro Todos/Ingresos/Egresos */}
+            <View style={{ flexDirection: 'row', borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: '#e8ecf2' }}>
+              {(['all', 'income', 'expense'] as const).map((f) => (
+                <Button
+                  key={f}
+                  mode="contained"
+                  onPress={() => { setTypeFilter(f); setCurrentPage(1); }}
+                  buttonColor={typeFilter === f ? '#ffd43b' : '#f4f6f8'}
+                  textColor={typeFilter === f ? '#161616' : '#6b7581'}
+                  style={{ borderRadius: 0, margin: 0 }}
+                  labelStyle={{ fontSize: 13, fontWeight: '700' }}
+                >
+                  {f === 'all' ? 'Todos' : f === 'income' ? 'Ingresos' : 'Egresos'}
+                </Button>
+              ))}
+            </View>
+
+            <Button
+              mode="outlined"
+              onPress={() => setFiltersExpanded(v => !v)}
+              textColor="#53606d"
+              style={{ borderColor: '#e8ecf2' }}
+              labelStyle={{ fontSize: 13 }}
+            >
+              {filtersExpanded ? 'Cerrar ▲' : 'Filtros ▼'}
+            </Button>
+          </View>
+
+          {/* Filtros colapsables */}
+          {filtersExpanded && (
+            <View style={styles.controlsContainer}>
+              <CompactDateFilters
+                startDate={startDate}
+                endDate={endDate}
+                selectedStore={selectedStore}
+                setStartDate={setStartDate}
+                setEndDate={setEndDate}
+                setSelectedStore={setSelectedStore}
+                fetchData={fetchData}
+                setDatePickerOpen={setDatePickerOpen}
+                setSelectedDateInput={setSelectedDateInput}
+                onExcelPress={() => setShowExcelManager(true)}
+                showAdminExpenses={showAdminExpenses}
+                onToggleAdminExpenses={handleToggleAdminExpenses}
+              />
+              <BalanceCard transactions={filteredByType} />
+            </View>
+          )}
         </View>
       )}
 

@@ -1,124 +1,88 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Text } from 'react-native';  
-import { Button, IconButton } from 'react-native-paper';  
-import { router } from 'expo-router';
-import TransactionsScreen from './TransactionsScreen';
+import React, { useState } from 'react';
+import { View, StyleSheet, useWindowDimensions, TouchableOpacity, Text } from 'react-native';
+import { IconButton } from 'react-native-paper';
+import Sidebar, { SidebarScreen } from '../components/Sidebar';
+import { StoreProvider } from '../context/StoreContext';
 import AdminScreen from './AdminScreen';
-import LogoutButton from '../components/LogoutButton';
-import { useAuth } from '../context/AuthContext';
+import StoresScreen from './StoresScreen';
+import InventoryScreen from './InventoryScreen';
+
+// Placeholder Ventas — se reemplaza en Sprint 3
+const SalesScreen = () => (
+  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+    <Text style={{ fontSize: 22, fontWeight: '900', color: '#161616' }}>🛒 Ventas</Text>
+    <Text style={{ color: '#6b7581', marginTop: 8 }}>Próximamente — Sprint 3</Text>
+  </View>
+);
 
 const AdminDashboard = () => {
-  const [activeScreen, setActiveScreen] = useState<'transactions' | 'admin' | null>(null);
-  const { userName } = useAuth();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 768;
+
+  const [activeScreen, setActiveScreen] = useState<SidebarScreen>('operations');
+  const [drawerOpen, setDrawerOpen]     = useState(false);
 
   return (
-    <View style={styles.container}>
-      {/* Botón de Home */}
-      <IconButton
-        icon="home"  
-        size={24}  
-        onPress={() => setActiveScreen(null)}
-        style={styles.homeButton}
-      />
+    <StoreProvider>
+      <View style={styles.container}>
 
-      {/* Botón de Logout */}
-      <LogoutButton />
+        {/* Sidebar fijo en desktop */}
+        {isDesktop && (
+          <Sidebar
+            active={activeScreen}
+            onSelect={setActiveScreen}
+            visible={false}
+            onClose={() => {}}
+          />
+        )}
 
-      {/* Botones fijos arriba */}
-      <View style={styles.buttonContainer}>
-        <Button
-          mode="contained"
-          onPress={() => setActiveScreen('transactions')}
-          style={styles.button}
-          labelStyle={styles.buttonLabel}
-        >
-          Transacciones
-        </Button>
+        {/* Área de contenido */}
+        <View style={styles.content}>
 
-        <Button
-          mode="contained"
-          onPress={() => setActiveScreen('admin')}
-          style={styles.button}
-          labelStyle={styles.buttonLabel}
-        >
-          Operaciones
-        </Button>
-      </View>
+          {/* Topbar mobile */}
+          {!isDesktop && (
+            <View style={styles.topbar}>
+              <TouchableOpacity onPress={() => setDrawerOpen(true)} style={styles.menuBtn}>
+                <Text style={styles.menuBtnIcon}>☰</Text>
+              </TouchableOpacity>
+              <Text style={styles.topbarTitle}>
+                {activeScreen === 'operations' ? 'Operaciones'
+                  : activeScreen === 'inventory' ? 'Inventario'
+                  : activeScreen === 'stores'    ? 'Locales'
+                  : 'Ventas'}
+              </Text>
+            </View>
+          )}
 
-      {/* Contenido dinámico abajo */}
-      <View style={styles.contentContainer}>
-        {activeScreen === 'transactions' && <TransactionsScreen />}
-        {activeScreen === 'admin' && <AdminScreen />}
-        {activeScreen === null && (
-          <View style={styles.dashboardContainer}>
-            <Text style={styles.welcomeText}>Bienvenido, {userName}</Text>
-            <Text style={styles.dashboardText}>Panel de Administrador</Text>
-          </View>
+          {/* Pantalla activa */}
+          {activeScreen === 'operations' && <AdminScreen />}
+          {activeScreen === 'inventory'  && <InventoryScreen />}
+          {activeScreen === 'stores'     && <StoresScreen />}
+          {activeScreen === 'sales'      && <SalesScreen />}
+        </View>
+
+        {/* Drawer mobile */}
+        {!isDesktop && (
+          <Sidebar
+            active={activeScreen}
+            onSelect={setActiveScreen}
+            visible={drawerOpen}
+            onClose={() => setDrawerOpen(false)}
+          />
         )}
       </View>
-    </View>
+    </StoreProvider>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#E8E1F3',  
-    alignSelf: 'center',
-    width: '100%',
-    height: '100%',
-  },
-  homeButton: {
-    position: 'absolute', 
-    top: 3,
-    left: 10,
-    zIndex: 10, 
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 10,
-    paddingBottom: 0,
-    elevation: 3,
-    shadowColor: '',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-  },
-  button: {
-    flex: 1,
-    borderRadius: 0,
-    marginHorizontal: 0,
-    backgroundColor: '#E8E1F2', 
-  },
-  buttonLabel: {
-    fontSize: 16,
-    fontWeight: '400',
-    color: '#000000',
-  },
-  contentContainer: {
-    flex: 1,
-    padding: 15,
-    backgroundColor: '#fff',
-    elevation: 2,
-    justifyContent: 'flex-start',
-  },
-  dashboardContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    flex: 1,
-  },
-  welcomeText: {
-    fontSize: 20,
-    color: '#333',
-    marginBottom: 8,
-  },
-  dashboardText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-  },
+  container: { flex: 1, flexDirection: 'row', backgroundColor: '#f4f6f8' },
+  content:   { flex: 1, flexDirection: 'column' },
+
+  topbar:       { flexDirection: 'row', alignItems: 'center', backgroundColor: '#ffd43b', paddingHorizontal: 12, paddingVertical: 10, gap: 12 },
+  menuBtn:      { padding: 4 },
+  menuBtnIcon:  { fontSize: 22, fontWeight: '900', color: '#161616' },
+  topbarTitle:  { fontSize: 18, fontWeight: '900', color: '#161616' },
 });
 
 export default AdminDashboard;

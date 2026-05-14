@@ -166,6 +166,48 @@ const BalanceCard = ({ transactions }: { transactions: any[] }) => {
   );
 };
 
+// ─── KPI Row (4 cards: Balance · Ingresos · Egresos · Promedio) ───────────────
+const KpiRow = ({ transactions }: { transactions: Transaction[] }) => {
+  const INCOME_T = ['income', 'CLOSING'];
+  const EXPENSE_T = ['expense', 'SALARY', 'SUPPLIER', 'GASTO_ADMIN', 'gasto_admin'];
+  const incomeTxs  = transactions.filter(tx => INCOME_T.includes(tx.type));
+  const expenseTxs = transactions.filter(tx => EXPENSE_T.includes(tx.type));
+  const totalIncome  = incomeTxs.reduce((s, tx) => s + tx.amount, 0);
+  const totalExpense = expenseTxs.reduce((s, tx) => s + tx.amount, 0);
+  const balance      = totalIncome - totalExpense;
+  const promedio     = balance / 30;
+
+  const L = (v: number) =>
+    `L ${Math.abs(v).toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  return (
+    <View style={styles.kpiRow}>
+      <View style={styles.kpiCard}>
+        <Text style={styles.kpiCardLabel}>BALANCE DEL PERIODO</Text>
+        <Text style={[styles.kpiCardValue, { color: balance >= 0 ? COLOR.income : COLOR.expense }]}>
+          {balance >= 0 ? '+' : '-'}{L(balance)}
+        </Text>
+        <Text style={styles.kpiCardSub}>Periodo actual</Text>
+      </View>
+      <View style={styles.kpiCard}>
+        <Text style={styles.kpiCardLabel}>INGRESOS · {incomeTxs.length} MOV.</Text>
+        <Text style={[styles.kpiCardValue, { color: COLOR.income }]}>+{L(totalIncome)}</Text>
+        <Text style={styles.kpiCardSub}> </Text>
+      </View>
+      <View style={styles.kpiCard}>
+        <Text style={styles.kpiCardLabel}>EGRESOS · {expenseTxs.length} MOV.</Text>
+        <Text style={[styles.kpiCardValue, { color: COLOR.expense }]}>-{L(totalExpense)}</Text>
+        <Text style={styles.kpiCardSub}> </Text>
+      </View>
+      <View style={styles.kpiCard}>
+        <Text style={styles.kpiCardLabel}>PROMEDIO DIARIO</Text>
+        <Text style={styles.kpiCardValue}>{L(promedio)}</Text>
+        <Text style={styles.kpiCardSub}>Sobre el balance neto</Text>
+      </View>
+    </View>
+  );
+};
+
 const CompactDateFilters = ({
   startDate,
   endDate,
@@ -574,6 +616,11 @@ const AdminScreen = () => {
     : typeFilter === 'income'
       ? transactions.filter(tx => INCOME_TYPES.includes(tx.type))
       : transactions.filter(tx => EXPENSE_TYPES.includes(tx.type));
+
+  // Conteos para badges en las tabs
+  const incomeCount  = transactions.filter(tx => INCOME_TYPES.includes(tx.type)).length;
+  const expenseCount = transactions.filter(tx => EXPENSE_TYPES.includes(tx.type)).length;
+  const allCount     = transactions.length;
 
   // Paginación
   const totalPages = Math.ceil(filteredByType.length / ITEMS_PER_PAGE);
@@ -1101,156 +1148,108 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
   return `${REACT_APP_API_URL}/${imagePath}`;
 };
 
-  // Render de cada tarjeta de operación (se omite el ID)
   const renderTransaction = (item: Transaction, index: number) => {
-  let dateToShow = item.date;
+    const isIncome = INCOME_TYPES.includes(item.type);
 
-  if (item.type === 'CLOSING' && item.depositDate) {
-    dateToShow = item.depositDate;
-  } else if (item.type === 'SUPPLIER' && item.paymentDate) {
-    dateToShow = item.paymentDate;
-  } else if (item.type === 'SALARY' && item.depositDate) {
-    dateToShow = item.depositDate;
-  }
+    const typeIconMap: Record<string, string> = {
+      CLOSING:    'home',
+      income:     'arrow-down-circle',
+      SUPPLIER:   'truck-delivery',
+      SALARY:     'account-cash',
+      GASTO_ADMIN:'bank',
+      expense:    'arrow-up-circle',
+      gasto_admin:'bank',
+    };
+    const txIcon = typeIconMap[item.type] ?? 'help-circle';
+    const txColor = isIncome ? COLOR.income : COLOR.expense;
+    const txBg    = isIncome ? COLOR.incomeTint : COLOR.expenseTint;
 
-  let typeIcon, typeColor;
+    const dateToShow = item.type === 'CLOSING' && item.depositDate ? item.depositDate
+      : item.type === 'SUPPLIER' && item.paymentDate ? item.paymentDate
+      : item.type === 'SALARY'   && item.depositDate ? item.depositDate
+      : item.date;
 
-  switch (item.type) {
-    case 'CLOSING':
-    case 'income':
-      typeIcon = 'arrow-down-bold-circle-outline';
-      typeColor = COLOR.income;
-      break;
-    case 'SUPPLIER':
-    case 'SALARY':
-    case 'GASTO_ADMIN':
-    case 'expense':
-    case 'gasto_admin':
-      typeIcon = 'arrow-up-bold-circle-outline';
-      typeColor = COLOR.expense;
-      break;
-    default:
-      typeIcon = 'help-circle-outline';
-      typeColor = COLOR.inkMute;
-  }
+    const fmtDate = (d?: string) => {
+      if (!d) return '—';
+      try {
+        const dt = parseISO(d);
+        return format(dt, 'dd MMM yyyy');
+      } catch { return String(d).split('T')[0]; }
+    };
+    const fmtTime = (d?: string) => {
+      if (!d) return '';
+      try { return format(parseISO(d), 'HH:mm'); } catch { return ''; }
+    };
 
-  const imageUri = item.imageUri || (item as any).image_uri;
+    const storeName =
+      item.store?.name ||
+      item.storeName ||
+      (item.store?.id === 1 || item.storeId === 1 ? 'Danli'
+        : item.store?.id === 2 || item.storeId === 2 ? 'El Paraíso'
+        : '—');
 
-  return (
-    <Card key={`transaction-${item.id}-${index}`} style={styles.transactionCard}>
-      <Card.Content>
-        <View style={styles.transactionHeader}>
-          <View style={styles.transactionTypeContainer}>
-            <MaterialCommunityIcons name={typeIcon} size={24} color={typeColor} />
-            <Text style={[styles.transactionType, { color: typeColor }]}>
-              {TRANSACTION_LABELS[item.type]}
-            </Text>
-          </View>
-          <Text style={styles.transactionAmount}>
-            {formatCurrency(item.amount)}
-          </Text>
+    const metaParts = [
+      item.closingsCount ? `${item.closingsCount} cierres` : null,
+      item.periodStart ? `Periodo ${fmtDate(item.periodStart)}` : null,
+      item.supplier || null,
+      item.description || null,
+    ].filter(Boolean);
+
+    const amtStr = `L ${item.amount.toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const imageUri = item.imageUri || (item as any).image_uri;
+
+    return (
+      <View key={`tx-${item.id}-${index}`} style={styles.txRow}>
+        {/* Icono */}
+        <View style={[styles.txIconWrap, { backgroundColor: txBg }]}>
+          <MaterialCommunityIcons name={txIcon} size={20} color={txColor} />
         </View>
 
-        <View style={styles.transactionDetails}>
-          {dateToShow && (
-            <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="calendar" size={16} color={COLOR.brandDeep} />
-              <Text style={styles.detailText}>{'Fecha: ' + formatDate(dateToShow)}</Text>
+        {/* Nombre + badge + metadata */}
+        <View style={styles.txMain}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+            <Text style={styles.txName}>{TRANSACTION_LABELS[item.type]}</Text>
+            <View style={[styles.txBadge, { backgroundColor: txBg }]}>
+              <Text style={[styles.txBadgeText, { color: txColor }]}>{TRANSACTION_LABELS[item.type]}</Text>
             </View>
-          )}
-
-          {item.description && (
-            <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="text" size={16} color={COLOR.brandDeep} />
-              <Text style={styles.detailText}>{'Descripción: ' + item.description}</Text>
-            </View>
-          )}
-
-          {/* Mostrar local */}
-          <View style={styles.detailRow}>
-            <MaterialCommunityIcons name="store" size={16} color={COLOR.brandDeep} />
-            <Text style={styles.detailText}>
-              {'Local: ' + (
-                item.store?.name ||
-                item.storeName ||
-                (item.store?.id ?
-                  (item.store.id === 1 ? 'Danli' : 'El Paraiso') :
-                  (item.storeId ?
-                    (item.storeId === 1 ? 'Danli' : 'El Paraiso') :
-                    'No asignado'
-                  )
-                )
-              )}
-            </Text>
           </View>
-          {/* Mostrar período para CLOSING */}
-          {item.type === 'CLOSING' && item.periodStart && item.periodEnd && (
-            <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="calendar-range" size={16} color={COLOR.brandDeep} />
-              <Text style={styles.detailText}>
-                {'Período: ' + formatDate(item.periodStart) + ' al ' + formatDate(item.periodEnd)}
-              </Text>
-            </View>
+          {metaParts.length > 0 && (
+            <Text style={styles.txMeta} numberOfLines={1}>{metaParts.join(' · ')}</Text>
           )}
-          {/* Comprobante */}
           {imageUri && (
-            <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="image" size={16} color={COLOR.brandDeep} />
-              <Text style={styles.detailText}>Comprobante:</Text>
+            <View style={{ marginTop: 4 }}>
               <ImageViewer imageUri={imageUri} size="small" />
             </View>
           )}
-
-          {TRANSACTION_LABELS[item.type] === 'CLOSING' && item.closingsCount && (
-            <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="counter" size={16} color={COLOR.brandDeep} />
-              <Text style={styles.detailText}>{'Cantidad de cierres: ' + item.closingsCount}</Text>
-            </View>
-          )}
-
-          {TRANSACTION_LABELS[item.type] === 'CLOSING' && item.periodStart && item.periodEnd && (
-            <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="calendar-range" size={16} color={COLOR.brandDeep} />
-              <Text style={styles.detailText}>
-                {'Período: ' + formatDate(item.periodStart) + ' al ' + formatDate(item.periodEnd)}
-              </Text>
-            </View>
-          )}
-
-          {TRANSACTION_LABELS[item.type] === 'SUPPLIER' && item.supplier && (
-            <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="truck-delivery" size={16} color={COLOR.brandDeep} />
-              <Text style={styles.detailText}>{'Proveedor: ' + item.supplier}</Text>
-            </View>
-          )}
-          
-          
         </View>
 
-        <View style={styles.buttonContainer}>
-          <Button
-            mode="contained"
-            onPress={() => handleEdit(item)}
-            style={styles.editButton}
-            buttonColor={COLOR.info}
-            icon="pencil"
-          >
-            Editar
-          </Button>
-          <Button
-            mode="contained"
-            onPress={() => handleDelete(item)}
-            style={styles.deleteButton}
-            buttonColor={COLOR.expense}
-            icon="delete"
-          >
-            Eliminar
-          </Button>
+        {/* Local (solo desktop) */}
+        {isLargeScreen && (
+          <Text style={styles.txStore} numberOfLines={1}>{storeName}</Text>
+        )}
+
+        {/* Fecha */}
+        <View style={styles.txDateWrap}>
+          <Text style={styles.txDate}>{fmtDate(dateToShow)}</Text>
+          <Text style={styles.txTime}>{fmtTime(dateToShow)}</Text>
         </View>
-      </Card.Content>
-    </Card>
-  );
-};
+
+        {/* Monto */}
+        <View style={styles.txAmtWrap}>
+          <Text style={[styles.txAmt, { color: txColor }]}>
+            {isIncome ? '+' : '-'}{amtStr}
+          </Text>
+          <Text style={styles.txAmtLabel}>LEMPIRAS</Text>
+        </View>
+
+        {/* Acciones */}
+        <View style={{ flexDirection: 'row' }}>
+          <IconButton icon="pencil" size={18} onPress={() => handleEdit(item)} iconColor={COLOR.info} />
+          <IconButton icon="delete" size={18} onPress={() => handleDelete(item)} iconColor={COLOR.expense} />
+        </View>
+      </View>
+    );
+  };
 
   const renderPagination = () => (
     <View style={styles.paginationContainer}>
@@ -1330,19 +1329,23 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
 
           {/* Filtro tipo: siempre visible */}
           <View style={{ flexDirection: 'row', marginHorizontal: 12, marginBottom: 8, borderRadius: RADIUS.r2, overflow: 'hidden', borderWidth: 1, borderColor: COLOR.border }}>
-            {(['all', 'income', 'expense'] as const).map((f) => (
-              <View key={f} style={{ flex: 1 }}>
-                <Button
-                  mode="contained"
-                  onPress={() => { setTypeFilter(f); setCurrentPage(1); }}
-                  buttonColor={typeFilter === f ? COLOR.brand : COLOR.bgAlt}
-                  textColor={typeFilter === f ? COLOR.ink : COLOR.inkMute}
-                  style={{ borderRadius: 0, margin: 0 }}
-                  labelStyle={{ fontSize: 13, fontWeight: '700' }}
-                >
-                  {f === 'all' ? 'Todos' : f === 'income' ? 'Ingresos' : 'Egresos'}
-                </Button>
-              </View>
+            {([
+              { key: 'all',     label: 'Todos',    count: allCount },
+              { key: 'income',  label: 'Ingresos', count: incomeCount },
+              { key: 'expense', label: 'Egresos',  count: expenseCount },
+            ] as const).map(({ key, label, count }) => (
+              <TouchableOpacity
+                key={key}
+                onPress={() => { setTypeFilter(key); setCurrentPage(1); }}
+                style={[styles.tabBtn, typeFilter === key && styles.tabBtnActive]}
+              >
+                <Text style={[styles.tabBtnText, typeFilter === key && styles.tabBtnTextActive]}>
+                  {label}
+                </Text>
+                <Text style={[styles.tabBtnCount, typeFilter === key && styles.tabBtnCountActive]}>
+                  {count}
+                </Text>
+              </TouchableOpacity>
             ))}
           </View>
 
@@ -1384,18 +1387,23 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
 
             {/* Filtro Todos/Ingresos/Egresos */}
             <View style={{ flexDirection: 'row', borderRadius: RADIUS.r2, overflow: 'hidden', borderWidth: 1, borderColor: COLOR.border }}>
-              {(['all', 'income', 'expense'] as const).map((f) => (
-                <Button
-                  key={f}
-                  mode="contained"
-                  onPress={() => { setTypeFilter(f); setCurrentPage(1); }}
-                  buttonColor={typeFilter === f ? COLOR.brand : COLOR.bgAlt}
-                  textColor={typeFilter === f ? COLOR.ink : COLOR.inkMute}
-                  style={{ borderRadius: 0, margin: 0 }}
-                  labelStyle={{ fontSize: 13, fontWeight: '700' }}
+              {([
+                { key: 'all',     label: 'Todos',    count: allCount },
+                { key: 'income',  label: 'Ingresos', count: incomeCount },
+                { key: 'expense', label: 'Egresos',  count: expenseCount },
+              ] as const).map(({ key, label, count }) => (
+                <TouchableOpacity
+                  key={key}
+                  onPress={() => { setTypeFilter(key); setCurrentPage(1); }}
+                  style={[styles.tabBtn, typeFilter === key && styles.tabBtnActive]}
                 >
-                  {f === 'all' ? 'Todos' : f === 'income' ? 'Ingresos' : 'Egresos'}
-                </Button>
+                  <Text style={[styles.tabBtnText, typeFilter === key && styles.tabBtnTextActive]}>
+                    {label}
+                  </Text>
+                  <Text style={[styles.tabBtnCount, typeFilter === key && styles.tabBtnCountActive]}>
+                    {count}
+                  </Text>
+                </TouchableOpacity>
               ))}
             </View>
 
@@ -1430,6 +1438,21 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
               <BalanceCard transactions={filteredByType} />
             </View>
           )}
+        </View>
+      )}
+
+      {/* ── KPI stats row ── */}
+      {!loading && <KpiRow transactions={transactions} />}
+
+      {/* ── Tabla header (solo desktop) ── */}
+      {!loading && isLargeScreen && (
+        <View style={styles.txTableHeader}>
+          <View style={{ width: 40 }} />
+          <Text style={[styles.txTableHeaderText, { flex: 2 }]}>OPERACIÓN</Text>
+          <Text style={[styles.txTableHeaderText, { flex: 1 }]}>LOCAL</Text>
+          <Text style={[styles.txTableHeaderText, { flex: 1, textAlign: 'right' }]}>FECHA</Text>
+          <Text style={[styles.txTableHeaderText, { flex: 1, textAlign: 'right' }]}>MONTO</Text>
+          <View style={{ width: 80 }} />
         </View>
       )}
 
@@ -1984,6 +2007,41 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLOR.border,
   },
+
+  // ── KPI Row ───────────────────────────────────────────────────────────────
+  kpiRow:         { flexDirection: 'row', flexWrap: 'wrap', gap: SPACE.s3, padding: SPACE.s4, backgroundColor: COLOR.bg },
+  kpiCard:        { flex: 1, minWidth: 140, backgroundColor: COLOR.surface, borderRadius: RADIUS.r3, borderWidth: 1, borderColor: COLOR.border, padding: SPACE.s4, gap: 4, ...SHADOW.sm },
+  kpiCardLabel:   { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.inkMute, letterSpacing: 0.4 },
+  kpiCardValue:   { fontSize: FONT_SIZE.h2, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink, letterSpacing: -0.5 },
+  kpiCardSub:     { fontSize: FONT_SIZE.caption, color: COLOR.inkMute },
+
+  // ── Filter tabs con conteo ─────────────────────────────────────────────────
+  tabBtn:           { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, paddingHorizontal: SPACE.s2, backgroundColor: COLOR.bgAlt },
+  tabBtnActive:     { backgroundColor: COLOR.surface },
+  tabBtnText:       { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.inkMute },
+  tabBtnTextActive: { color: COLOR.ink, fontWeight: FONT_WEIGHT.bold as any },
+  tabBtnCount:      { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.inkDisabled },
+  tabBtnCountActive:{ color: COLOR.ink2 },
+
+  // ── Tabla header ──────────────────────────────────────────────────────────
+  txTableHeader:     { flexDirection: 'row', alignItems: 'center', gap: SPACE.s3, paddingHorizontal: SPACE.s4, paddingVertical: SPACE.s2, backgroundColor: COLOR.surface2, borderBottomWidth: 1, borderBottomColor: COLOR.border },
+  txTableHeaderText: { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.inkMute, letterSpacing: 0.5 },
+
+  // ── Transaction rows ──────────────────────────────────────────────────────
+  txRow:       { flexDirection: 'row', alignItems: 'center', gap: SPACE.s3, paddingHorizontal: SPACE.s4, paddingVertical: SPACE.s3, backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border },
+  txIconWrap:  { width: 40, height: 40, borderRadius: RADIUS.full, justifyContent: 'center', alignItems: 'center' },
+  txMain:      { flex: 2, gap: 2 },
+  txName:      { fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink },
+  txBadge:     { paddingHorizontal: SPACE.s2, paddingVertical: 2, borderRadius: RADIUS.full },
+  txBadgeText: { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.semibold as any },
+  txMeta:      { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, marginTop: 1 },
+  txStore:     { flex: 1, fontSize: FONT_SIZE.label, color: COLOR.ink2, fontWeight: FONT_WEIGHT.medium as any },
+  txDateWrap:  { alignItems: 'flex-end', minWidth: 80 },
+  txDate:      { fontSize: FONT_SIZE.label, color: COLOR.ink },
+  txTime:      { fontSize: FONT_SIZE.caption, color: COLOR.inkMute },
+  txAmtWrap:   { alignItems: 'flex-end', minWidth: 90 },
+  txAmt:       { fontSize: FONT_SIZE.h3, fontWeight: FONT_WEIGHT.bold as any, letterSpacing: -0.3 },
+  txAmtLabel:  { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.semibold as any },
 });
 
 export default AdminScreen;

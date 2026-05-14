@@ -9,6 +9,7 @@ import axios from 'axios';
 import { REACT_APP_API_URL } from '../config';
 import { useStore } from '../context/StoreContext';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { useAuth } from '../context/AuthContext';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -35,7 +36,7 @@ const flattenCategories = (cats: Category[], prefix = ''): { id: number; label: 
 
 // ─── Árbol de categorías ─────────────────────────────────────────────────────
 
-const CategoryTree = ({ categories, selected, onSelect, onNew, onEdit, onDelete, onNewChild, onToggle }: {
+const CategoryTree = ({ categories, selected, onSelect, onNew, onEdit, onDelete, onNewChild, onToggle, isAdmin = true }: {
   categories: Category[];
   selected: number | null;
   onSelect: (id: number | null) => void;
@@ -44,6 +45,7 @@ const CategoryTree = ({ categories, selected, onSelect, onNew, onEdit, onDelete,
   onDelete: (cat: Category) => void;
   onNewChild: (parentId: number) => void;
   onToggle: (cat: Category) => void;
+  isAdmin?: boolean;
 }) => {
   const [open, setOpen] = useState<Set<number>>(new Set());
   const toggle = (id: number) => setOpen(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
@@ -63,11 +65,11 @@ const CategoryTree = ({ categories, selected, onSelect, onNew, onEdit, onDelete,
 
         <View style={styles.catBadge}><Text style={styles.catBadgeText}>{cat.productCount}</Text></View>
 
-        {/* Acciones */}
-        <IconButton icon="plus"                                          size={16} iconColor="#168542"                        onPress={() => onNewChild(cat.id)} style={{ margin: 0 }} />
-        <IconButton icon="pencil"                                        size={16} iconColor="#53606d"                        onPress={() => onEdit(cat)}        style={{ margin: 0 }} />
-        <IconButton icon={cat.active ? 'toggle-switch' : 'toggle-switch-off'} size={16} iconColor={cat.active ? '#168542' : '#b8c0cc'} onPress={() => onToggle(cat)}      style={{ margin: 0 }} />
-        <IconButton icon="trash-can"                                     size={16} iconColor="#d32121"                        onPress={() => onDelete(cat)}      style={{ margin: 0 }} />
+        {/* Acciones — solo admin */}
+        {isAdmin && <IconButton icon="plus"       size={16} iconColor="#168542" onPress={() => onNewChild(cat.id)} style={{ margin: 0 }} />}
+        {isAdmin && <IconButton icon="pencil"     size={16} iconColor="#53606d" onPress={() => onEdit(cat)}        style={{ margin: 0 }} />}
+        {isAdmin && <IconButton icon={cat.active ? 'toggle-switch' : 'toggle-switch-off'} size={16} iconColor={cat.active ? '#168542' : '#b8c0cc'} onPress={() => onToggle(cat)} style={{ margin: 0 }} />}
+        {isAdmin && <IconButton icon="trash-can"  size={16} iconColor="#d32121" onPress={() => onDelete(cat)}      style={{ margin: 0 }} />}
       </View>
       {open.has(cat.id) && cat.children.map(c => renderNode(c, depth + 1))}
     </View>
@@ -75,10 +77,12 @@ const CategoryTree = ({ categories, selected, onSelect, onNew, onEdit, onDelete,
 
   return (
     <View style={{ flex: 1 }}>
-      {/* Botón nueva categoría raíz */}
-      <TouchableOpacity style={styles.newCatBtn} onPress={onNew}>
-        <Text style={styles.newCatBtnText}>+ Nueva categoría</Text>
-      </TouchableOpacity>
+      {/* Botón nueva categoría raíz — solo admin */}
+      {isAdmin && (
+        <TouchableOpacity style={styles.newCatBtn} onPress={onNew}>
+          <Text style={styles.newCatBtnText}>+ Nueva categoría</Text>
+        </TouchableOpacity>
+      )}
 
       <ScrollView>
         <TouchableOpacity style={[styles.catRow, selected === null && styles.catRowSelected]} onPress={() => onSelect(null)}>
@@ -109,6 +113,9 @@ const KpiCard = ({ icon, title, value, sub, warn }: { icon: string; title: strin
 const InventoryScreen = () => {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 900;
+
+  const { roles } = useAuth();
+  const isAdmin = roles.includes('admin');
 
   const { stores, selectedStore, setSelectedStore } = useStore();
   const storeId = selectedStore?.id ?? null;
@@ -423,24 +430,26 @@ const InventoryScreen = () => {
 
       {/* Acciones */}
       <View style={styles.rowActions}>
-        {/* Botón principal: Ajustar stock */}
+        {/* Botón agregar/ajustar stock — siempre visible */}
         <TouchableOpacity
           style={styles.adjustBtn}
           onPress={() => { setAdjustType('ENTRADA'); setAdjustItem(item); }}
         >
-          <Text style={styles.adjustBtnText}>📦 Ajustar</Text>
+          <Text style={styles.adjustBtnText}>{isAdmin ? '📦 Ajustar' : '📦 Agregar'}</Text>
         </TouchableOpacity>
 
-        {/* Acciones secundarias */}
-        <IconButton icon="pencil"     size={18} iconColor="#53606d" onPress={() => openEditProduct(item)} style={styles.actionIcon} />
-        <IconButton
-          icon={item.productActive ? 'toggle-switch' : 'toggle-switch-off'}
-          size={18}
-          iconColor={item.productActive ? '#168542' : '#b8c0cc'}
-          onPress={() => handleToggleProduct(item)}
-          style={styles.actionIcon}
-        />
-        <IconButton icon="trash-can"  size={18} iconColor="#d32121" onPress={() => handleDeleteProduct(item)} style={styles.actionIcon} />
+        {/* Acciones de admin: editar, toggle, eliminar */}
+        {isAdmin && <IconButton icon="pencil" size={18} iconColor="#53606d" onPress={() => openEditProduct(item)} style={styles.actionIcon} />}
+        {isAdmin && (
+          <IconButton
+            icon={item.productActive ? 'toggle-switch' : 'toggle-switch-off'}
+            size={18}
+            iconColor={item.productActive ? '#168542' : '#b8c0cc'}
+            onPress={() => handleToggleProduct(item)}
+            style={styles.actionIcon}
+          />
+        )}
+        {isAdmin && <IconButton icon="trash-can" size={18} iconColor="#d32121" onPress={() => handleDeleteProduct(item)} style={styles.actionIcon} />}
       </View>
     </View>
   );
@@ -454,20 +463,26 @@ const InventoryScreen = () => {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Text style={styles.headerTitle}>Inventario</Text>
-          {/* Selector de local */}
-          <View style={styles.storeSelector}>
-            {stores.map(s => (
-              <TouchableOpacity
-                key={s.id}
-                style={[styles.storeChip, selectedStore?.id === s.id && styles.storeChipActive]}
-                onPress={() => setSelectedStore(s)}
-              >
-                <Text style={[styles.storeChipText, selectedStore?.id === s.id && styles.storeChipTextActive]}>
-                  {s.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          {/* Selector de local — solo admin (usuario ya tiene su local asignado) */}
+          {isAdmin ? (
+            <View style={styles.storeSelector}>
+              {stores.map(s => (
+                <TouchableOpacity
+                  key={s.id}
+                  style={[styles.storeChip, selectedStore?.id === s.id && styles.storeChipActive]}
+                  onPress={() => setSelectedStore(s)}
+                >
+                  <Text style={[styles.storeChipText, selectedStore?.id === s.id && styles.storeChipTextActive]}>
+                    {s.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#53606d' }}>
+              📍 {selectedStore?.name}
+            </Text>
+          )}
         </View>
         <View style={styles.headerRight}>
           {/* Tabs Stock / Historial */}
@@ -493,9 +508,11 @@ const InventoryScreen = () => {
                 labelStyle={{ fontSize: 12 }}>
                 {topExpanded ? 'Cerrar ▲' : 'Resumen ▼'}
               </Button>
-              <Button mode="contained" onPress={openCreateProduct} buttonColor="#ffd43b" textColor="#161616" style={{ borderRadius: 10 }}>
-                + Nuevo Producto
-              </Button>
+              {isAdmin && (
+                <Button mode="contained" onPress={openCreateProduct} buttonColor="#ffd43b" textColor="#161616" style={{ borderRadius: 10 }}>
+                  + Nuevo Producto
+                </Button>
+              )}
             </>
           )}
         </View>
@@ -557,6 +574,7 @@ const InventoryScreen = () => {
                   onDelete={handleDeleteCat}
                   onNewChild={(parentId) => openNewCat(parentId)}
                   onToggle={handleToggleCat}
+                  isAdmin={isAdmin}
                 />
               )}
             </View>
@@ -626,8 +644,9 @@ const InventoryScreen = () => {
             <Text style={styles.modalSub}>{adjustItem?.productName}</Text>
             <Text style={styles.modalStock}>Stock actual: <Text style={{ fontWeight: '900' }}>{adjustItem?.quantity}</Text></Text>
 
+            {/* Selector de tipo — solo admin ve SALIDA */}
             <View style={styles.typeRow}>
-              {(['ENTRADA', 'SALIDA'] as const).map(t => (
+              {(isAdmin ? (['ENTRADA', 'SALIDA'] as const) : (['ENTRADA'] as const)).map(t => (
                 <Button key={t} mode="contained" onPress={() => setAdjustType(t)}
                   buttonColor={adjustType === t ? (t === 'ENTRADA' ? '#168542' : '#d32121') : '#f4f6f8'}
                   textColor={adjustType === t ? '#fff' : '#6b7581'} style={{ flex: 1, borderRadius: 8 }}>

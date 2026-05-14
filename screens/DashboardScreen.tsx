@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
   statValue:        { fontSize: FONT_SIZE.h2, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
   statLabel:        { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.inkMute },
 
-  inventoryRow:     { gap: SPACE.s1 },
+  inventoryRow:     { gap: SPACE.s1, marginTop: 'auto' as any },
   inventoryStat:    { flexDirection: 'row', alignItems: 'center', gap: SPACE.s2, backgroundColor: COLOR.bgAlt, borderRadius: RADIUS.r2, padding: SPACE.s2 },
   inventoryStatWarn:{ backgroundColor: COLOR.warnTint, borderWidth: 1, borderColor: COLOR.warnBorder },
   inventoryIcon:    { fontSize: 16 },

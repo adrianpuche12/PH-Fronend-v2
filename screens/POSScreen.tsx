@@ -333,23 +333,31 @@ export default function POSScreen() {
             : filtered.length === 0
               ? <Text style={styles.empty}>No hay productos en esta categoría.</Text>
               : filtered.map(item => {
-                  const isSelected = selectedId === item.productId;
-                  const inCart     = isInCart(item.productId);
+                  const isSelected  = selectedId === item.productId;
+                  const inCart      = isInCart(item.productId);
+                  const outOfStock  = item.quantity === 0;
                   return (
                     <TouchableOpacity
                       key={item.productId}
-                      activeOpacity={0.85}
+                      activeOpacity={outOfStock ? 1 : 0.85}
+                      disabled={outOfStock}
                       onPress={() => selectProduct(item)}
                       style={[
                         styles.productCard,
-                        isSelected && styles.productCardSelected,
-                        inCart     && styles.productCardInCart,
+                        isSelected  && styles.productCardSelected,
+                        inCart      && styles.productCardInCart,
+                        outOfStock  && styles.productCardDisabled,
                       ]}
                     >
-                      {/* Badge "En carrito" */}
+                      {/* Badges de estado */}
                       {inCart && (
                         <View style={styles.inCartBadge}>
                           <Text style={styles.inCartBadgeText}>✓ En carrito</Text>
+                        </View>
+                      )}
+                      {outOfStock && (
+                        <View style={styles.outOfStockBadge}>
+                          <Text style={styles.outOfStockBadgeText}>Sin stock</Text>
                         </View>
                       )}
 
@@ -384,10 +392,10 @@ export default function POSScreen() {
                           </TouchableOpacity>
                         </View>
                       ) : (
-                        /* Estado inactivo: fila placeholder con altura fija para consistencia */
+                        /* Estado inactivo */
                         <View style={styles.pcBottomInactive}>
-                          <Text style={styles.pcTapHint}>
-                            {inCart ? '✓ Agregado' : 'Toca para seleccionar'}
+                          <Text style={[styles.pcTapHint, outOfStock && { color: '#d32121' }]}>
+                            {outOfStock ? 'No disponible' : inCart ? '✓ Agregado' : 'Toca para seleccionar'}
                           </Text>
                         </View>
                       )}
@@ -584,8 +592,11 @@ const styles = StyleSheet.create({
   productCard:         { flex: 1, minWidth: 150, maxWidth: 220, backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#e8ecf2', padding: 10, gap: 6 },
   productCardSelected: { borderColor: '#ffd43b', borderWidth: 2, backgroundColor: '#fff9e6' },
   productCardInCart:   { borderColor: '#168542', borderWidth: 1.5, backgroundColor: '#f5fdf8' },
+  productCardDisabled: { opacity: 0.45, backgroundColor: '#f9f9f9' },
   inCartBadge:         { backgroundColor: '#168542', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2, alignSelf: 'flex-start' },
   inCartBadgeText:     { fontSize: 10, fontWeight: '900', color: '#fff' },
+  outOfStockBadge:     { backgroundColor: '#d32121', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2, alignSelf: 'flex-start' },
+  outOfStockBadgeText: { fontSize: 10, fontWeight: '900', color: '#fff' },
   pcBottomInactive:    { height: 30, justifyContent: 'center' },
   pcTapHint:           { fontSize: 11, color: '#b8c0cc', fontWeight: '700' },
   pcTop:          { flexDirection: 'row', gap: 6 },

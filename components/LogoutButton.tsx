@@ -2,6 +2,7 @@ import React from 'react';
 import { IconButton } from 'react-native-paper';
 import { useAuth } from '../context/AuthContext';
 import { StyleSheet } from 'react-native';
+import { COLOR, Z } from '../theme';
 
 const LogoutButton = () => {
   const { logout } = useAuth();
@@ -23,7 +24,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 3,
     right: 10,
-    zIndex: 10,
+    zIndex: Z.appBar,
+    backgroundColor: COLOR.expenseTint,
+    borderRadius: 20,
   },
 });
 

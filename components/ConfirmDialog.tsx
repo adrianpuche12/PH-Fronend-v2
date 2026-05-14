@@ -1,6 +1,7 @@
 import React from 'react';
 import { Modal, View, Text, StyleSheet } from 'react-native';
 import { Button } from 'react-native-paper';
+import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT } from '../theme';
 
 interface Props {
   visible: boolean;
@@ -47,12 +48,12 @@ const ConfirmDialog: React.FC<Props> = ({
 );
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  box:     { backgroundColor: '#fff', borderRadius: 18, padding: 24, width: '85%', maxWidth: 400, gap: 12 },
-  title:   { fontSize: 18, fontWeight: '900', color: '#161616' },
-  message: { fontSize: 14, color: '#53606d', fontWeight: '600', lineHeight: 20 },
-  actions: { flexDirection: 'row', gap: 10, marginTop: 4 },
-  btn:     { flex: 1, borderRadius: 10 },
+  overlay: { flex: 1, backgroundColor: COLOR.overlay, justifyContent: 'center', alignItems: 'center' },
+  box:     { backgroundColor: COLOR.surface, borderRadius: RADIUS.r4, padding: SPACE.s5, width: '85%', maxWidth: 400, gap: SPACE.s3 },
+  title:   { fontSize: FONT_SIZE.h2, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
+  message: { fontSize: FONT_SIZE.label, color: COLOR.ink2, fontWeight: FONT_WEIGHT.medium as any, lineHeight: 20 },
+  actions: { flexDirection: 'row', gap: SPACE.s2, marginTop: SPACE.s1 },
+  btn:     { flex: 1, borderRadius: RADIUS.r2 },
 });
 
 export default ConfirmDialog;

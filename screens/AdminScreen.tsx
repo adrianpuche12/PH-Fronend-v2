@@ -28,6 +28,7 @@ import ExcelManager from '../components/ExcelManager';
 import { formatCurrency, formatNumber, formatAmountInput, parseFormattedNumber } from '../utils/numberFormat';
 import ImageViewer from '../components/ImageViewer';
 import ImageButton from '../components/ImageButton';
+import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW } from '../theme';
 
 const TRANSACTION_LABELS: Record<Transaction['type'], string> = {
   income: 'Ingreso',
@@ -113,17 +114,17 @@ const CollapsibleBalanceCard = ({ transactions }: { transactions: any[] }) => {
         }
       ]}>
         <View style={styles.balanceRow}>
-          <MaterialCommunityIcons name="arrow-down-bold-circle-outline" size={20} color="#4CAF50" />
+          <MaterialCommunityIcons name="arrow-down-bold-circle-outline" size={20} color={COLOR.income} />
           <Text style={styles.balanceLabel}>Ingresos:</Text>
           <Text style={styles.balanceValue}>{formatCurrency(ingresos)}</Text>
         </View>
         <View style={styles.balanceRow}>
-          <MaterialCommunityIcons name="arrow-up-bold-circle-outline" size={20} color="#F44336" />
+          <MaterialCommunityIcons name="arrow-up-bold-circle-outline" size={20} color={COLOR.expense} />
           <Text style={styles.balanceLabel}>Egresos:</Text>
           <Text style={styles.balanceValue}>{formatCurrency(egresos)}</Text>
         </View>
         <View style={styles.balanceRow}>
-          <MaterialCommunityIcons name="calculator-variant" size={20} color="#2196F3" />
+          <MaterialCommunityIcons name="calculator-variant" size={20} color={COLOR.info} />
           <Text style={styles.balanceLabel}>Total:</Text>
           <Text style={[styles.balanceValue, { fontWeight: 'bold' }]}>{formatCurrency(total)}</Text>
         </View>
@@ -146,17 +147,17 @@ const BalanceCard = ({ transactions }: { transactions: any[] }) => {
       <Card.Content>
         <Title style={styles.balanceTitle}>Balance General</Title>
         <View style={styles.balanceRow}>
-          <MaterialCommunityIcons name="arrow-down-bold-circle-outline" size={20} color="#4CAF50" />
+          <MaterialCommunityIcons name="arrow-down-bold-circle-outline" size={20} color={COLOR.income} />
           <Text style={styles.balanceLabel}>Ingresos:</Text>
           <Text style={styles.balanceValue}>{formatCurrency(ingresos)}</Text>
         </View>
         <View style={styles.balanceRow}>
-          <MaterialCommunityIcons name="arrow-up-bold-circle-outline" size={20} color="#F44336" />
+          <MaterialCommunityIcons name="arrow-up-bold-circle-outline" size={20} color={COLOR.expense} />
           <Text style={styles.balanceLabel}>Egresos:</Text>
           <Text style={styles.balanceValue}>{formatCurrency(egresos)}</Text>
         </View>
         <View style={styles.balanceRow}>
-          <MaterialCommunityIcons name="calculator-variant" size={20} color="#2196F3" />
+          <MaterialCommunityIcons name="calculator-variant" size={20} color={COLOR.info} />
           <Text style={styles.balanceLabel}>Total:</Text>
           <Text style={[styles.balanceValue, { fontWeight: 'bold' }]}>{formatCurrency(total)}</Text>
         </View>
@@ -222,10 +223,10 @@ const CompactDateFilters = ({
               setSelectedDateInput('start');
               setDatePickerOpen(true);
             }}
-            left={<TextInput.Icon icon="calendar" color="#D4A72B" size={20} />}
-            outlineColor="#DDDDDD"
-            activeOutlineColor="#D4A72B"
-            theme={{ colors: { primary: '#D4A72B' } }}
+            left={<TextInput.Icon icon="calendar" color={COLOR.brandDark} size={20} />}
+            outlineColor={COLOR.border2}
+            activeOutlineColor={COLOR.brand}
+            theme={{ colors: { primary: COLOR.brand } }}
           />
           <TextInput
             label="Hasta"
@@ -237,10 +238,10 @@ const CompactDateFilters = ({
               setSelectedDateInput('end');
               setDatePickerOpen(true);
             }}
-            left={<TextInput.Icon icon="calendar" color="#D4A72B" size={20} />}
-            outlineColor="#DDDDDD"
-            activeOutlineColor="#D4A72B"
-            theme={{ colors: { primary: '#D4A72B' } }}
+            left={<TextInput.Icon icon="calendar" color={COLOR.brandDark} size={20} />}
+            outlineColor={COLOR.border2}
+            activeOutlineColor={COLOR.brand}
+            theme={{ colors: { primary: COLOR.brand } }}
           />
         </View>
 
@@ -266,8 +267,8 @@ const CompactDateFilters = ({
             onPress={onToggleAdminExpenses}
             style={{ flex: 1, minWidth: '45%' }}
             icon="bank"
-            buttonColor={showAdminExpenses ? "#FF9800" : "transparent"}
-            textColor={showAdminExpenses ? "white" : "#FF9800"}
+            buttonColor={showAdminExpenses ? COLOR.warn : COLOR.transparent}
+            textColor={showAdminExpenses ? COLOR.white : COLOR.warn}
           >
             G. Admin
           </Button>
@@ -277,7 +278,7 @@ const CompactDateFilters = ({
             onPress={() => fetchData(startDate, endDate, selectedStore)}
             style={{ flex: 1, minWidth: '45%' }}
             icon="refresh"
-            buttonColor="#2196F3"
+            buttonColor={COLOR.info}
           >
             Actualizar
           </Button>
@@ -287,7 +288,7 @@ const CompactDateFilters = ({
             onPress={onExcelPress}
             style={{ flex: 1, minWidth: '45%' }}
             icon="microsoft-excel"
-            buttonColor="#28a745"
+            buttonColor={COLOR.income}
           >
             Excel
           </Button>
@@ -302,7 +303,7 @@ const CompactDateFilters = ({
                 if (showAdminExpenses) onToggleAdminExpenses();
               }}
               style={{ flex: 1, minWidth: '45%' }}
-              textColor="#D4A72B"
+              textColor={COLOR.brandDark}
             >
               Limpiar
             </Button>
@@ -1118,7 +1119,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
     case 'CLOSING':
     case 'income':
       typeIcon = 'arrow-down-bold-circle-outline';
-      typeColor = '#4CAF50';
+      typeColor = COLOR.income;
       break;
     case 'SUPPLIER':
     case 'SALARY':
@@ -1126,11 +1127,11 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
     case 'expense':
     case 'gasto_admin':
       typeIcon = 'arrow-up-bold-circle-outline';
-      typeColor = '#F44336';
+      typeColor = COLOR.expense;
       break;
     default:
       typeIcon = 'help-circle-outline';
-      typeColor = '#9E9E9E';
+      typeColor = COLOR.inkMute;
   }
 
   const imageUri = item.imageUri || (item as any).image_uri;
@@ -1153,21 +1154,21 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
         <View style={styles.transactionDetails}>
           {dateToShow && (
             <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="calendar" size={16} color="#8B7214" />
+              <MaterialCommunityIcons name="calendar" size={16} color={COLOR.brandDeep} />
               <Text style={styles.detailText}>{'Fecha: ' + formatDate(dateToShow)}</Text>
             </View>
           )}
 
           {item.description && (
             <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="text" size={16} color="#8B7214" />
+              <MaterialCommunityIcons name="text" size={16} color={COLOR.brandDeep} />
               <Text style={styles.detailText}>{'Descripción: ' + item.description}</Text>
             </View>
           )}
 
           {/* Mostrar local */}
           <View style={styles.detailRow}>
-            <MaterialCommunityIcons name="store" size={16} color="#8B7214" />
+            <MaterialCommunityIcons name="store" size={16} color={COLOR.brandDeep} />
             <Text style={styles.detailText}>
               {'Local: ' + (
                 item.store?.name ||
@@ -1185,7 +1186,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
           {/* Mostrar período para CLOSING */}
           {item.type === 'CLOSING' && item.periodStart && item.periodEnd && (
             <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="calendar-range" size={16} color="#8B7214" />
+              <MaterialCommunityIcons name="calendar-range" size={16} color={COLOR.brandDeep} />
               <Text style={styles.detailText}>
                 {'Período: ' + formatDate(item.periodStart) + ' al ' + formatDate(item.periodEnd)}
               </Text>
@@ -1194,7 +1195,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
           {/* Comprobante */}
           {imageUri && (
             <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="image" size={16} color="#8B7214" />
+              <MaterialCommunityIcons name="image" size={16} color={COLOR.brandDeep} />
               <Text style={styles.detailText}>Comprobante:</Text>
               <ImageViewer imageUri={imageUri} size="small" />
             </View>
@@ -1202,14 +1203,14 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
 
           {TRANSACTION_LABELS[item.type] === 'CLOSING' && item.closingsCount && (
             <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="counter" size={16} color="#8B7214" />
+              <MaterialCommunityIcons name="counter" size={16} color={COLOR.brandDeep} />
               <Text style={styles.detailText}>{'Cantidad de cierres: ' + item.closingsCount}</Text>
             </View>
           )}
 
           {TRANSACTION_LABELS[item.type] === 'CLOSING' && item.periodStart && item.periodEnd && (
             <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="calendar-range" size={16} color="#8B7214" />
+              <MaterialCommunityIcons name="calendar-range" size={16} color={COLOR.brandDeep} />
               <Text style={styles.detailText}>
                 {'Período: ' + formatDate(item.periodStart) + ' al ' + formatDate(item.periodEnd)}
               </Text>
@@ -1218,7 +1219,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
 
           {TRANSACTION_LABELS[item.type] === 'SUPPLIER' && item.supplier && (
             <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="truck-delivery" size={16} color="#8B7214" />
+              <MaterialCommunityIcons name="truck-delivery" size={16} color={COLOR.brandDeep} />
               <Text style={styles.detailText}>{'Proveedor: ' + item.supplier}</Text>
             </View>
           )}
@@ -1231,7 +1232,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
             mode="contained"
             onPress={() => handleEdit(item)}
             style={styles.editButton}
-            buttonColor="#2196F3"
+            buttonColor={COLOR.info}
             icon="pencil"
           >
             Editar
@@ -1240,7 +1241,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
             mode="contained"
             onPress={() => handleDelete(item)}
             style={styles.deleteButton}
-            buttonColor="#F44336"
+            buttonColor={COLOR.expense}
             icon="delete"
           >
             Eliminar
@@ -1261,7 +1262,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
         <MaterialCommunityIcons
           name="chevron-left"
           size={24}
-          color={currentPage === 1 ? '#BBBBBB' : '#2196F3'}
+          color={currentPage === 1 ? COLOR.inkDisabled : COLOR.info}
         />
       </TouchableOpacity>
       {pageNumbers.map((page) => (
@@ -1283,7 +1284,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
         <MaterialCommunityIcons
           name="chevron-right"
           size={24}
-          color={currentPage === totalPages ? '#BBBBBB' : '#2196F3'}
+          color={currentPage === totalPages ? COLOR.inkDisabled : COLOR.info}
         />
       </TouchableOpacity>
     </View>
@@ -1312,15 +1313,15 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
 
       {/* ── CABECERA MOBILE: siempre visible ── */}
       {!isLargeScreen && (
-        <View style={{ backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e8ecf2' }}>
+        <View style={{ backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border }}>
           {/* Fila: título + botón colapsar */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingTop: 10, paddingBottom: 6 }}>
             <ThemedText style={[styles.title, { marginBottom: 0 }]}>Operaciones</ThemedText>
             <Button
               mode="outlined"
               onPress={() => setFiltersExpanded(v => !v)}
-              textColor="#53606d"
-              style={{ borderColor: '#e8ecf2', minWidth: 0 }}
+              textColor={COLOR.ink2}
+              style={{ borderColor: COLOR.border, minWidth: 0 }}
               labelStyle={{ fontSize: 12 }}
             >
               {filtersExpanded ? 'Cerrar ▲' : 'Filtros ▼'}
@@ -1328,14 +1329,14 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
           </View>
 
           {/* Filtro tipo: siempre visible */}
-          <View style={{ flexDirection: 'row', marginHorizontal: 12, marginBottom: 8, borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: '#e8ecf2' }}>
+          <View style={{ flexDirection: 'row', marginHorizontal: 12, marginBottom: 8, borderRadius: RADIUS.r2, overflow: 'hidden', borderWidth: 1, borderColor: COLOR.border }}>
             {(['all', 'income', 'expense'] as const).map((f) => (
               <View key={f} style={{ flex: 1 }}>
                 <Button
                   mode="contained"
                   onPress={() => { setTypeFilter(f); setCurrentPage(1); }}
-                  buttonColor={typeFilter === f ? '#ffd43b' : '#f4f6f8'}
-                  textColor={typeFilter === f ? '#161616' : '#6b7581'}
+                  buttonColor={typeFilter === f ? COLOR.brand : COLOR.bgAlt}
+                  textColor={typeFilter === f ? COLOR.ink : COLOR.inkMute}
                   style={{ borderRadius: 0, margin: 0 }}
                   labelStyle={{ fontSize: 13, fontWeight: '700' }}
                 >
@@ -1376,20 +1377,20 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
 
       {/* ── DESKTOP ── */}
       {isLargeScreen && (
-        <View style={{ backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e8ecf2' }}>
+        <View style={{ backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border }}>
           {/* Fila: título + filtro tipo + botón colapsar */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8, gap: 12 }}>
             <ThemedText style={[styles.title, { marginBottom: 0 }]}>Todas las Operaciones.</ThemedText>
 
             {/* Filtro Todos/Ingresos/Egresos */}
-            <View style={{ flexDirection: 'row', borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: '#e8ecf2' }}>
+            <View style={{ flexDirection: 'row', borderRadius: RADIUS.r2, overflow: 'hidden', borderWidth: 1, borderColor: COLOR.border }}>
               {(['all', 'income', 'expense'] as const).map((f) => (
                 <Button
                   key={f}
                   mode="contained"
                   onPress={() => { setTypeFilter(f); setCurrentPage(1); }}
-                  buttonColor={typeFilter === f ? '#ffd43b' : '#f4f6f8'}
-                  textColor={typeFilter === f ? '#161616' : '#6b7581'}
+                  buttonColor={typeFilter === f ? COLOR.brand : COLOR.bgAlt}
+                  textColor={typeFilter === f ? COLOR.ink : COLOR.inkMute}
                   style={{ borderRadius: 0, margin: 0 }}
                   labelStyle={{ fontSize: 13, fontWeight: '700' }}
                 >
@@ -1401,8 +1402,8 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
             <Button
               mode="outlined"
               onPress={() => setFiltersExpanded(v => !v)}
-              textColor="#53606d"
-              style={{ borderColor: '#e8ecf2' }}
+              textColor={COLOR.ink2}
+              style={{ borderColor: COLOR.border }}
               labelStyle={{ fontSize: 13 }}
             >
               {filtersExpanded ? 'Cerrar ▲' : 'Filtros ▼'}
@@ -1434,7 +1435,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
 
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
+          <ActivityIndicator size="large" color={COLOR.brand} />
           <ThemedText style={styles.loadingText}>
             Cargando datos desde la base de datos...
           </ThemedText>
@@ -1566,47 +1567,47 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 0,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: COLOR.bg,
   },
   title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginVertical: 12,
+    fontSize: FONT_SIZE.h1,
+    fontWeight: FONT_WEIGHT.bold as any,
+    marginVertical: SPACE.s3,
     textAlign: 'center',
-    color: '#333',
+    color: COLOR.ink,
   },
   // Estilos para la vista de escritorio (originales)
   headerContainer: {
-    padding: 16,
+    padding: SPACE.s4,
     marginTop: -10,
   },
   dateInputsContainer: {
-    backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 15,
+    backgroundColor: COLOR.surface,
+    borderRadius: RADIUS.r2,
+    padding: SPACE.s4,
     elevation: 3,
-    marginBottom: 16,
+    marginBottom: SPACE.s4,
   },
   dateInput: {
-    backgroundColor: '#fff',
-    marginBottom: 12,
+    backgroundColor: COLOR.surface,
+    marginBottom: SPACE.s3,
     flex: 1,
     marginHorizontal: 5,
   },
   refreshButton: {
-    borderRadius: 30,
+    borderRadius: RADIUS.full,
     marginTop: 5,
     marginBottom: 10,
     elevation: 2,
-    marginRight: 8,
+    marginRight: SPACE.s2,
   },
   clearButton: {
     marginTop: 5,
-    borderColor: '#D4A72B',
-    marginRight: 8,
+    borderColor: COLOR.brand,
+    marginRight: SPACE.s2,
   },
   excelButton: {
-    borderRadius: 30,
+    borderRadius: RADIUS.full,
     marginTop: 5,
     marginBottom: 10,
     elevation: 2,
@@ -1614,31 +1615,31 @@ const styles = StyleSheet.create({
 
   // Estilos para la vista móvil (nuevos, compactos)
   controlsContainer: {
-    padding: 10,
+    padding: SPACE.s3,
     marginBottom: 5,
   },
   mobileControlsContainer: {
-    padding: 10,
+    padding: SPACE.s3,
     marginBottom: 5,
   },
   compactFiltersContainer: {
-    backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 10,
+    backgroundColor: COLOR.surface,
+    borderRadius: RADIUS.r2,
+    padding: SPACE.s3,
     elevation: 3,
-    marginBottom: 10,
+    marginBottom: SPACE.s3,
   },
   compactDateInputs: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: SPACE.s2,
   },
   compactDateInput: {
     flex: 1,
     marginHorizontal: 4,
     height: 50,
-    backgroundColor: '#fff',
-    fontSize: 15,
+    backgroundColor: COLOR.surface,
+    fontSize: FONT_SIZE.body,
     minWidth: 130,
   },
   compactButtonsRow: {
@@ -1648,37 +1649,37 @@ const styles = StyleSheet.create({
   compactClearButton: {
     flex: 1,
     marginRight: 5,
-    borderColor: '#D4A72B',
+    borderColor: COLOR.brand,
     height: 36,
   },
   compactRefreshButton: {
     flex: 1,
     marginLeft: 5,
     marginRight: 5,
-    borderRadius: 30,
+    borderRadius: RADIUS.full,
     height: 36,
   },
   compactExcelButton: {
     flex: 1,
     marginLeft: 5,
-    borderRadius: 30,
+    borderRadius: RADIUS.full,
     height: 36,
   },
   compactAdminButton: {
     flex: 1,
     marginLeft: 5,
     marginRight: 5,
-    borderRadius: 30,
+    borderRadius: RADIUS.full,
     height: 36,
-    borderColor: '#FF9800',
+    borderColor: COLOR.warn,
   },
 
   // Estilos para la selección de local
   storeFilterContainer: {
-    marginBottom: 10,
+    marginBottom: SPACE.s3,
   },
   storeFilterCompact: {
-    marginBottom: 8,
+    marginBottom: SPACE.s2,
   },
   filtersContainer: {
     width: '100%',
@@ -1691,38 +1692,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: SPACE.s2,
   },
   filtersRowWeb: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: SPACE.s3,
   },
   inputGroupWeb: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 3,
-    gap: 10,
+    gap: SPACE.s3,
   },
   buttonGroupWeb: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
     flex: 2,
-    gap: 10,
+    gap: SPACE.s3,
   },
   dateFiltersRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: SPACE.s3,
   },
   filterLabel: {
-    fontSize: 14,
-    fontWeight: 'bold',
+    fontSize: FONT_SIZE.label,
+    fontWeight: FONT_WEIGHT.bold as any,
     marginBottom: 5,
-    color: '#555',
+    color: COLOR.ink2,
   },
   storeSelector: {
     marginBottom: 5,
@@ -1738,28 +1739,28 @@ const styles = StyleSheet.create({
 
   // Estilos para el BalanceCard colapsable
   balanceCard: {
-    borderRadius: 10,
+    borderRadius: RADIUS.r2,
     elevation: 3,
-    marginBottom: 10,
+    marginBottom: SPACE.s3,
     overflow: 'hidden',
-    backgroundColor: 'white',
+    backgroundColor: COLOR.surface,
   },
   balanceHeaderContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: '#f8f8f8',
+    paddingHorizontal: SPACE.s4,
+    paddingVertical: SPACE.s2,
+    backgroundColor: COLOR.surface2,
   },
   balanceContentContainer: {
     overflow: 'hidden',
-    paddingHorizontal: 16,
+    paddingHorizontal: SPACE.s4,
   },
   balanceTitle: {
-    fontSize: 18,
-    color: '#333',
-    fontWeight: 'bold',
+    fontSize: FONT_SIZE.h2,
+    color: COLOR.ink,
+    fontWeight: FONT_WEIGHT.bold as any,
     marginBottom: 5,
     textAlign: 'center',
   },
@@ -1767,19 +1768,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 6,
-    paddingHorizontal: 10,
+    paddingHorizontal: SPACE.s3,
     paddingVertical: 5,
   },
   balanceLabel: {
-    fontSize: 16,
-    color: '#333',
-    marginLeft: 8,
+    fontSize: FONT_SIZE.h3,
+    color: COLOR.ink,
+    marginLeft: SPACE.s2,
     flex: 1,
   },
   balanceValue: {
-    fontSize: 16,
-    color: '#333',
-    fontWeight: '500',
+    fontSize: FONT_SIZE.h3,
+    color: COLOR.ink,
+    fontWeight: FONT_WEIGHT.medium as any,
   },
 
   // Estilos para la lista de transacciones
@@ -1788,36 +1789,36 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   transactionCard: {
-    marginBottom: 16,
-    borderRadius: 10,
+    marginBottom: SPACE.s4,
+    borderRadius: RADIUS.r2,
     elevation: 3,
-    backgroundColor: 'white',
+    backgroundColor: COLOR.surface,
   },
   transactionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
-    paddingBottom: 10,
+    marginBottom: SPACE.s3,
+    paddingBottom: SPACE.s3,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEEEEE',
+    borderBottomColor: COLOR.border,
   },
   transactionTypeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   transactionType: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginLeft: 8,
+    fontSize: FONT_SIZE.h3,
+    fontWeight: FONT_WEIGHT.bold as any,
+    marginLeft: SPACE.s2,
   },
   transactionAmount: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: FONT_SIZE.h2,
+    fontWeight: FONT_WEIGHT.bold as any,
+    color: COLOR.ink,
   },
   transactionDetails: {
-    marginBottom: 15,
+    marginBottom: SPACE.s4,
   },
   detailRow: {
     flexDirection: 'row',
@@ -1825,78 +1826,78 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   detailText: {
-    fontSize: 14,
-    color: '#555',
-    marginLeft: 8,
+    fontSize: FONT_SIZE.label,
+    color: COLOR.ink2,
+    marginLeft: SPACE.s2,
   },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 10,
+    marginTop: SPACE.s3,
   },
   editButton: {
     flex: 1,
     marginRight: 5,
-    borderRadius: 30,
+    borderRadius: RADIUS.full,
   },
   deleteButton: {
     flex: 1,
     marginLeft: 5,
-    borderRadius: 30,
+    borderRadius: RADIUS.full,
   },
 
   // Estilos para el modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: COLOR.overlay,
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContainer: {
     width: '90%',
-    backgroundColor: '#fff',
-    borderRadius: 15,
-    padding: 20,
+    backgroundColor: COLOR.surface,
+    borderRadius: RADIUS.r4,
+    padding: SPACE.s5,
     elevation: 5,
     maxHeight: '80%',
   },
   modalTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 15,
+    fontSize: FONT_SIZE.h1,
+    fontWeight: FONT_WEIGHT.bold as any,
+    marginBottom: SPACE.s4,
     textAlign: 'center',
-    color: '#333',
+    color: COLOR.ink,
   },
   modalInput: {
-    marginBottom: 12,
-    backgroundColor: 'white',
+    marginBottom: SPACE.s3,
+    backgroundColor: COLOR.surface,
   },
   modalButtonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 15,
+    marginTop: SPACE.s4,
   },
   modalButton: {
     flex: 1,
     marginHorizontal: 5,
-    borderRadius: 30,
+    borderRadius: RADIUS.full,
   },
   modalInputContainer: {
-    marginBottom: 12,
+    marginBottom: SPACE.s3,
   },
   modalInputLabel: {
-    fontSize: 14,
-    fontWeight: 'bold',
+    fontSize: FONT_SIZE.label,
+    fontWeight: FONT_WEIGHT.bold as any,
     marginBottom: 5,
-    color: '#555',
+    color: COLOR.ink2,
   },
 
   // Estilos para la paginación
   fixedPaginationContainer: {
-    paddingVertical: 10,
-    backgroundColor: '#f5f5f5',
+    paddingVertical: SPACE.s3,
+    backgroundColor: COLOR.bg,
     borderTopWidth: 1,
-    borderTopColor: '#ddd',
+    borderTopColor: COLOR.border,
   },
   paginationContainer: {
     flexDirection: 'row',
@@ -1910,23 +1911,23 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 20,
-    backgroundColor: 'white',
+    borderRadius: RADIUS.r4,
+    backgroundColor: COLOR.surface,
     borderWidth: 1,
-    borderColor: '#DDDDDD',
+    borderColor: COLOR.border2,
     elevation: 2,
   },
   paginationText: {
-    fontSize: 16,
-    color: '#555',
+    fontSize: FONT_SIZE.h3,
+    color: COLOR.ink2,
   },
   activeButton: {
-    backgroundColor: '#2196F3',
-    borderColor: '#2196F3',
+    backgroundColor: COLOR.info,
+    borderColor: COLOR.info,
   },
   activeText: {
-    color: 'white',
-    fontWeight: 'bold',
+    color: COLOR.white,
+    fontWeight: FONT_WEIGHT.bold as any,
   },
   disabledButton: {
     opacity: 0.5,
@@ -1937,51 +1938,51 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: SPACE.s5,
   },
   loadingText: {
-    marginTop: 15,
-    fontSize: 16,
-    color: '#D4A72B',
+    marginTop: SPACE.s4,
+    fontSize: FONT_SIZE.h3,
+    color: COLOR.brand,
     textAlign: 'center',
   },
   noDataText: {
-    fontSize: 18,
+    fontSize: FONT_SIZE.h2,
     textAlign: 'center',
     marginVertical: 40,
-    color: '#888',
+    color: COLOR.inkMute,
   },
   confirmationText: {
-    fontSize: 16,
+    fontSize: FONT_SIZE.h3,
     textAlign: 'center',
-    marginBottom: 20,
-    color: '#555',
+    marginBottom: SPACE.s5,
+    color: COLOR.ink2,
     lineHeight: 24,
   },
   snackbar: {
-    backgroundColor: '#333333',
-    borderRadius: 10,
+    backgroundColor: COLOR.ink,
+    borderRadius: RADIUS.r2,
   },
   imageContainer: {
-    marginTop: 10,
-    paddingTop: 10,
+    marginTop: SPACE.s3,
+    paddingTop: SPACE.s3,
     borderTopWidth: 1,
-    borderTopColor: '#EEEEEE',
+    borderTopColor: COLOR.border,
   },
   imageLabel: {
-    fontSize: 14,
-    fontWeight: 'bold',
+    fontSize: FONT_SIZE.label,
+    fontWeight: FONT_WEIGHT.bold as any,
     marginBottom: 5,
-    color: '#8B7214',
+    color: COLOR.brandDeep,
   },
   transactionImage: {
     width: '100%',
     height: 200,
-    borderRadius: 8,
+    borderRadius: RADIUS.r1,
     resizeMode: 'contain',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLOR.bg,
     borderWidth: 1,
-    borderColor: '#EEEEEE',
+    borderColor: COLOR.border,
   },
 });
 

@@ -26,6 +26,7 @@ import ResponsiveButton from '../components/ui/responsiveButton';
 import { REACT_APP_API_URL } from '../config';
 import StoreSelector from '../components/StoreSelector';
 import { formatAmountInput, parseFormattedNumber } from '../utils/numberFormat';
+import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW } from '../theme';
 import { ImageService } from '../utils/ImageService';
 import ImagePicker from '../components/ImagePicker';
 
@@ -363,7 +364,7 @@ const DynamicFormScreen = () => {
             onPress={() => handleInputChange('supplier', supplier)}
             style={styles.radioItem}
             labelStyle={styles.radioLabel}
-            color="#D4A72B"
+            color={COLOR.brandDark}
           />
         ))}
       </View>
@@ -383,14 +384,14 @@ const DynamicFormScreen = () => {
             value="income"
             style={styles.radioItem}
             labelStyle={styles.radioLabel}
-            color="#D4A72B"
+            color={COLOR.brandDark}
           />
           <RadioButton.Item
             label="Egreso"
             value="expense"
             style={styles.radioItem}
             labelStyle={styles.radioLabel}
-            color="#D4A72B"
+            color={COLOR.brandDark}
           />
         </View>
       </RadioButton.Group>
@@ -415,10 +416,10 @@ const DynamicFormScreen = () => {
           mode="outlined"
           style={styles.input}
           error={errors.amount}
-          left={<TextInput.Icon icon="cash-multiple" color="#D4A72B" />}
-          outlineColor="#DDDDDD"
-          activeOutlineColor="#D4A72B"
-          theme={{ colors: { primary: '#D4A72B' } }}
+          left={<TextInput.Icon icon="cash-multiple" color={COLOR.brandDark} />}
+          outlineColor={COLOR.border2}
+          activeOutlineColor={COLOR.brand}
+          theme={{ colors: { primary: COLOR.brand } }}
         />
       </View>
 
@@ -433,10 +434,10 @@ const DynamicFormScreen = () => {
           }}
           style={styles.input}
           error={errors.date}
-          left={<TextInput.Icon icon="calendar" color="#D4A72B" />}
-          outlineColor="#DDDDDD"
-          activeOutlineColor="#D4A72B"
-          theme={{ colors: { primary: '#D4A72B' } }}
+          left={<TextInput.Icon icon="calendar" color={COLOR.brandDark} />}
+          outlineColor={COLOR.border2}
+          activeOutlineColor={COLOR.brand}
+          theme={{ colors: { primary: COLOR.brand } }}
         />
       </View>
 
@@ -448,10 +449,10 @@ const DynamicFormScreen = () => {
           mode="outlined"
           style={styles.input}
           error={errors.description}
-          left={<TextInput.Icon icon="text" color="#D4A72B" />}
-          outlineColor="#DDDDDD"
-          activeOutlineColor="#D4A72B"
-          theme={{ colors: { primary: '#D4A72B' } }}
+          left={<TextInput.Icon icon="text" color={COLOR.brandDark} />}
+          outlineColor={COLOR.border2}
+          activeOutlineColor={COLOR.brand}
+          theme={{ colors: { primary: COLOR.brand } }}
         />
       </View>
       {renderImagePicker()}
@@ -471,10 +472,10 @@ const DynamicFormScreen = () => {
           mode="outlined"
           style={styles.input}
           error={errors.amount}
-          left={<TextInput.Icon icon="cash-multiple" color="#D4A72B" />}
-          outlineColor="#DDDDDD"
-          activeOutlineColor="#D4A72B"
-          theme={{ colors: { primary: '#D4A72B' } }}
+          left={<TextInput.Icon icon="cash-multiple" color={COLOR.brandDark} />}
+          outlineColor={COLOR.border2}
+          activeOutlineColor={COLOR.brand}
+          theme={{ colors: { primary: COLOR.brand } }}
           placeholder="Monto a dividir entre locales"
         />
         {errors.amount && (
@@ -495,10 +496,10 @@ const DynamicFormScreen = () => {
           }}
           style={styles.input}
           error={errors.date}
-          left={<TextInput.Icon icon="calendar" color="#D4A72B" />}
-          outlineColor="#DDDDDD"
-          activeOutlineColor="#D4A72B"
-          theme={{ colors: { primary: '#D4A72B' } }}
+          left={<TextInput.Icon icon="calendar" color={COLOR.brandDark} />}
+          outlineColor={COLOR.border2}
+          activeOutlineColor={COLOR.brand}
+          theme={{ colors: { primary: COLOR.brand } }}
         />
       </View>
 
@@ -510,10 +511,10 @@ const DynamicFormScreen = () => {
           mode="outlined"
           style={styles.input}
           error={errors.description}
-          left={<TextInput.Icon icon="text" color="#D4A72B" />}
-          outlineColor="#DDDDDD"
-          activeOutlineColor="#D4A72B"
-          theme={{ colors: { primary: '#D4A72B' } }}
+          left={<TextInput.Icon icon="text" color={COLOR.brandDark} />}
+          outlineColor={COLOR.border2}
+          activeOutlineColor={COLOR.brand}
+          theme={{ colors: { primary: COLOR.brand } }}
           placeholder="Descripción del gasto administrativo"
         />
         {errors.description && (
@@ -574,7 +575,7 @@ const DynamicFormScreen = () => {
                 keyboardType="numeric"
                 style={styles.percentageInput}
                 maxLength={3}
-                theme={{ colors: { primary: '#D4A72B' } }}
+                theme={{ colors: { primary: COLOR.brand } }}
               />
               <Text style={styles.percentageSymbol}>%</Text>
             </View>
@@ -600,7 +601,7 @@ const DynamicFormScreen = () => {
                 keyboardType="numeric"
                 style={styles.percentageInput}
                 maxLength={3}
-                theme={{ colors: { primary: '#D4A72B' } }}
+                theme={{ colors: { primary: COLOR.brand } }}
               />
               <Text style={styles.percentageSymbol}>%</Text>
             </View>
@@ -666,10 +667,10 @@ const DynamicFormScreen = () => {
                 keyboardType="numeric"
                 mode="outlined"
                 style={styles.input}
-                left={<TextInput.Icon icon="counter" color="#D4A72B" />}
-                outlineColor="#DDDDDD"
-                activeOutlineColor="#D4A72B"
-                theme={{ colors: { primary: '#D4A72B' } }}
+                left={<TextInput.Icon icon="counter" color={COLOR.brandDark} />}
+                outlineColor={COLOR.border2}
+                activeOutlineColor={COLOR.brand}
+                theme={{ colors: { primary: COLOR.brand } }}
               />
             </View>
             <View style={styles.inputContainer}>
@@ -681,10 +682,10 @@ const DynamicFormScreen = () => {
                 mode="outlined"
                 style={styles.input}
                 error={errors.amount}
-                left={<TextInput.Icon icon="cash-multiple" color="#D4A72B" />}
-                outlineColor="#DDDDDD"
-                activeOutlineColor="#D4A72B"
-                theme={{ colors: { primary: '#D4A72B' } }}
+                left={<TextInput.Icon icon="cash-multiple" color={COLOR.brandDark} />}
+                outlineColor={COLOR.border2}
+                activeOutlineColor={COLOR.brand}
+                theme={{ colors: { primary: COLOR.brand } }}
               />
             </View>
 
@@ -699,10 +700,10 @@ const DynamicFormScreen = () => {
                 }}
                 style={styles.input}
                 error={errors.date}
-                left={<TextInput.Icon icon="calendar" color="#D4A72B" />}
-                outlineColor="#DDDDDD"
-                activeOutlineColor="#D4A72B"
-                theme={{ colors: { primary: '#D4A72B' } }}
+                left={<TextInput.Icon icon="calendar" color={COLOR.brandDark} />}
+                outlineColor={COLOR.border2}
+                activeOutlineColor={COLOR.brand}
+                theme={{ colors: { primary: COLOR.brand } }}
                 showSoftInputOnFocus={false}
               />
               {errors.date && (
@@ -724,10 +725,10 @@ const DynamicFormScreen = () => {
                 }}
                 style={styles.input}
                 error={errors.periodStart || errors.periodEnd}
-                left={<TextInput.Icon icon="calendar-range" color="#D4A72B" />}
-                outlineColor="#DDDDDD"
-                activeOutlineColor="#D4A72B"
-                theme={{ colors: { primary: '#D4A72B' } }}
+                left={<TextInput.Icon icon="calendar-range" color={COLOR.brandDark} />}
+                outlineColor={COLOR.border2}
+                activeOutlineColor={COLOR.brand}
+                theme={{ colors: { primary: COLOR.brand } }}
               />
               {(errors.periodStart || errors.periodEnd) && (
                 <HelperText type="error" visible={true}>
@@ -759,10 +760,10 @@ const DynamicFormScreen = () => {
                 mode="outlined"
                 style={styles.input}
                 error={errors.amount}
-                left={<TextInput.Icon icon="cash-multiple" color="#D4A72B" />}
-                outlineColor="#DDDDDD"
-                activeOutlineColor="#D4A72B"
-                theme={{ colors: { primary: '#D4A72B' } }}
+                left={<TextInput.Icon icon="cash-multiple" color={COLOR.brandDark} />}
+                outlineColor={COLOR.border2}
+                activeOutlineColor={COLOR.brand}
+                theme={{ colors: { primary: COLOR.brand } }}
               />
             </View>
             <View style={styles.inputContainer}>
@@ -776,10 +777,10 @@ const DynamicFormScreen = () => {
                 }}
                 style={styles.input}
                 error={errors.date}
-                left={<TextInput.Icon icon="calendar" color="#D4A72B" />}
-                outlineColor="#DDDDDD"
-                activeOutlineColor="#D4A72B"
-                theme={{ colors: { primary: '#D4A72B' } }}
+                left={<TextInput.Icon icon="calendar" color={COLOR.brandDark} />}
+                outlineColor={COLOR.border2}
+                activeOutlineColor={COLOR.brand}
+                theme={{ colors: { primary: COLOR.brand } }}
               />
             </View>
             <View style={styles.inputContainer}>
@@ -790,10 +791,10 @@ const DynamicFormScreen = () => {
                 mode="outlined"
                 style={styles.input}
                 error={errors.description}
-                left={<TextInput.Icon icon="text" color="#D4A72B" />}
-                outlineColor="#DDDDDD"
-                activeOutlineColor="#D4A72B"
-                theme={{ colors: { primary: '#D4A72B' } }}
+                left={<TextInput.Icon icon="text" color={COLOR.brandDark} />}
+                outlineColor={COLOR.border2}
+                activeOutlineColor={COLOR.brand}
+                theme={{ colors: { primary: COLOR.brand } }}
               />
             </View>
             {renderImagePicker()}
@@ -816,10 +817,10 @@ const DynamicFormScreen = () => {
                 mode="outlined"
                 style={styles.input}
                 error={errors.description}
-                left={<TextInput.Icon icon="text" color="#D4A72B" />}
-                outlineColor="#DDDDDD"
-                activeOutlineColor="#D4A72B"
-                theme={{ colors: { primary: '#D4A72B' } }}
+                left={<TextInput.Icon icon="text" color={COLOR.brandDark} />}
+                outlineColor={COLOR.border2}
+                activeOutlineColor={COLOR.brand}
+                theme={{ colors: { primary: COLOR.brand } }}
               />
             </View>
             <View style={styles.inputContainer}>
@@ -831,10 +832,10 @@ const DynamicFormScreen = () => {
                 mode="outlined"
                 style={styles.input}
                 error={errors.amount}
-                left={<TextInput.Icon icon="cash-multiple" color="#D4A72B" />}
-                outlineColor="#DDDDDD"
-                activeOutlineColor="#D4A72B"
-                theme={{ colors: { primary: '#D4A72B' } }}
+                left={<TextInput.Icon icon="cash-multiple" color={COLOR.brandDark} />}
+                outlineColor={COLOR.border2}
+                activeOutlineColor={COLOR.brand}
+                theme={{ colors: { primary: COLOR.brand } }}
               />
             </View>
             <View style={styles.inputContainer}>
@@ -848,10 +849,10 @@ const DynamicFormScreen = () => {
                 }}
                 style={styles.input}
                 error={errors.date}
-                left={<TextInput.Icon icon="calendar" color="#D4A72B" />}
-                outlineColor="#DDDDDD"
-                activeOutlineColor="#D4A72B"
-                theme={{ colors: { primary: '#D4A72B' } }}
+                left={<TextInput.Icon icon="calendar" color={COLOR.brandDark} />}
+                outlineColor={COLOR.border2}
+                activeOutlineColor={COLOR.brand}
+                theme={{ colors: { primary: COLOR.brand } }}
               />
             </View>
             {renderImagePicker()}
@@ -867,7 +868,7 @@ const DynamicFormScreen = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
-      <StatusBar barStyle="dark-content" backgroundColor="#FFF0A8" />
+      <StatusBar barStyle="dark-content" backgroundColor={COLOR.brandTint} />
 
       <View style={styles.topSection}>
         <View style={styles.logoContainer}>
@@ -897,35 +898,35 @@ const DynamicFormScreen = () => {
                   value="transaction"
                   style={styles.radioItem}
                   labelStyle={styles.radioLabel}
-                  color="#D4A72B"
+                  color={COLOR.brandDark}
                 />
                 <RadioButton.Item
                   label="Gasto Administrativo"
                   value="gasto-admin"
                   style={styles.radioItem}
                   labelStyle={styles.radioLabel}
-                  color="#D4A72B"
+                  color={COLOR.brandDark}
                 />
                 <RadioButton.Item
                   label="Depósito de Cierres"
                   value="closing-deposits"
                   style={styles.radioItem}
                   labelStyle={styles.radioLabel}
-                  color="#D4A72B"
+                  color={COLOR.brandDark}
                 />
                 <RadioButton.Item
                   label="Pago a Proveedores"
                   value="supplier-payments"
                   style={styles.radioItem}
                   labelStyle={styles.radioLabel}
-                  color="#D4A72B"
+                  color={COLOR.brandDark}
                 />
                 <RadioButton.Item
                   label="Salarios"
                   value="salary-payments"
                   style={styles.radioItem}
                   labelStyle={styles.radioLabel}
-                  color="#D4A72B"
+                  color={COLOR.brandDark}
                 />
               </View>
             </RadioButton.Group>
@@ -941,7 +942,7 @@ const DynamicFormScreen = () => {
                 style={styles.submitButton}
                 contentStyle={styles.buttonContent}
                 labelStyle={styles.buttonText}
-                buttonColor="#2196F3"
+                buttonColor={COLOR.info}
               >
                 {isSubmitting ? 'ENVIANDO...' : 'ENVIAR'}
               </Button>
@@ -952,7 +953,7 @@ const DynamicFormScreen = () => {
                 style={styles.clearButton}
                 contentStyle={styles.buttonContent}
                 labelStyle={styles.buttonText}
-                buttonColor="#f5742f"
+                buttonColor={COLOR.warn}
               >
                 ↻ LIMPIAR FORMULARIO
               </Button>
@@ -1004,269 +1005,265 @@ const DynamicFormScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: COLOR.bg,
   },
   topSection: {
-    backgroundColor: '#FFF0A8',
+    backgroundColor: COLOR.brandTint,
     paddingVertical: 30,
     alignItems: 'center',
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
+    borderBottomLeftRadius: RADIUS.r5,
+    borderBottomRightRadius: RADIUS.r5,
+    ...SHADOW.md,
   },
   logoContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    marginBottom: SPACE.s3,
   },
   logo: {
-    backgroundColor: 'white',
+    backgroundColor: COLOR.surface,
     borderWidth: 2,
-    borderColor: 'white',
+    borderColor: COLOR.surface,
   },
   welcomeText: {
-    color: '#8B7214',
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginTop: 10,
+    color: COLOR.brandDeep,
+    fontSize: FONT_SIZE.display,
+    fontWeight: FONT_WEIGHT.bold as any,
+    marginTop: SPACE.s3,
   },
   scrollView: {
     flex: 1,
     marginTop: -25,
   },
   card: {
-    marginHorizontal: 20,
-    marginBottom: 20,
-    borderRadius: 15,
+    marginHorizontal: SPACE.s5,
+    marginBottom: SPACE.s5,
+    borderRadius: RADIUS.r4,
     elevation: 6,
     paddingVertical: 5,
   },
   cardTitle: {
     textAlign: 'center',
-    fontSize: 20,
-    marginBottom: 20,
-    color: '#333',
-    fontWeight: 'bold',
+    fontSize: FONT_SIZE.h2,
+    marginBottom: SPACE.s5,
+    color: COLOR.ink,
+    fontWeight: FONT_WEIGHT.bold as any,
   },
   formSectionTitle: {
-    fontSize: 16,
-    color: '#555',
+    fontSize: FONT_SIZE.h3,
+    color: COLOR.ink2,
     textAlign: 'center',
-    marginBottom: 10,
+    marginBottom: SPACE.s3,
   },
   operationTypeContainer: {
-    marginBottom: 15,
+    marginBottom: SPACE.s4,
   },
   radioGroupContainer: {
-    marginBottom: 15,
+    marginBottom: SPACE.s4,
   },
   radioItem: {
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    paddingVertical: 8,
+    borderBottomColor: COLOR.border,
+    paddingVertical: SPACE.s2,
   },
   radioLabel: {
-    fontSize: 16,
-    color: '#444',
+    fontSize: FONT_SIZE.h3,
+    color: COLOR.ink2,
   },
   fixedTypeContainer: {
-    backgroundColor: '#f0f0f0',
-    padding: 12,
-    borderRadius: 8,
+    backgroundColor: COLOR.bgAlt,
+    padding: SPACE.s3,
+    borderRadius: RADIUS.r1,
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: SPACE.s4,
     borderWidth: 1,
-    borderColor: '#D4A72B',
+    borderColor: COLOR.brand,
   },
   fixedTypeLabel: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#555',
+    fontSize: FONT_SIZE.h3,
+    fontWeight: FONT_WEIGHT.bold as any,
+    color: COLOR.ink2,
   },
   supplierListContainer: {
-    marginBottom: 15,
+    marginBottom: SPACE.s4,
   },
   inputContainer: {
-    marginBottom: 12,
+    marginBottom: SPACE.s3,
   },
   input: {
-    backgroundColor: 'white',
+    backgroundColor: COLOR.surface,
   },
   buttonContainer: {
-    marginTop: 15,
+    marginTop: SPACE.s4,
   },
   submitButton: {
-    marginBottom: 15,
-    borderRadius: 30,
+    marginBottom: SPACE.s4,
+    borderRadius: RADIUS.full,
     elevation: 2,
     paddingVertical: 5,
   },
   clearButton: {
-    borderRadius: 30,
+    borderRadius: RADIUS.full,
     elevation: 2,
     paddingVertical: 5,
   },
   buttonContent: {
-    paddingVertical: 8,
+    paddingVertical: SPACE.s2,
   },
   buttonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: FONT_SIZE.h3,
+    fontWeight: FONT_WEIGHT.bold as any,
   },
   messageCard: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    padding: 16,
+    padding: SPACE.s4,
     zIndex: 2,
   },
   successCard: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: COLOR.income,
   },
   errorCard: {
-    backgroundColor: '#F44336',
+    backgroundColor: COLOR.expense,
   },
   messageText: {
-    color: 'white',
+    color: COLOR.white,
     textAlign: 'center',
   },
   storeSelector: {
-    marginBottom: 15,
-    backgroundColor: '#f9f9f9',
-    padding: 10,
-    borderRadius: 8,
+    marginBottom: SPACE.s4,
+    backgroundColor: COLOR.bgAlt,
+    padding: SPACE.s3,
+    borderRadius: RADIUS.r1,
   },
   divisionContainer: {
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 8,
-    marginVertical: 10,
+    backgroundColor: COLOR.surface,
+    padding: SPACE.s4,
+    borderRadius: RADIUS.r1,
+    marginVertical: SPACE.s3,
     borderWidth: 1,
-    borderColor: '#D4A72B',
+    borderColor: COLOR.brand,
   },
   divisionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#D4A72B',
-    marginBottom: 15,
+    fontSize: FONT_SIZE.h3,
+    fontWeight: FONT_WEIGHT.bold as any,
+    color: COLOR.brandDark,
+    marginBottom: SPACE.s4,
     textAlign: 'center',
   },
   totalAmount: {
-    fontSize: 16,
-    color: '#007bff',
-    fontWeight: 'bold',
+    fontSize: FONT_SIZE.h3,
+    color: COLOR.info,
+    fontWeight: FONT_WEIGHT.bold as any,
     textAlign: 'center',
-    marginBottom: 15,
+    marginBottom: SPACE.s4,
   },
   quickButtonsContainer: {
-    marginBottom: 15,
+    marginBottom: SPACE.s4,
   },
   quickButtonsLabel: {
-    fontSize: 12,
-    color: '#555',
-    marginBottom: 10,
+    fontSize: FONT_SIZE.caption,
+    color: COLOR.ink2,
+    marginBottom: SPACE.s3,
     textAlign: 'center',
   },
   quickButtons: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    gap: 8,
+    gap: SPACE.s2,
   },
   quickButton: {
-    backgroundColor: '#e3f2fd',
+    backgroundColor: COLOR.infoTint,
     paddingVertical: 4,
-    paddingHorizontal: 12,
-    borderRadius: 16,
+    paddingHorizontal: SPACE.s3,
+    borderRadius: RADIUS.full,
     borderWidth: 1,
-    borderColor: '#D4A72B',
+    borderColor: COLOR.brand,
   },
   quickButtonText: {
-    fontSize: 12,
-    color: '#1976d2',
-    fontWeight: '500',
+    fontSize: FONT_SIZE.caption,
+    color: COLOR.info,
+    fontWeight: FONT_WEIGHT.medium as any,
   },
   localesContainer: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 15,
+    gap: SPACE.s3,
+    marginBottom: SPACE.s4,
   },
   localCard: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
-    padding: 12,
-    borderRadius: 8,
+    backgroundColor: COLOR.bgAlt,
+    padding: SPACE.s3,
+    borderRadius: RADIUS.r1,
     borderWidth: 1,
-    borderColor: '#e9ecef',
+    borderColor: COLOR.border,
     alignItems: 'center',
   },
   localName: {
-    fontWeight: 'bold',
-    marginBottom: 8,
-    color: '#495057',
-    fontSize: 14,
+    fontWeight: FONT_WEIGHT.bold as any,
+    marginBottom: SPACE.s2,
+    color: COLOR.ink2,
+    fontSize: FONT_SIZE.label,
   },
   percentageContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: SPACE.s2,
   },
   percentageInput: {
     width: 60,
     height: 40,
-    backgroundColor: 'white',
+    backgroundColor: COLOR.surface,
     textAlign: 'center',
   },
   percentageSymbol: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#495057',
+    fontSize: FONT_SIZE.h3,
+    fontWeight: FONT_WEIGHT.bold as any,
+    color: COLOR.ink2,
     marginLeft: 4,
   },
   localAmount: {
-    color: '#007bff',
-    fontWeight: 'bold',
-    fontSize: 16,
+    color: COLOR.info,
+    fontWeight: FONT_WEIGHT.bold as any,
+    fontSize: FONT_SIZE.h3,
   },
   validationContainer: {
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: SPACE.s2,
   },
   validationSuccess: {
-    color: '#28a745',
-    fontWeight: 'bold',
-    fontSize: 14,
+    color: COLOR.income,
+    fontWeight: FONT_WEIGHT.bold as any,
+    fontSize: FONT_SIZE.label,
   },
   validationError: {
-    color: '#dc3545',
-    fontWeight: 'bold',
-    fontSize: 14,
+    color: COLOR.expense,
+    fontWeight: FONT_WEIGHT.bold as any,
+    fontSize: FONT_SIZE.label,
   },
   summaryContainer: {
-    backgroundColor: '#e3f2fd',
-    padding: 15,
-    borderRadius: 8,
-    marginTop: 15,
+    backgroundColor: COLOR.infoTint,
+    padding: SPACE.s4,
+    borderRadius: RADIUS.r1,
+    marginTop: SPACE.s4,
   },
   summaryTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1976d2',
-    marginBottom: 10,
+    fontSize: FONT_SIZE.h3,
+    fontWeight: FONT_WEIGHT.bold as any,
+    color: COLOR.info,
+    marginBottom: SPACE.s3,
     textAlign: 'center',
   },
   summaryText: {
-    fontSize: 14,
-    color: '#1565c0',
+    fontSize: FONT_SIZE.label,
+    color: COLOR.info,
     marginBottom: 5,
   },
   summaryBold: {
-    fontWeight: 'bold',
+    fontWeight: FONT_WEIGHT.bold as any,
   },
 });
 

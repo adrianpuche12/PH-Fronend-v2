@@ -9,6 +9,7 @@ import InventoryScreen from './InventoryScreen';
 import POSScreen from './POSScreen';
 import SalesHistoryScreen from './SalesHistoryScreen';
 import DashboardScreen from './DashboardScreen';
+import UsersScreen from './UsersScreen';
 
 const AdminDashboard = () => {
   const { width } = useWindowDimensions();
@@ -46,6 +47,7 @@ const AdminDashboard = () => {
                   : activeScreen === 'inventory'   ? 'Inventario'
                   : activeScreen === 'stores'      ? 'Locales'
                   : activeScreen === 'salesHistory'? 'Historial ventas'
+                  : activeScreen === 'users'       ? 'Usuarios'
                   : 'Ventas'}
               </Text>
             </View>
@@ -53,6 +55,7 @@ const AdminDashboard = () => {
 
           {/* Pantalla activa */}
           {activeScreen === 'dashboard'    && <DashboardScreen />}
+          {activeScreen === 'users'        && <UsersScreen />}
           {activeScreen === 'operations'  && <AdminScreen />}
           {activeScreen === 'inventory'   && <InventoryScreen />}
           {activeScreen === 'stores'      && <StoresScreen />}

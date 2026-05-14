@@ -6,14 +6,7 @@ import { StoreProvider } from '../context/StoreContext';
 import AdminScreen from './AdminScreen';
 import StoresScreen from './StoresScreen';
 import InventoryScreen from './InventoryScreen';
-
-// Placeholder Ventas — se reemplaza en Sprint 3
-const SalesScreen = () => (
-  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-    <Text style={{ fontSize: 22, fontWeight: '900', color: '#161616' }}>🛒 Ventas</Text>
-    <Text style={{ color: '#6b7581', marginTop: 8 }}>Próximamente — Sprint 3</Text>
-  </View>
-);
+import POSScreen from './POSScreen';
 
 const AdminDashboard = () => {
   const { width } = useWindowDimensions();
@@ -58,7 +51,7 @@ const AdminDashboard = () => {
           {activeScreen === 'operations' && <AdminScreen />}
           {activeScreen === 'inventory'  && <InventoryScreen />}
           {activeScreen === 'stores'     && <StoresScreen />}
-          {activeScreen === 'sales'      && <SalesScreen />}
+          {activeScreen === 'sales'      && <POSScreen />}
         </View>
 
         {/* Drawer mobile */}

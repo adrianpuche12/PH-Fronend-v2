@@ -48,7 +48,7 @@ const flatCats = (cats: Category[]): Category[] => {
 
 // ─── POSScreen ────────────────────────────────────────────────────────────────
 
-export default function POSScreen() {
+export default function POSScreen({ hideStoreSelector = false }: { hideStoreSelector?: boolean }) {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 900;
 
@@ -302,14 +302,16 @@ export default function POSScreen() {
       <Text style={styles.noShiftTitle}>Sin turno activo</Text>
       <Text style={styles.noShiftSub}>Abrí un turno para comenzar a registrar ventas</Text>
 
-      {/* Selector de local */}
-      <View style={styles.localChips}>
-        {stores.map(s => (
-          <TouchableOpacity key={s.id} style={[styles.localChip, selectedStore?.id === s.id && styles.localChipActive]} onPress={() => setSelectedStore(s)}>
-            <Text style={[styles.localChipText, selectedStore?.id === s.id && styles.localChipTextActive]}>{s.name}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      {/* Selector de local — solo para admin */}
+      {!hideStoreSelector && (
+        <View style={styles.localChips}>
+          {stores.map(s => (
+            <TouchableOpacity key={s.id} style={[styles.localChip, selectedStore?.id === s.id && styles.localChipActive]} onPress={() => setSelectedStore(s)}>
+              <Text style={[styles.localChipText, selectedStore?.id === s.id && styles.localChipTextActive]}>{s.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
 
       <Button mode="contained" onPress={() => setOpenShiftModal(true)} buttonColor="#ffd43b" textColor="#161616" style={{ borderRadius: 12 }} labelStyle={{ fontSize: 16, fontWeight: '900' }}>
         Abrir turno
@@ -347,14 +349,16 @@ export default function POSScreen() {
           <Text style={styles.headerShift} numberOfLines={1}>● {shift.code} · {shift.username}</Text>
         </View>
 
-        {/* Selector de local */}
-        <View style={styles.localChips}>
-          {stores.map(s => (
-            <TouchableOpacity key={s.id} style={[styles.localChip, selectedStore?.id === s.id && styles.localChipActive]} onPress={() => setSelectedStore(s)}>
-              <Text style={[styles.localChipText, selectedStore?.id === s.id && styles.localChipTextActive]}>{s.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {/* Selector de local — oculto para empleados (hideStoreSelector=true) */}
+        {!hideStoreSelector && (
+          <View style={styles.localChips}>
+            {stores.map(s => (
+              <TouchableOpacity key={s.id} style={[styles.localChip, selectedStore?.id === s.id && styles.localChipActive]} onPress={() => setSelectedStore(s)}>
+                <Text style={[styles.localChipText, selectedStore?.id === s.id && styles.localChipTextActive]}>{s.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         <Button mode="outlined" onPress={openClosing} textColor="#d32121" style={{ borderColor: '#d32121', borderRadius: 8 }} labelStyle={{ fontSize: 11, fontWeight: '900' }}>
           Cerrar turno

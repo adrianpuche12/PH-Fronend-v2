@@ -23,6 +23,11 @@ interface StockItem {
   minStock: number; lowStock: boolean; categoryPath: string; categoryId: number | null;
 }
 interface CartItem { productId: number; productName: string; price: number; qty: number; subtotal: number; }
+interface SaleRecord {
+  id: number; shiftId: number; username: string; saleDate: string; status: string;
+  subtotal: number; isv: number; total: number; createdAt: string;
+  items: { id: number; productId: number; productName: string; unitPrice: number; quantity: number; subtotal: number; }[];
+}
 interface ProductSummaryItem { productId: number; productName: string; quantity: number; subtotal: number; }
 interface DailySummary {
   date: string; storeId: number; storeName: string; totalSales: number;
@@ -71,6 +76,12 @@ export default function POSScreen() {
   const [snackbar, setSnackbar]       = useState('');
   const [submitting, setSubmitting]   = useState(false);
 
+  // Tab del POS
+  const [posTab, setPosTab]               = useState<'nueva' | 'ventas'>('nueva');
+  const [shiftSales, setShiftSales]       = useState<SaleRecord[]>([]);
+  const [loadingSales, setLoadingSales]   = useState(false);
+  const [cancellingId, setCancellingId]   = useState<number | null>(null);
+
   // Modales
   const [openShiftModal, setOpenShiftModal] = useState(false);
   const [closingModal, setClosingModal]     = useState(false);
@@ -106,6 +117,32 @@ export default function POSScreen() {
 
   useEffect(() => { loadShift(); }, [loadShift]);
   useEffect(() => { loadCatalog(); setCart([]); setSelectedId(null); setPendingQty(1); }, [loadCatalog]);
+
+  const loadShiftSales = useCallback(async () => {
+    if (!shift) return;
+    setLoadingSales(true);
+    try {
+      const res = await axios.get<SaleRecord[]>(`${API}/api/v2/shifts/${shift.id}/sales`);
+      setShiftSales(res.data);
+    } catch { /* silencioso */ }
+    finally { setLoadingSales(false); }
+  }, [shift]);
+
+  const handleSwitchTab = (tab: 'nueva' | 'ventas') => {
+    setPosTab(tab);
+    if (tab === 'ventas') loadShiftSales();
+  };
+
+  const handleCancelSale = async (saleId: number) => {
+    if (!confirm('¿Anular esta venta? Se revertirá el stock.')) return;
+    setCancellingId(saleId);
+    try {
+      await axios.delete(`${API}/api/v2/sales/${saleId}`);
+      setShiftSales(prev => prev.filter(s => s.id !== saleId));
+      loadCatalog(); // refresca stock
+    } catch (e: any) { setSnackbar(e.response?.data?.error || 'Error al anular'); }
+    finally { setCancellingId(null); }
+  };
 
   // ── Filtrado ──────────────────────────────────────────────────────────────
 
@@ -186,7 +223,8 @@ export default function POSScreen() {
         items: cart.map(i => ({ productId: i.productId, quantity: i.qty })),
       });
       clearCart();
-      loadCatalog(); // refresca stock
+      loadCatalog();
+      if (posTab === 'ventas') loadShiftSales();
     } catch (e: any) { setSnackbar(e.response?.data?.error || 'Error al registrar venta'); }
     finally { setSubmitting(false); }
   };
@@ -293,8 +331,20 @@ export default function POSScreen() {
         </Button>
       </View>
 
-      {/* ══ CHIPS DE CATEGORÍA ══ */}
-      <View style={styles.chipsBar}>
+      {/* ══ TABS: Nueva venta / Ventas del turno ══ */}
+      <View style={styles.tabBar}>
+        <TouchableOpacity style={[styles.posTab, posTab === 'nueva' && styles.posTabActive]} onPress={() => handleSwitchTab('nueva')}>
+          <Text style={[styles.posTabText, posTab === 'nueva' && styles.posTabTextActive]}>Nueva venta</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.posTab, posTab === 'ventas' && styles.posTabActive]} onPress={() => handleSwitchTab('ventas')}>
+          <Text style={[styles.posTabText, posTab === 'ventas' && styles.posTabTextActive]}>
+            Ventas del turno{shiftSales.length > 0 ? ` (${shiftSales.length})` : ''}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* ══ CHIPS DE CATEGORÍA (solo en tab nueva venta) ══ */}
+      {posTab === 'nueva' && <View style={styles.chipsBar}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingHorizontal: 12 }}>
           <TouchableOpacity style={[styles.catChip, selectedCat === null && styles.catChipActive]} onPress={() => setSelectedCat(null)}>
             <Text style={[styles.catChipText, selectedCat === null && styles.catChipTextActive]}>Todas</Text>
@@ -305,10 +355,10 @@ export default function POSScreen() {
             </TouchableOpacity>
           ))}
         </ScrollView>
-      </View>
+      </View>}
 
-      {/* ══ BUSCADOR ══ */}
-      <View style={styles.searchWrap}>
+      {/* ══ BUSCADOR (solo en tab nueva venta) ══ */}
+      {posTab === 'nueva' && <View style={styles.searchWrap}>
         <View style={styles.searchBox}>
           <Text style={{ color: '#6b7581', marginRight: 6 }}>⌕</Text>
           <RNTextInput
@@ -319,10 +369,10 @@ export default function POSScreen() {
         </View>
         {/* Conteo de productos + local */}
         <Text style={styles.catalogMeta}>Productos activos · {selectedStore?.name}  <Text style={styles.catalogCount}>{filtered.length} productos</Text></Text>
-      </View>
+      </View>}
 
       {/* ══ LAYOUT PRINCIPAL ══ */}
-      <View style={[styles.main, isDesktop && styles.mainDesktop]}>
+      {posTab === 'nueva' && <View style={[styles.main, isDesktop && styles.mainDesktop]}>
 
         {/* Grilla de productos */}
         <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.grid}>
@@ -408,7 +458,74 @@ export default function POSScreen() {
           ? <View style={styles.ticketDesktop}><Ticket cart={cart} subtotal={cartSubtotal} isv={cartISV} total={cartTotal} itemCount={cartItemCount} onRemove={removeFromCart} onClear={clearCart} onSubmit={handleSubmitSale} submitting={submitting} full /></View>
           : <View style={styles.ticketMobile}><Ticket cart={cart} subtotal={cartSubtotal} isv={cartISV} total={cartTotal} itemCount={cartItemCount} onRemove={removeFromCart} onClear={clearCart} onSubmit={handleSubmitSale} submitting={submitting} full={false} /></View>
         }
-      </View>
+      </View>}
+
+      {/* ══ TAB VENTAS DEL TURNO ══ */}
+      {posTab === 'ventas' && (
+        <View style={{ flex: 1 }}>
+          {loadingSales ? (
+            <ActivityIndicator color="#ffd43b" size="large" style={{ marginTop: 40 }} />
+          ) : (
+            <ScrollView contentContainerStyle={{ padding: 12, gap: 10 }}>
+              {shiftSales.length === 0 ? (
+                <View style={styles.salesEmpty}>
+                  <Text style={styles.salesEmptyIcon}>🧾</Text>
+                  <Text style={styles.salesEmptyText}>Todavía no hay ventas en este turno.</Text>
+                  <Text style={styles.salesEmptySub}>Registrá una venta y aparecerá aquí.</Text>
+                </View>
+              ) : (
+                <>
+                  {/* Resumen del turno */}
+                  <View style={styles.salesSummary}>
+                    <Text style={styles.salesSummaryText}>
+                      {shiftSales.length} venta{shiftSales.length !== 1 ? 's' : ''}
+                    </Text>
+                    <Text style={styles.salesSummaryTotal}>
+                      {money(shiftSales.reduce((s, v) => s + v.total, 0))}
+                    </Text>
+                  </View>
+
+                  {/* Lista de ventas (más reciente primero) */}
+                  {[...shiftSales].reverse().map(sale => (
+                    <View key={sale.id} style={styles.saleCard}>
+                      {/* Header de la venta */}
+                      <View style={styles.saleCardHead}>
+                        <Text style={styles.saleCardTime}>
+                          {new Date(sale.createdAt).toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit' })}
+                        </Text>
+                        <Text style={styles.saleCardTotal}>{money(sale.total)}</Text>
+                        <TouchableOpacity
+                          style={[styles.cancelBtn, cancellingId === sale.id && { opacity: 0.5 }]}
+                          onPress={() => handleCancelSale(sale.id)}
+                          disabled={cancellingId === sale.id}
+                        >
+                          <Text style={styles.cancelBtnText}>
+                            {cancellingId === sale.id ? '...' : '✕ Anular'}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      {/* Items de la venta */}
+                      <View style={styles.saleCardItems}>
+                        {sale.items.map(item => (
+                          <Text key={item.id} style={styles.saleCardItem} numberOfLines={1}>
+                            · {item.productName} × {item.quantity}  <Text style={{ color: '#6b7581' }}>{money(item.subtotal)}</Text>
+                          </Text>
+                        ))}
+                      </View>
+
+                      {/* ISV */}
+                      <View style={styles.saleCardFooter}>
+                        <Text style={styles.saleCardFooterText}>Subtotal: {money(sale.subtotal)}  ·  ISV 15%: {money(sale.isv)}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </>
+              )}
+            </ScrollView>
+          )}
+        </View>
+      )}
 
       {/* ══ MODAL CIERRE DE TURNO ══ */}
       <Modal visible={closingModal} transparent animationType="slide" onRequestClose={() => !closingDone && setClosingModal(false)}>
@@ -563,6 +680,32 @@ const styles = StyleSheet.create({
   localChipActive:{ backgroundColor: '#161616', borderColor: '#161616' },
   localChipText:  { fontSize: 12, fontWeight: '800', color: '#53606d' },
   localChipTextActive: { color: '#ffd43b', fontWeight: '900' },
+
+  // Tabs POS
+  tabBar:         { flexDirection: 'row', backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e8ecf2' },
+  posTab:         { flex: 1, paddingVertical: 11, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  posTabActive:   { borderBottomColor: '#ffd43b' },
+  posTabText:     { fontSize: 13, fontWeight: '700', color: '#6b7581' },
+  posTabTextActive: { color: '#161616', fontWeight: '950' },
+
+  // Tab Ventas del turno
+  salesEmpty:     { alignItems: 'center', paddingVertical: 48, gap: 8 },
+  salesEmptyIcon: { fontSize: 40 },
+  salesEmptyText: { fontSize: 15, fontWeight: '800', color: '#161616' },
+  salesEmptySub:  { fontSize: 13, color: '#6b7581' },
+  salesSummary:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff9e6', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#efd37d' },
+  salesSummaryText: { fontSize: 14, fontWeight: '800', color: '#53606d' },
+  salesSummaryTotal: { fontSize: 18, fontWeight: '950', color: '#161616' },
+  saleCard:       { backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: '#e8ecf2', padding: 12, gap: 6 },
+  saleCardHead:   { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  saleCardTime:   { fontSize: 13, fontWeight: '800', color: '#161616', flex: 1 },
+  saleCardTotal:  { fontSize: 15, fontWeight: '950', color: '#161616' },
+  cancelBtn:      { backgroundColor: '#ffecec', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: '#ffc0c0' },
+  cancelBtnText:  { fontSize: 12, fontWeight: '900', color: '#d32121' },
+  saleCardItems:  { gap: 2, paddingLeft: 4 },
+  saleCardItem:   { fontSize: 12, fontWeight: '600', color: '#2f3944' },
+  saleCardFooter: { borderTopWidth: 1, borderTopColor: '#f4f6f8', paddingTop: 4 },
+  saleCardFooterText: { fontSize: 11, color: '#6b7581', fontWeight: '700' },
 
   // Chips categoría
   chipsBar:       { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e8ecf2', paddingVertical: 8 },

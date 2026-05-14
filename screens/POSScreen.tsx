@@ -156,7 +156,6 @@ export default function POSScreen() {
     setCart(prev => [...prev, { productId: item.productId, productName: item.productName, price: item.price, qty: pendingQty, subtotal: item.price * pendingQty }]);
     setSelectedId(null);
     setPendingQty(1);
-    setSnackbar(`✓ ${item.productName} agregado`);
   };
 
   const removeFromCart = (productId: number) =>
@@ -187,7 +186,6 @@ export default function POSScreen() {
         items: cart.map(i => ({ productId: i.productId, quantity: i.qty })),
       });
       clearCart();
-      setSnackbar('✓ Venta registrada');
       loadCatalog(); // refresca stock
     } catch (e: any) { setSnackbar(e.response?.data?.error || 'Error al registrar venta'); }
     finally { setSubmitting(false); }

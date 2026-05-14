@@ -8,12 +8,13 @@ import StoresScreen from './StoresScreen';
 import InventoryScreen from './InventoryScreen';
 import POSScreen from './POSScreen';
 import SalesHistoryScreen from './SalesHistoryScreen';
+import DashboardScreen from './DashboardScreen';
 
 const AdminDashboard = () => {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
 
-  const [activeScreen, setActiveScreen] = useState<SidebarScreen>('operations');
+  const [activeScreen, setActiveScreen] = useState<SidebarScreen>('dashboard');
   const [drawerOpen, setDrawerOpen]     = useState(false);
 
   return (
@@ -40,17 +41,19 @@ const AdminDashboard = () => {
                 <Text style={styles.menuBtnIcon}>☰</Text>
               </TouchableOpacity>
               <Text style={styles.topbarTitle}>
-                {activeScreen === 'operations'    ? 'Operaciones'
-                  : activeScreen === 'inventory'    ? 'Inventario'
-                  : activeScreen === 'stores'       ? 'Locales'
-                  : activeScreen === 'salesHistory' ? 'Historial ventas'
+                {activeScreen === 'dashboard'    ? 'Dashboard'
+                  : activeScreen === 'operations'  ? 'Operaciones'
+                  : activeScreen === 'inventory'   ? 'Inventario'
+                  : activeScreen === 'stores'      ? 'Locales'
+                  : activeScreen === 'salesHistory'? 'Historial ventas'
                   : 'Ventas'}
               </Text>
             </View>
           )}
 
           {/* Pantalla activa */}
-          {activeScreen === 'operations'   && <AdminScreen />}
+          {activeScreen === 'dashboard'    && <DashboardScreen />}
+          {activeScreen === 'operations'  && <AdminScreen />}
           {activeScreen === 'inventory'   && <InventoryScreen />}
           {activeScreen === 'stores'      && <StoresScreen />}
           {activeScreen === 'sales'       && <POSScreen />}

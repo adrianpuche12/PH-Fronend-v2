@@ -6,7 +6,7 @@ import {
 import { IconButton } from 'react-native-paper';
 import { useAuth } from '../context/AuthContext';
 
-export type SidebarScreen = 'operations' | 'inventory' | 'stores' | 'sales' | 'salesHistory';
+export type SidebarScreen = 'dashboard' | 'operations' | 'inventory' | 'stores' | 'sales' | 'salesHistory';
 
 interface Props {
   active: SidebarScreen;
@@ -16,6 +16,7 @@ interface Props {
 }
 
 const MENU_ADMIN = [
+  { key: 'dashboard'    as SidebarScreen, label: 'Dashboard'        },
   { key: 'sales'        as SidebarScreen, label: 'Ventas'           },
   { key: 'salesHistory' as SidebarScreen, label: 'Historial ventas' },
   { key: 'inventory'    as SidebarScreen, label: 'Inventario'       },

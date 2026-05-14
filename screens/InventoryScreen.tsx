@@ -13,7 +13,8 @@ import { useStore } from '../context/StoreContext';
 
 interface Store       { id: number; name: string; active: boolean }
 interface Category    { id: number; name: string; active: boolean; parentId: number | null; children: Category[]; productCount: number }
-interface StockItem   { stockId: number; productId: number; productName: string; productSku: string; productType: string; productActive: boolean; price: number; quantity: number; minStock: number; lowStock: boolean; categoryName: string; categoryPath: string; storeId: number; updatedAt: string }
+interface StockItem   { stockId: number; productId: number; productName: string; productSku: string; productType: string; productActive: boolean; price: number; quantity: number; minStock: number; lowStock: boolean; categoryName: string; categoryPath: string; categoryId: number | null; storeId: number; updatedAt: string }
+interface Movement    { id: number; type: string; quantity: number; reason: string | null; notes: string | null; username: string | null; productId: number; productName: string; storeId: number; createdAt: string }
 interface Summary     { totalProducts: number; activeProducts: number; lowStockCount: number; categoryCount: number; estimatedValue: number }
 interface ProductForm { name: string; sku: string; type: string; price: string; minStock: string; description: string; categoryId: string }
 
@@ -35,7 +36,7 @@ const flattenCategories = (cats: Category[], prefix = ''): { id: number; label: 
 
 // ─── Árbol de categorías ─────────────────────────────────────────────────────
 
-const CategoryTree = ({ categories, selected, onSelect, onNew, onEdit, onDelete, onNewChild }: {
+const CategoryTree = ({ categories, selected, onSelect, onNew, onEdit, onDelete, onNewChild, onToggle }: {
   categories: Category[];
   selected: number | null;
   onSelect: (id: number | null) => void;
@@ -43,6 +44,7 @@ const CategoryTree = ({ categories, selected, onSelect, onNew, onEdit, onDelete,
   onEdit: (cat: Category) => void;
   onDelete: (cat: Category) => void;
   onNewChild: (parentId: number) => void;
+  onToggle: (cat: Category) => void;
 }) => {
   const [open, setOpen] = useState<Set<number>>(new Set());
   const toggle = (id: number) => setOpen(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
@@ -63,9 +65,10 @@ const CategoryTree = ({ categories, selected, onSelect, onNew, onEdit, onDelete,
         <View style={styles.catBadge}><Text style={styles.catBadgeText}>{cat.productCount}</Text></View>
 
         {/* Acciones */}
-        <IconButton icon="plus"       size={16} iconColor="#168542" onPress={() => onNewChild(cat.id)} style={{ margin: 0 }} />
-        <IconButton icon="pencil"     size={16} iconColor="#53606d" onPress={() => onEdit(cat)}        style={{ margin: 0 }} />
-        <IconButton icon="trash-can"  size={16} iconColor="#d32121" onPress={() => onDelete(cat)}      style={{ margin: 0 }} />
+        <IconButton icon="plus"                                          size={16} iconColor="#168542"                        onPress={() => onNewChild(cat.id)} style={{ margin: 0 }} />
+        <IconButton icon="pencil"                                        size={16} iconColor="#53606d"                        onPress={() => onEdit(cat)}        style={{ margin: 0 }} />
+        <IconButton icon={cat.active ? 'toggle-switch' : 'toggle-switch-off'} size={16} iconColor={cat.active ? '#168542' : '#b8c0cc'} onPress={() => onToggle(cat)}      style={{ margin: 0 }} />
+        <IconButton icon="trash-can"                                     size={16} iconColor="#d32121"                        onPress={() => onDelete(cat)}      style={{ margin: 0 }} />
       </View>
       {open.has(cat.id) && cat.children.map(c => renderNode(c, depth + 1))}
     </View>
@@ -119,6 +122,9 @@ const InventoryScreen = () => {
   const [showCatPanel, setShowCatPanel]   = useState(true);
   const [topExpanded, setTopExpanded]     = useState(true);
   const [snackbar, setSnackbar]           = useState('');
+  const [activeView, setActiveView]       = useState<'stock' | 'movements'>('stock');
+  const [movements, setMovements]         = useState<Movement[]>([]);
+  const [loadingMov, setLoadingMov]       = useState(false);
 
   // Modales
   const [adjustItem, setAdjustItem]       = useState<StockItem | null>(null);
@@ -165,6 +171,21 @@ const InventoryScreen = () => {
   }, [storeId]);
 
   useEffect(() => { loadAll(); }, [loadAll]);
+
+  const loadMovements = useCallback(async () => {
+    if (!storeId) return;
+    setLoadingMov(true);
+    try {
+      const res = await axios.get<Movement[]>(`${API}/api/v2/stores/${storeId}/stock/movements`);
+      setMovements(res.data);
+    } catch { setSnackbar('Error al cargar movimientos'); }
+    finally { setLoadingMov(false); }
+  }, [storeId]);
+
+  const handleViewChange = (view: 'stock' | 'movements') => {
+    setActiveView(view);
+    if (view === 'movements') loadMovements();
+  };
 
   // ── Filtrado ─────────────────────────────────────────────────────────────────
 
@@ -232,7 +253,7 @@ const InventoryScreen = () => {
 
   const openEditProduct = (item: StockItem) => {
     setEditProduct(item);
-    setProductForm({ name: item.productName, sku: item.productSku || '', type: item.productType, price: String(item.price), minStock: String(item.minStock), description: '', categoryId: item.productId ? '' : '' });
+    setProductForm({ name: item.productName, sku: item.productSku || '', type: item.productType, price: String(item.price), minStock: String(item.minStock), description: '', categoryId: item.categoryId ? String(item.categoryId) : '' });
     setCatPickerLabel(item.categoryPath || '');
     setProductModal(true);
   };
@@ -298,6 +319,52 @@ const InventoryScreen = () => {
     try { await axios.delete(`${API}/api/v2/categories/${cat.id}`); setSnackbar('Categoría eliminada'); loadAll(); }
     catch { setSnackbar('No se puede eliminar — tiene subcategorías o productos'); }
   };
+
+  const handleToggleCat = async (cat: Category) => {
+    try { await axios.put(`${API}/api/v2/categories/${cat.id}/toggle`); loadAll(); }
+    catch { setSnackbar('Error al cambiar estado de categoría'); }
+  };
+
+  // ── Movimientos ──────────────────────────────────────────────────────────────
+
+  const movTypeColor = (type: string) => {
+    switch (type) {
+      case 'ENTRADA': return '#168542';
+      case 'SALIDA':  return '#d32121';
+      case 'AJUSTE':  return '#2196F3';
+      case 'VENTA':   return '#7c3aed';
+      default:        return '#53606d';
+    }
+  };
+
+  const movTypeLabel = (type: string) => {
+    switch (type) {
+      case 'ENTRADA': return '↑ Entrada';
+      case 'SALIDA':  return '↓ Salida';
+      case 'AJUSTE':  return '⟳ Ajuste';
+      case 'VENTA':   return '$ Venta';
+      default:        return type;
+    }
+  };
+
+  const renderMovementRow = (m: Movement) => (
+    <View key={m.id} style={styles.movRow}>
+      <View style={[styles.movTypeBadge, { backgroundColor: movTypeColor(m.type) + '18' }]}>
+        <Text style={[styles.movTypeText, { color: movTypeColor(m.type) }]}>{movTypeLabel(m.type)}</Text>
+      </View>
+      <View style={styles.movInfo}>
+        <Text style={styles.movProduct} numberOfLines={1}>{m.productName}</Text>
+        {m.reason ? <Text style={styles.movReason} numberOfLines={1}>{m.reason}</Text> : null}
+      </View>
+      <Text style={[styles.movQty, { color: (m.type === 'ENTRADA' || m.type === 'AJUSTE') ? '#168542' : '#d32121' }]}>
+        {m.type === 'ENTRADA' ? '+' : '-'}{m.quantity}
+      </Text>
+      <Text style={styles.movDate}>
+        {new Date(m.createdAt).toLocaleDateString('es-HN', { day: '2-digit', month: '2-digit' })}{'\n'}
+        {new Date(m.createdAt).toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit' })}
+      </Text>
+    </View>
+  );
 
   // ── Stock color ──────────────────────────────────────────────────────────────
 
@@ -379,19 +446,39 @@ const InventoryScreen = () => {
           </View>
         </View>
         <View style={styles.headerRight}>
-          <Button mode="outlined" onPress={() => setTopExpanded(v => !v)}
-            textColor="#53606d" style={{ borderColor: '#e8ecf2', borderRadius: 10 }}
-            labelStyle={{ fontSize: 12 }}>
-            {topExpanded ? 'Cerrar ▲' : 'Resumen ▼'}
-          </Button>
-          <Button mode="contained" onPress={openCreateProduct} buttonColor="#ffd43b" textColor="#161616" style={{ borderRadius: 10 }}>
-            + Nuevo Producto
-          </Button>
+          {/* Tabs Stock / Historial */}
+          <View style={styles.viewTabs}>
+            <TouchableOpacity
+              style={[styles.viewTab, activeView === 'stock' && styles.viewTabActive]}
+              onPress={() => handleViewChange('stock')}
+            >
+              <Text style={[styles.viewTabText, activeView === 'stock' && styles.viewTabTextActive]}>📦 Stock</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.viewTab, activeView === 'movements' && styles.viewTabActive]}
+              onPress={() => handleViewChange('movements')}
+            >
+              <Text style={[styles.viewTabText, activeView === 'movements' && styles.viewTabTextActive]}>📋 Historial</Text>
+            </TouchableOpacity>
+          </View>
+
+          {activeView === 'stock' && (
+            <>
+              <Button mode="outlined" onPress={() => setTopExpanded(v => !v)}
+                textColor="#53606d" style={{ borderColor: '#e8ecf2', borderRadius: 10 }}
+                labelStyle={{ fontSize: 12 }}>
+                {topExpanded ? 'Cerrar ▲' : 'Resumen ▼'}
+              </Button>
+              <Button mode="contained" onPress={openCreateProduct} buttonColor="#ffd43b" textColor="#161616" style={{ borderRadius: 10 }}>
+                + Nuevo Producto
+              </Button>
+            </>
+          )}
         </View>
       </View>
 
-      {/* ── Sección colapsable: alerta + KPIs ── */}
-      {topExpanded && (
+      {/* ── Sección colapsable: alerta + KPIs (solo en vista stock) ── */}
+      {activeView === 'stock' && topExpanded && (
         <>
           {summary && summary.lowStockCount > 0 && (
             <View style={styles.alertBanner}>
@@ -409,74 +496,101 @@ const InventoryScreen = () => {
         </>
       )}
 
-      {/* ── Buscador ── */}
-      <View style={styles.searchRow}>
-        <View style={styles.searchBox}>
-          <Text style={{ color: '#6b7581', marginRight: 6 }}>⌕</Text>
-          <RNTextInput
-            placeholder="Buscar producto por nombre o SKU..."
-            placeholderTextColor="#b8c0cc"
-            value={search}
-            onChangeText={setSearch}
-            style={styles.searchInput}
-          />
+      {/* ── Buscador (solo en vista stock) ── */}
+      {activeView === 'stock' && (
+        <View style={styles.searchRow}>
+          <View style={styles.searchBox}>
+            <Text style={{ color: '#6b7581', marginRight: 6 }}>⌕</Text>
+            <RNTextInput
+              placeholder="Buscar producto por nombre o SKU..."
+              placeholderTextColor="#b8c0cc"
+              value={search}
+              onChangeText={setSearch}
+              style={styles.searchInput}
+            />
+          </View>
+          {!isDesktop && (
+            <IconButton icon="filter-variant" size={22} iconColor="#2f3944" onPress={() => setShowCatPanel(v => !v)} />
+          )}
         </View>
-        {!isDesktop && (
-          <IconButton icon="filter-variant" size={22} iconColor="#2f3944" onPress={() => setShowCatPanel(v => !v)} />
-        )}
-      </View>
+      )}
 
       {/* ── Layout principal ── */}
-      <View style={[styles.main, isDesktop && styles.mainDesktop]}>
+      {activeView === 'stock' ? (
+        <View style={[styles.main, isDesktop && styles.mainDesktop]}>
 
-        {/* Sidebar categorías */}
-        {(isDesktop || showCatPanel) && (
-          <View style={[styles.catPanel, !isDesktop && styles.catPanelMobile]}>
-            <Text style={styles.catPanelTitle}>Categorías</Text>
-            {loading ? <ActivityIndicator color="#ffd43b" /> : (
-              <CategoryTree
-                categories={categories}
-                selected={selectedCat}
-                onSelect={setSelectedCat}
-                onNew={() => openNewCat(null)}
-                onEdit={openEditCat}
-                onDelete={handleDeleteCat}
-                onNewChild={(parentId) => openNewCat(parentId)}
-              />
+          {/* Sidebar categorías */}
+          {(isDesktop || showCatPanel) && (
+            <View style={[styles.catPanel, !isDesktop && styles.catPanelMobile]}>
+              <Text style={styles.catPanelTitle}>Categorías</Text>
+              {loading ? <ActivityIndicator color="#ffd43b" /> : (
+                <CategoryTree
+                  categories={categories}
+                  selected={selectedCat}
+                  onSelect={setSelectedCat}
+                  onNew={() => openNewCat(null)}
+                  onEdit={openEditCat}
+                  onDelete={handleDeleteCat}
+                  onNewChild={(parentId) => openNewCat(parentId)}
+                  onToggle={handleToggleCat}
+                />
+              )}
+            </View>
+          )}
+
+          {/* Lista de productos */}
+          <View style={{ flex: 1 }}>
+            {loading ? (
+              <ActivityIndicator size="large" color="#ffd43b" style={{ marginTop: 40 }} />
+            ) : filtered.length === 0 ? (
+              <Text style={styles.empty}>No hay productos para mostrar.</Text>
+            ) : (
+              <ScrollView>
+                {/* Header tabla (solo desktop) */}
+                {isDesktop && (
+                  <View style={[styles.row, styles.rowHeader]}>
+                    <View style={styles.rowInfo}>
+                      <Text style={styles.colHeader}>Producto</Text>
+                    </View>
+                    <View style={{ width: 80, alignItems: 'flex-end' }}>
+                      <Text style={styles.colHeader}>Precio</Text>
+                    </View>
+                    <View style={{ width: 90, alignItems: 'center' }}>
+                      <Text style={styles.colHeader}>Stock / Mín</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', minWidth: 180 }}>
+                      <Text style={styles.colHeader}>Acciones</Text>
+                    </View>
+                  </View>
+                )}
+                {filtered.map(renderRow)}
+              </ScrollView>
             )}
           </View>
-        )}
-
-        {/* Lista de productos */}
+        </View>
+      ) : (
+        /* ── Vista Historial de Movimientos ── */
         <View style={{ flex: 1 }}>
-          {loading ? (
+          {loadingMov ? (
             <ActivityIndicator size="large" color="#ffd43b" style={{ marginTop: 40 }} />
-          ) : filtered.length === 0 ? (
-            <Text style={styles.empty}>No hay productos para mostrar.</Text>
+          ) : movements.length === 0 ? (
+            <Text style={styles.empty}>No hay movimientos registrados aún.</Text>
           ) : (
             <ScrollView>
               {/* Header tabla (solo desktop) */}
               {isDesktop && (
-                <View style={[styles.row, styles.rowHeader]}>
-                  <View style={styles.rowInfo}>
-                    <Text style={styles.colHeader}>Producto</Text>
-                  </View>
-                  <View style={{ width: 80, alignItems: 'flex-end' }}>
-                    <Text style={styles.colHeader}>Precio</Text>
-                  </View>
-                  <View style={{ width: 90, alignItems: 'center' }}>
-                    <Text style={styles.colHeader}>Stock / Mín</Text>
-                  </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', minWidth: 180 }}>
-                    <Text style={styles.colHeader}>Acciones</Text>
-                  </View>
+                <View style={[styles.movRow, styles.rowHeader]}>
+                  <View style={{ width: 90 }}><Text style={styles.colHeader}>Tipo</Text></View>
+                  <View style={{ flex: 1 }}><Text style={styles.colHeader}>Producto</Text></View>
+                  <View style={{ width: 60, alignItems: 'flex-end' }}><Text style={styles.colHeader}>Cant.</Text></View>
+                  <View style={{ width: 72, alignItems: 'center' }}><Text style={styles.colHeader}>Fecha</Text></View>
                 </View>
               )}
-              {filtered.map(renderRow)}
+              {movements.map(renderMovementRow)}
             </ScrollView>
           )}
         </View>
-      </View>
+      )}
 
       {/* ── Modal ajuste de stock ── */}
       <Modal visible={!!adjustItem} transparent animationType="fade" onRequestClose={() => setAdjustItem(null)}>
@@ -685,6 +799,23 @@ const styles = StyleSheet.create({
   adjustBtn:          { backgroundColor: '#ffd43b', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, marginRight: 4 },
   adjustBtnText:      { fontSize: 12, fontWeight: '800', color: '#161616' },
   actionIcon:         { margin: 0 },
+
+  // View tabs (Stock / Historial)
+  viewTabs:           { flexDirection: 'row', backgroundColor: '#f4f6f8', borderRadius: 10, padding: 3, gap: 2 },
+  viewTab:            { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 8 },
+  viewTabActive:      { backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 },
+  viewTabText:        { fontSize: 13, fontWeight: '700', color: '#6b7581' },
+  viewTabTextActive:  { color: '#161616', fontWeight: '900' },
+
+  // Filas de movimiento
+  movRow:             { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f4f6f8', paddingHorizontal: 10, paddingVertical: 8, gap: 8 },
+  movTypeBadge:       { width: 84, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 4, alignItems: 'center' },
+  movTypeText:        { fontSize: 11, fontWeight: '900' },
+  movInfo:            { flex: 1, minWidth: 0 },
+  movProduct:         { fontSize: 13, fontWeight: '800', color: '#161616' },
+  movReason:          { fontSize: 11, color: '#6b7581', marginTop: 2 },
+  movQty:             { width: 52, fontSize: 15, fontWeight: '950', textAlign: 'right' },
+  movDate:            { width: 58, fontSize: 11, fontWeight: '700', color: '#6b7581', textAlign: 'center' },
 
   // Modales
   overlay:            { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },

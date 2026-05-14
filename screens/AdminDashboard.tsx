@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, useWindowDimensions, TouchableOpacity, Text } from 'react-native';
-import { IconButton } from 'react-native-paper';
 import Sidebar, { SidebarScreen } from '../components/Sidebar';
 import { StoreProvider } from '../context/StoreContext';
+import { COLOR, SPACE, FONT_SIZE, FONT_WEIGHT, CONTROL } from '../theme';
 import AdminScreen from './AdminScreen';
 import StoresScreen from './StoresScreen';
 import InventoryScreen from './InventoryScreen';
@@ -10,6 +10,16 @@ import POSScreen from './POSScreen';
 import SalesHistoryScreen from './SalesHistoryScreen';
 import DashboardScreen from './DashboardScreen';
 import UsersScreen from './UsersScreen';
+
+const SCREEN_TITLE: Record<SidebarScreen, string> = {
+  dashboard:    'Dashboard',
+  operations:   'Operaciones',
+  inventory:    'Inventario',
+  stores:       'Locales',
+  salesHistory: 'Historial ventas',
+  users:        'Usuarios',
+  sales:        'Ventas',
+};
 
 const AdminDashboard = () => {
   const { width } = useWindowDimensions();
@@ -38,17 +48,15 @@ const AdminDashboard = () => {
           {/* Topbar mobile */}
           {!isDesktop && (
             <View style={styles.topbar}>
-              <TouchableOpacity onPress={() => setDrawerOpen(true)} style={styles.menuBtn}>
+              <TouchableOpacity
+                onPress={() => setDrawerOpen(true)}
+                style={styles.menuBtn}
+                activeOpacity={0.7}
+              >
                 <Text style={styles.menuBtnIcon}>☰</Text>
               </TouchableOpacity>
               <Text style={styles.topbarTitle}>
-                {activeScreen === 'dashboard'    ? 'Dashboard'
-                  : activeScreen === 'operations'  ? 'Operaciones'
-                  : activeScreen === 'inventory'   ? 'Inventario'
-                  : activeScreen === 'stores'      ? 'Locales'
-                  : activeScreen === 'salesHistory'? 'Historial ventas'
-                  : activeScreen === 'users'       ? 'Usuarios'
-                  : 'Ventas'}
+                {SCREEN_TITLE[activeScreen] ?? 'Menú'}
               </Text>
             </View>
           )}
@@ -56,11 +64,11 @@ const AdminDashboard = () => {
           {/* Pantalla activa */}
           {activeScreen === 'dashboard'    && <DashboardScreen />}
           {activeScreen === 'users'        && <UsersScreen />}
-          {activeScreen === 'operations'  && <AdminScreen />}
-          {activeScreen === 'inventory'   && <InventoryScreen />}
-          {activeScreen === 'stores'      && <StoresScreen />}
-          {activeScreen === 'sales'       && <POSScreen />}
-          {activeScreen === 'salesHistory'&& <SalesHistoryScreen />}
+          {activeScreen === 'operations'   && <AdminScreen />}
+          {activeScreen === 'inventory'    && <InventoryScreen />}
+          {activeScreen === 'stores'       && <StoresScreen />}
+          {activeScreen === 'sales'        && <POSScreen />}
+          {activeScreen === 'salesHistory' && <SalesHistoryScreen />}
         </View>
 
         {/* Drawer mobile */}
@@ -78,13 +86,38 @@ const AdminDashboard = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, flexDirection: 'row', backgroundColor: '#f4f6f8' },
-  content:   { flex: 1, flexDirection: 'column' },
-
-  topbar:       { flexDirection: 'row', alignItems: 'center', backgroundColor: '#ffd43b', paddingHorizontal: 12, paddingVertical: 10, gap: 12 },
-  menuBtn:      { padding: 4 },
-  menuBtnIcon:  { fontSize: 22, fontWeight: '900', color: '#161616' },
-  topbarTitle:  { fontSize: 18, fontWeight: '900', color: '#161616' },
+  container: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: COLOR.bg,
+  },
+  content: {
+    flex: 1,
+    flexDirection: 'column',
+    backgroundColor: COLOR.bg,
+  },
+  topbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLOR.brand,
+    paddingHorizontal: SPACE.s4,
+    paddingVertical: SPACE.s3,
+    height: CONTROL.appBarH,
+    gap: SPACE.s3,
+    borderBottomWidth: 1,
+    borderBottomColor: COLOR.brandDark,
+  },
+  menuBtn:     { padding: SPACE.s1 },
+  menuBtnIcon: {
+    fontSize: 22,
+    fontWeight: FONT_WEIGHT.black as any,
+    color: COLOR.ink,
+  },
+  topbarTitle: {
+    fontSize: FONT_SIZE.h2,
+    fontWeight: FONT_WEIGHT.bold as any,
+    color: COLOR.ink,
+  },
 });
 
 export default AdminDashboard;

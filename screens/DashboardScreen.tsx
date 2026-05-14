@@ -7,6 +7,7 @@ import { Button } from 'react-native-paper';
 import axios from 'axios';
 import { REACT_APP_API_URL } from '../config';
 import { useAuth } from '../context/AuthContext';
+import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW } from '../theme';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -141,10 +142,10 @@ export default function DashboardScreen() {
             {/* Inventario */}
             <View style={styles.inventoryRow}>
               <View style={[styles.inventoryStat, store.lowStockCount > 0 && styles.inventoryStatWarn]}>
-                <Text style={[styles.inventoryIcon, store.lowStockCount > 0 && { color: '#c05f00' }]}>
+                <Text style={[styles.inventoryIcon, store.lowStockCount > 0 && { color: COLOR.warn }]}>
                   {store.lowStockCount > 0 ? '⚠' : '📦'}
                 </Text>
-                <Text style={[styles.inventoryText, store.lowStockCount > 0 && { color: '#c05f00' }]}>
+                <Text style={[styles.inventoryText, store.lowStockCount > 0 && { color: COLOR.warn }]}>
                   {store.lowStockCount > 0
                     ? `${store.lowStockCount} producto${store.lowStockCount !== 1 ? 's' : ''} con stock bajo`
                     : `${store.totalProducts} productos · stock OK`}
@@ -173,59 +174,59 @@ const KpiCard = ({ icon, label, value, highlight, warn }: {
 // ─── Estilos ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  root:             { flex: 1, backgroundColor: '#f4f6f8' },
-  content:          { padding: 16, gap: 16 },
-  centered:         { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
-  errorText:        { color: '#d32121', fontWeight: '700', fontSize: 15 },
+  root:             { flex: 1, backgroundColor: COLOR.bg },
+  content:          { padding: SPACE.s4, gap: SPACE.s4 },
+  centered:         { flex: 1, justifyContent: 'center', alignItems: 'center', gap: SPACE.s3 },
+  errorText:        { color: COLOR.expense, fontWeight: FONT_WEIGHT.bold as any, fontSize: FONT_SIZE.body },
 
   // Saludo
   greetRow:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  greetTitle:       { fontSize: 22, fontWeight: '950', color: '#161616', letterSpacing: -0.5 },
-  greetSub:         { fontSize: 13, color: '#6b7581', fontWeight: '600', marginTop: 2 },
-  refreshBtn:       { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: '#e8ecf2', justifyContent: 'center', alignItems: 'center' },
-  refreshIcon:      { fontSize: 20, color: '#53606d', fontWeight: '900' },
+  greetTitle:       { fontSize: FONT_SIZE.h1, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink, letterSpacing: -0.5 },
+  greetSub:         { fontSize: FONT_SIZE.label, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.medium as any, marginTop: 2 },
+  refreshBtn:       { width: 40, height: 40, borderRadius: RADIUS.full, backgroundColor: COLOR.surface, borderWidth: 1, borderColor: COLOR.border, justifyContent: 'center', alignItems: 'center' },
+  refreshIcon:      { fontSize: 20, color: COLOR.ink2, fontWeight: FONT_WEIGHT.bold as any },
 
   // KPIs globales
-  kpiRow:           { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  kpiRow:           { flexDirection: 'row', flexWrap: 'wrap', gap: SPACE.s2 },
   kpiRowDesktop:    { flexWrap: 'nowrap' },
-  kpiCard:          { flex: 1, minWidth: 100, backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: '#e8ecf2', padding: 14, alignItems: 'center', gap: 4 },
-  kpiCardHL:        { borderColor: '#168542', backgroundColor: '#f5fdf8' },
-  kpiCardWarn:      { borderColor: '#efd37d', backgroundColor: '#fff9e6' },
+  kpiCard:          { flex: 1, minWidth: 100, backgroundColor: COLOR.surface, borderRadius: RADIUS.r3, borderWidth: 1, borderColor: COLOR.border, padding: SPACE.s4, alignItems: 'center', gap: SPACE.s1, ...SHADOW.sm },
+  kpiCardHL:        { borderColor: COLOR.incomeBorder, backgroundColor: COLOR.incomeTint },
+  kpiCardWarn:      { borderColor: COLOR.warnBorder, backgroundColor: COLOR.warnTint },
   kpiIcon:          { fontSize: 24 },
-  kpiValue:         { fontSize: 22, fontWeight: '950', color: '#161616', letterSpacing: -0.5 },
-  kpiLabel:         { fontSize: 11, fontWeight: '700', color: '#6b7581', textAlign: 'center' },
+  kpiValue:         { fontSize: FONT_SIZE.amount, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink, letterSpacing: -0.5 },
+  kpiLabel:         { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.inkMute, textAlign: 'center' },
 
   // Sección
-  sectionTitle:     { fontSize: 16, fontWeight: '950', color: '#161616' },
+  sectionTitle:     { fontSize: FONT_SIZE.h2, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
 
   // Grid de locales
-  storeGrid:        { gap: 12 },
+  storeGrid:        { gap: SPACE.s3 },
   storeGridDesktop: { flexDirection: 'row', flexWrap: 'wrap' },
 
   // Tarjeta de local
-  storeCard:        { flex: 1, minWidth: 280, backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#e8ecf2', padding: 16, gap: 12 },
+  storeCard:        { flex: 1, minWidth: 280, backgroundColor: COLOR.surface, borderRadius: RADIUS.r4, borderWidth: 1, borderColor: COLOR.border, padding: SPACE.s4, gap: SPACE.s3, ...SHADOW.sm },
   storeCardHead:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  storeName:        { fontSize: 18, fontWeight: '950', color: '#161616' },
+  storeName:        { fontSize: FONT_SIZE.h2, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
 
-  shiftBadge:       { borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 },
-  shiftOpen:        { backgroundColor: '#e9f8ef' },
-  shiftClosed:      { backgroundColor: '#f4f6f8' },
-  shiftBadgeText:   { fontSize: 12, fontWeight: '800', color: '#53606d' },
+  shiftBadge:       { borderRadius: RADIUS.r2, paddingHorizontal: SPACE.s2 + 2, paddingVertical: 4 },
+  shiftOpen:        { backgroundColor: COLOR.incomeTint },
+  shiftClosed:      { backgroundColor: COLOR.surface2 },
+  shiftBadgeText:   { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink2 },
 
   shiftInfo:        { gap: 2 },
-  shiftCode:        { fontSize: 14, fontWeight: '900', color: '#161616' },
-  shiftMeta:        { fontSize: 12, color: '#6b7581', fontWeight: '600' },
-  noShiftText:      { fontSize: 13, color: '#b8c0cc', fontWeight: '600' },
+  shiftCode:        { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
+  shiftMeta:        { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.medium as any },
+  noShiftText:      { fontSize: FONT_SIZE.label, color: COLOR.inkDisabled, fontWeight: FONT_WEIGHT.medium as any },
 
-  statsRow:         { flexDirection: 'row', backgroundColor: '#f4f6f8', borderRadius: 12, padding: 12 },
+  statsRow:         { flexDirection: 'row', backgroundColor: COLOR.bgAlt, borderRadius: RADIUS.r2, padding: SPACE.s3 },
   statItem:         { flex: 1, alignItems: 'center', gap: 2 },
-  statDivider:      { width: 1, backgroundColor: '#e8ecf2', marginVertical: 2 },
-  statValue:        { fontSize: 18, fontWeight: '950', color: '#161616' },
-  statLabel:        { fontSize: 11, fontWeight: '700', color: '#6b7581' },
+  statDivider:      { width: 1, backgroundColor: COLOR.border, marginVertical: 2 },
+  statValue:        { fontSize: FONT_SIZE.h2, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
+  statLabel:        { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.inkMute },
 
-  inventoryRow:     { gap: 6 },
-  inventoryStat:    { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#f4f6f8', borderRadius: 10, padding: 8 },
-  inventoryStatWarn:{ backgroundColor: '#fff9e6', borderWidth: 1, borderColor: '#efd37d' },
+  inventoryRow:     { gap: SPACE.s1 },
+  inventoryStat:    { flexDirection: 'row', alignItems: 'center', gap: SPACE.s2, backgroundColor: COLOR.bgAlt, borderRadius: RADIUS.r2, padding: SPACE.s2 },
+  inventoryStatWarn:{ backgroundColor: COLOR.warnTint, borderWidth: 1, borderColor: COLOR.warnBorder },
   inventoryIcon:    { fontSize: 16 },
-  inventoryText:    { fontSize: 12, fontWeight: '700', color: '#53606d' },
+  inventoryText:    { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink2 },
 });

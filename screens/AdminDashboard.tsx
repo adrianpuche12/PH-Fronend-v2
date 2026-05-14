@@ -7,6 +7,7 @@ import AdminScreen from './AdminScreen';
 import StoresScreen from './StoresScreen';
 import InventoryScreen from './InventoryScreen';
 import POSScreen from './POSScreen';
+import SalesHistoryScreen from './SalesHistoryScreen';
 
 const AdminDashboard = () => {
   const { width } = useWindowDimensions();
@@ -39,19 +40,21 @@ const AdminDashboard = () => {
                 <Text style={styles.menuBtnIcon}>☰</Text>
               </TouchableOpacity>
               <Text style={styles.topbarTitle}>
-                {activeScreen === 'operations' ? 'Operaciones'
-                  : activeScreen === 'inventory' ? 'Inventario'
-                  : activeScreen === 'stores'    ? 'Locales'
+                {activeScreen === 'operations'    ? 'Operaciones'
+                  : activeScreen === 'inventory'    ? 'Inventario'
+                  : activeScreen === 'stores'       ? 'Locales'
+                  : activeScreen === 'salesHistory' ? 'Historial ventas'
                   : 'Ventas'}
               </Text>
             </View>
           )}
 
           {/* Pantalla activa */}
-          {activeScreen === 'operations' && <AdminScreen />}
-          {activeScreen === 'inventory'  && <InventoryScreen />}
-          {activeScreen === 'stores'     && <StoresScreen />}
-          {activeScreen === 'sales'      && <POSScreen />}
+          {activeScreen === 'operations'   && <AdminScreen />}
+          {activeScreen === 'inventory'   && <InventoryScreen />}
+          {activeScreen === 'stores'      && <StoresScreen />}
+          {activeScreen === 'sales'       && <POSScreen />}
+          {activeScreen === 'salesHistory'&& <SalesHistoryScreen />}
         </View>
 
         {/* Drawer mobile */}

@@ -6,20 +6,21 @@ import {
 import { IconButton } from 'react-native-paper';
 import { useAuth } from '../context/AuthContext';
 
-export type SidebarScreen = 'operations' | 'inventory' | 'stores' | 'sales';
+export type SidebarScreen = 'operations' | 'inventory' | 'stores' | 'sales' | 'salesHistory';
 
 interface Props {
   active: SidebarScreen;
   onSelect: (screen: SidebarScreen) => void;
-  visible: boolean;           // mobile: controla si el drawer está abierto
-  onClose: () => void;        // mobile: cierra el drawer
+  visible: boolean;
+  onClose: () => void;
 }
 
 const MENU_ADMIN = [
-  { key: 'sales'      as SidebarScreen, label: 'Ventas'      },
-  { key: 'inventory'  as SidebarScreen, label: 'Inventario'  },
-  { key: 'operations' as SidebarScreen, label: 'Operaciones' },
-  { key: 'stores'     as SidebarScreen, label: 'Locales'     },
+  { key: 'sales'        as SidebarScreen, label: 'Ventas'           },
+  { key: 'salesHistory' as SidebarScreen, label: 'Historial ventas' },
+  { key: 'inventory'    as SidebarScreen, label: 'Inventario'       },
+  { key: 'operations'   as SidebarScreen, label: 'Operaciones'      },
+  { key: 'stores'       as SidebarScreen, label: 'Locales'          },
 ];
 
 const MENU_USER = [

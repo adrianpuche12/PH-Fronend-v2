@@ -67,6 +67,10 @@ export default function POSScreen() {
   const [selectedCat, setSelectedCat] = useState<number | null>(null);
   const [search, setSearch]           = useState('');
 
+  // KPIs del turno (ventas confirmadas + total acumulado)
+  const [kpiCount, setKpiCount]       = useState(0);
+  const [kpiTotal, setKpiTotal]       = useState(0);
+
   // Selección y cantidad pendiente (no se agrega al carrito hasta click en Agregar)
   const [selectedId, setSelectedId]   = useState<number | null>(null);
   const [pendingQty, setPendingQty]   = useState(1);
@@ -124,8 +128,17 @@ export default function POSScreen() {
     try {
       const res = await axios.get<SaleRecord[]>(`${API}/api/v2/shifts/${shift.id}/sales`);
       setShiftSales(res.data);
+      // Actualiza KPIs con datos reales del servidor
+      setKpiCount(res.data.length);
+      setKpiTotal(res.data.reduce((s, v) => s + v.total, 0));
     } catch { /* silencioso */ }
     finally { setLoadingSales(false); }
+  }, [shift]);
+
+  // Carga KPIs al activarse el turno
+  useEffect(() => {
+    if (shift) loadShiftSales();
+    else { setKpiCount(0); setKpiTotal(0); }
   }, [shift]);
 
   const handleSwitchTab = (tab: 'nueva' | 'ventas') => {
@@ -137,9 +150,14 @@ export default function POSScreen() {
     if (!confirm('¿Anular esta venta? Se revertirá el stock.')) return;
     setCancellingId(saleId);
     try {
+      const cancelled = shiftSales.find(s => s.id === saleId);
       await axios.delete(`${API}/api/v2/sales/${saleId}`);
       setShiftSales(prev => prev.filter(s => s.id !== saleId));
-      loadCatalog(); // refresca stock
+      if (cancelled) {
+        setKpiCount(prev => Math.max(0, prev - 1));
+        setKpiTotal(prev => Math.max(0, prev - cancelled.total));
+      }
+      loadCatalog();
     } catch (e: any) { setSnackbar(e.response?.data?.error || 'Error al anular'); }
     finally { setCancellingId(null); }
   };
@@ -222,6 +240,10 @@ export default function POSScreen() {
         username: userName ?? 'empleada',
         items: cart.map(i => ({ productId: i.productId, quantity: i.qty })),
       });
+      // Actualiza KPIs localmente (optimista, sin esperar al servidor)
+      const saleTotal = cartTotal;
+      setKpiCount(prev => prev + 1);
+      setKpiTotal(prev => prev + saleTotal);
       clearCart();
       loadCatalog();
       if (posTab === 'ventas') loadShiftSales();
@@ -329,6 +351,24 @@ export default function POSScreen() {
         <Button mode="outlined" onPress={openClosing} textColor="#d32121" style={{ borderColor: '#d32121', borderRadius: 8 }} labelStyle={{ fontSize: 11, fontWeight: '900' }}>
           Cerrar turno
         </Button>
+      </View>
+
+      {/* ══ KPIs del turno ══ */}
+      <View style={styles.kpiBar}>
+        <View style={styles.kpiItem}>
+          <Text style={styles.kpiLabel}>Ventas del turno</Text>
+          <Text style={styles.kpiValue}>{kpiCount}</Text>
+        </View>
+        <View style={styles.kpiDivider} />
+        <View style={styles.kpiItem}>
+          <Text style={styles.kpiLabel}>Total acumulado</Text>
+          <Text style={styles.kpiValue}>{money(kpiTotal)}</Text>
+        </View>
+        <View style={styles.kpiDivider} />
+        <View style={styles.kpiItem}>
+          <Text style={styles.kpiLabel}>Turno</Text>
+          <Text style={styles.kpiValue} numberOfLines={1}>{shift?.code ?? '—'}</Text>
+        </View>
       </View>
 
       {/* ══ TABS: Nueva venta / Ventas del turno ══ */}
@@ -680,6 +720,13 @@ const styles = StyleSheet.create({
   localChipActive:{ backgroundColor: '#161616', borderColor: '#161616' },
   localChipText:  { fontSize: 12, fontWeight: '800', color: '#53606d' },
   localChipTextActive: { color: '#ffd43b', fontWeight: '900' },
+
+  // KPIs bar del turno
+  kpiBar:         { flexDirection: 'row', backgroundColor: '#161616', paddingHorizontal: 16, paddingVertical: 8 },
+  kpiItem:        { flex: 1, alignItems: 'center' },
+  kpiLabel:       { fontSize: 10, fontWeight: '700', color: '#b8c0cc', marginBottom: 2 },
+  kpiValue:       { fontSize: 14, fontWeight: '950', color: '#ffd43b' },
+  kpiDivider:     { width: 1, backgroundColor: '#2f3944', marginVertical: 2 },
 
   // Tabs POS
   tabBar:         { flexDirection: 'row', backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e8ecf2' },

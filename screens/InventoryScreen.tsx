@@ -2,12 +2,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput as RNTextInput, ActivityIndicator, Modal,
-  useWindowDimensions, Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { Button, TextInput, Snackbar, IconButton } from 'react-native-paper';
 import axios from 'axios';
 import { REACT_APP_API_URL } from '../config';
 import { useStore } from '../context/StoreContext';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -19,9 +20,7 @@ interface Summary     { totalProducts: number; activeProducts: number; lowStockC
 interface ProductForm { name: string; sku: string; type: string; price: string; minStock: string; description: string; categoryId: string }
 
 const EMPTY_PRODUCT: ProductForm = { name: '', sku: '', type: 'SIMPLE', price: '', minStock: '0', description: '', categoryId: '' };
-
-const confirm = (msg: string) => Platform.OS === 'web' ? window.confirm(msg) : true;
-const money   = (v: number) => `L ${Number(v).toLocaleString('es-HN', { minimumFractionDigits: 2 })}`;
+const money = (v: number) => `L ${Number(v).toLocaleString('es-HN', { minimumFractionDigits: 2 })}`;
 
 // Aplana el árbol de categorías en lista plana con path completo
 const flattenCategories = (cats: Category[], prefix = ''): { id: number; label: string; depth: number }[] => {
@@ -125,6 +124,11 @@ const InventoryScreen = () => {
   const [activeView, setActiveView]       = useState<'stock' | 'movements'>('stock');
   const [movements, setMovements]         = useState<Movement[]>([]);
   const [loadingMov, setLoadingMov]       = useState(false);
+
+  // ConfirmDialog
+  const [confirmDlg, setConfirmDlg] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
+  const askConfirm = (title: string, message: string, onConfirm: () => void) =>
+    setConfirmDlg({ title, message, onConfirm });
 
   // Modales
   const [adjustItem, setAdjustItem]       = useState<StockItem | null>(null);
@@ -275,14 +279,28 @@ const InventoryScreen = () => {
     finally { setProductSaving(false); }
   };
 
-  const handleToggleProduct = async (item: StockItem) => {
-    if (!confirm(`¿${item.productActive ? 'Desactivar' : 'Activar'} "${item.productName}"?`)) return;
-    try { await axios.put(`${API}/api/v2/products/${item.productId}/toggle`); loadAll(); } catch { setSnackbar('Error'); }
+  const handleToggleProduct = (item: StockItem) => {
+    askConfirm(
+      item.productActive ? 'Desactivar producto' : 'Activar producto',
+      `¿${item.productActive ? 'Desactivar' : 'Activar'} "${item.productName}"?`,
+      async () => {
+        try { await axios.put(`${API}/api/v2/products/${item.productId}/toggle`); loadAll(); }
+        catch { setSnackbar('Error al cambiar estado'); }
+        finally { setConfirmDlg(null); }
+      }
+    );
   };
 
-  const handleDeleteProduct = async (item: StockItem) => {
-    if (!confirm(`¿Eliminar "${item.productName}"? Esta acción no se puede deshacer.`)) return;
-    try { await axios.delete(`${API}/api/v2/products/${item.productId}`); setSnackbar('Producto eliminado'); loadAll(); } catch { setSnackbar('Error al eliminar'); }
+  const handleDeleteProduct = (item: StockItem) => {
+    askConfirm(
+      'Eliminar producto',
+      `¿Eliminar "${item.productName}"? Esta acción no se puede deshacer.`,
+      async () => {
+        try { await axios.delete(`${API}/api/v2/products/${item.productId}`); setSnackbar('Producto eliminado'); loadAll(); }
+        catch { setSnackbar('No se puede eliminar — el producto tiene historial'); }
+        finally { setConfirmDlg(null); }
+      }
+    );
   };
 
   // ── CRUD Categorías ──────────────────────────────────────────────────────────
@@ -314,10 +332,16 @@ const InventoryScreen = () => {
     finally { setCatSaving(false); }
   };
 
-  const handleDeleteCat = async (cat: Category) => {
-    if (!confirm(`¿Eliminar categoría "${cat.name}"?`)) return;
-    try { await axios.delete(`${API}/api/v2/categories/${cat.id}`); setSnackbar('Categoría eliminada'); loadAll(); }
-    catch { setSnackbar('No se puede eliminar — tiene subcategorías o productos'); }
+  const handleDeleteCat = (cat: Category) => {
+    askConfirm(
+      'Eliminar categoría',
+      `¿Eliminar "${cat.name}"? Se eliminará junto con sus subcategorías.`,
+      async () => {
+        try { await axios.delete(`${API}/api/v2/categories/${cat.id}`); setSnackbar('Categoría eliminada'); loadAll(); }
+        catch { setSnackbar('No se puede eliminar — tiene subcategorías o productos activos'); }
+        finally { setConfirmDlg(null); }
+      }
+    );
   };
 
   const handleToggleCat = async (cat: Category) => {
@@ -723,6 +747,14 @@ const InventoryScreen = () => {
         </View>
       </Modal>
 
+      <ConfirmDialog
+        visible={!!confirmDlg}
+        title={confirmDlg?.title ?? ''}
+        message={confirmDlg?.message ?? ''}
+        confirmLabel="Sí, confirmar"
+        onConfirm={() => confirmDlg?.onConfirm()}
+        onCancel={() => setConfirmDlg(null)}
+      />
       <Snackbar visible={!!snackbar} onDismiss={() => setSnackbar('')} duration={2500}>{snackbar}</Snackbar>
     </View>
   );

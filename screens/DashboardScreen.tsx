@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, useWindowDimensions,
+  ActivityIndicator, useWindowDimensions, RefreshControl,
 } from 'react-native';
 import { Button } from 'react-native-paper';
 import axios from 'axios';
@@ -46,9 +46,10 @@ export default function DashboardScreen() {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
 
-  const [data, setData]       = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState('');
+  const [data, setData]         = useState<DashboardData | null>(null);
+  const [loading, setLoading]   = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError]       = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -63,12 +64,18 @@ export default function DashboardScreen() {
 
   useEffect(() => { load(); }, [load]);
 
+  const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
+
   if (loading) return <ActivityIndicator size="large" color="#ffd43b" style={{ flex: 1, marginTop: 60 }} />;
   if (error)   return <View style={styles.centered}><Text style={styles.errorText}>{error}</Text><Button onPress={load}>Reintentar</Button></View>;
   if (!data)   return null;
 
   return (
-    <ScrollView style={styles.root} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.root}
+      contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ffd43b" />}
+    >
 
       {/* ── Saludo ── */}
       <View style={styles.greetRow}>

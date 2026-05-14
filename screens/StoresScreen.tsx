@@ -6,11 +6,11 @@ import {
   ScrollView,
   ActivityIndicator,
   Modal,
-  Platform,
 } from 'react-native';
 import { Button, TextInput, Snackbar, IconButton } from 'react-native-paper';
 import axios from 'axios';
 import { REACT_APP_API_URL } from '../config';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 interface Store {
   id: number;
@@ -28,11 +28,6 @@ interface StoreForm {
 
 const EMPTY_FORM: StoreForm = { name: '', address: '', phone: '' };
 
-const confirm = (message: string): boolean => {
-  if (Platform.OS === 'web') return window.confirm(message);
-  return true;
-};
-
 const StoresScreen = () => {
   const [stores, setStores]             = useState<Store[]>([]);
   const [loading, setLoading]           = useState(false);
@@ -41,6 +36,9 @@ const StoresScreen = () => {
   const [form, setForm]                 = useState<StoreForm>(EMPTY_FORM);
   const [saving, setSaving]             = useState(false);
   const [snackbar, setSnackbar]         = useState('');
+  const [confirmDlg, setConfirmDlg]     = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
+  const askConfirm = (title: string, message: string, onConfirm: () => void) =>
+    setConfirmDlg({ title, message, onConfirm });
 
   const API = `${REACT_APP_API_URL}/api/v2/stores`;
 
@@ -90,28 +88,36 @@ const StoresScreen = () => {
     }
   };
 
-  const handleToggle = async (store: Store) => {
+  const handleToggle = (store: Store) => {
     const accion = store.active ? 'desactivar' : 'activar';
-    if (!confirm(`¿Querés ${accion} el local "${store.name}"?`)) return;
-    try {
-      await axios.put(`${API}/${store.id}/toggle`);
-      setSnackbar(`Local ${store.active ? 'desactivado' : 'activado'}`);
-      loadStores();
-    } catch {
-      setSnackbar('Error al cambiar estado');
-    }
+    askConfirm(
+      `${store.active ? 'Desactivar' : 'Activar'} local`,
+      `¿Querés ${accion} el local "${store.name}"?`,
+      async () => {
+        try {
+          await axios.put(`${API}/${store.id}/toggle`);
+          setSnackbar(`Local ${store.active ? 'desactivado' : 'activado'}`);
+          loadStores();
+        } catch { setSnackbar('Error al cambiar estado'); }
+        finally { setConfirmDlg(null); }
+      }
+    );
   };
 
-  const handleDelete = async (store: Store) => {
-    if (!confirm(`¿Eliminar "${store.name}"? Esta acción no se puede deshacer.`)) return;
-    try {
-      await axios.delete(`${API}/${store.id}`);
-      setSnackbar('Local eliminado');
-      loadStores();
-    } catch (e: any) {
-      const msg = e.response?.data?.error;
-      setSnackbar(msg || 'Error al eliminar');
-    }
+  const handleDelete = (store: Store) => {
+    askConfirm(
+      'Eliminar local',
+      `¿Eliminar "${store.name}"? Esta acción no se puede deshacer.`,
+      async () => {
+        try {
+          await axios.delete(`${API}/${store.id}`);
+          setSnackbar('Local eliminado');
+          loadStores();
+        } catch (e: any) {
+          setSnackbar(e.response?.data?.error || 'No se puede eliminar — tiene historial de operaciones');
+        } finally { setConfirmDlg(null); }
+      }
+    );
   };
 
   return (
@@ -194,6 +200,14 @@ const StoresScreen = () => {
         </View>
       </Modal>
 
+      <ConfirmDialog
+        visible={!!confirmDlg}
+        title={confirmDlg?.title ?? ''}
+        message={confirmDlg?.message ?? ''}
+        confirmLabel="Sí, confirmar"
+        onConfirm={() => confirmDlg?.onConfirm()}
+        onCancel={() => setConfirmDlg(null)}
+      />
       <Snackbar visible={!!snackbar} onDismiss={() => setSnackbar('')} duration={2500}>{snackbar}</Snackbar>
     </View>
   );

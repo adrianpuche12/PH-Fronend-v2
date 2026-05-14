@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, useWindowDimensions,
+  ActivityIndicator, useWindowDimensions, RefreshControl,
 } from 'react-native';
 import axios from 'axios';
 import { REACT_APP_API_URL } from '../config';
@@ -54,6 +54,7 @@ export default function SalesHistoryScreen() {
 
   const [shifts, setShifts]           = useState<ShiftRecord[]>([]);
   const [loading, setLoading]         = useState(false);
+  const [refreshing, setRefreshing]   = useState(false);
   const [expanded, setExpanded]       = useState<Record<number, boolean>>({});
   const [summaries, setSummaries]     = useState<Record<number, ShiftSummary>>({});
   const [loadingSum, setLoadingSum]   = useState<Record<number, boolean>>({});
@@ -78,6 +79,8 @@ export default function SalesHistoryScreen() {
   }, [selectedStore]);
 
   useEffect(() => { loadShifts(); }, [loadShifts]);
+
+  const onRefresh = async () => { setRefreshing(true); await loadShifts(); setRefreshing(false); };
 
   // ── Expandir turno y cargar resumen ──────────────────────────────────────
 
@@ -132,7 +135,10 @@ export default function SalesHistoryScreen() {
           <Text style={styles.emptyText}>No hay turnos registrados para este local.</Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.list}>
+        <ScrollView
+            contentContainerStyle={styles.list}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ffd43b" />}
+          >
           {shifts.map(shift => {
             const isOpen    = expanded[shift.id];
             const summary   = summaries[shift.id];

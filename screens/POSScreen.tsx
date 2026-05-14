@@ -5,6 +5,7 @@ import {
   useWindowDimensions, Platform,
 } from 'react-native';
 import { Button, Snackbar } from 'react-native-paper';
+import ConfirmDialog from '../components/ConfirmDialog';
 import axios from 'axios';
 import { REACT_APP_API_URL } from '../config';
 import { useStore } from '../context/StoreContext';
@@ -35,9 +36,8 @@ interface DailySummary {
   productSummary: ProductSummaryItem[];
 }
 
-const ISV      = 0.15;
-const money    = (v: number) => `L ${v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
-const confirm  = (msg: string) => Platform.OS === 'web' ? window.confirm(msg) : true;
+const ISV   = 0.15;
+const money = (v: number) => `L ${v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
 
 // Aplana categorías para chips
 const flatCats = (cats: Category[]): Category[] => {
@@ -85,6 +85,9 @@ export default function POSScreen() {
   const [shiftSales, setShiftSales]       = useState<SaleRecord[]>([]);
   const [loadingSales, setLoadingSales]   = useState(false);
   const [cancellingId, setCancellingId]   = useState<number | null>(null);
+  const [confirmDlg, setConfirmDlg]       = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
+  const askConfirm = (title: string, message: string, onConfirm: () => void) =>
+    setConfirmDlg({ title, message, onConfirm });
 
   // Modales
   const [openShiftModal, setOpenShiftModal] = useState(false);
@@ -146,20 +149,25 @@ export default function POSScreen() {
     if (tab === 'ventas') loadShiftSales();
   };
 
-  const handleCancelSale = async (saleId: number) => {
-    if (!confirm('¿Anular esta venta? Se revertirá el stock.')) return;
-    setCancellingId(saleId);
-    try {
-      const cancelled = shiftSales.find(s => s.id === saleId);
-      await axios.delete(`${API}/api/v2/sales/${saleId}`);
-      setShiftSales(prev => prev.filter(s => s.id !== saleId));
-      if (cancelled) {
-        setKpiCount(prev => Math.max(0, prev - 1));
-        setKpiTotal(prev => Math.max(0, prev - cancelled.total));
+  const handleCancelSale = (saleId: number) => {
+    askConfirm(
+      'Anular venta',
+      '¿Anular esta venta? El stock descontado será revertido automáticamente.',
+      async () => {
+        setCancellingId(saleId);
+        try {
+          const cancelled = shiftSales.find(s => s.id === saleId);
+          await axios.delete(`${API}/api/v2/sales/${saleId}`);
+          setShiftSales(prev => prev.filter(s => s.id !== saleId));
+          if (cancelled) {
+            setKpiCount(prev => Math.max(0, prev - 1));
+            setKpiTotal(prev => Math.max(0, prev - cancelled.total));
+          }
+          loadCatalog();
+        } catch (e: any) { setSnackbar(e.response?.data?.error || 'Error al anular'); }
+        finally { setCancellingId(null); }
       }
-      loadCatalog();
-    } catch (e: any) { setSnackbar(e.response?.data?.error || 'Error al anular'); }
-    finally { setCancellingId(null); }
+    );
   };
 
   // ── Filtrado ──────────────────────────────────────────────────────────────
@@ -623,6 +631,15 @@ export default function POSScreen() {
         </View>
       </Modal>
 
+      <ConfirmDialog
+        visible={!!confirmDlg}
+        title={confirmDlg?.title ?? ''}
+        message={confirmDlg?.message ?? ''}
+        confirmLabel="Sí, anular"
+        confirmColor="#d32121"
+        onConfirm={() => confirmDlg?.onConfirm()}
+        onCancel={() => setConfirmDlg(null)}
+      />
       <Snackbar visible={!!snackbar} onDismiss={() => setSnackbar('')} duration={2500}>{snackbar}</Snackbar>
     </View>
   );

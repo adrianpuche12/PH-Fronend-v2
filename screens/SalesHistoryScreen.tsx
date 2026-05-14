@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, useWindowDimensions, RefreshControl,
 } from 'react-native';
+import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW } from '../theme';
 import axios from 'axios';
 import { REACT_APP_API_URL } from '../config';
 import { useStore } from '../context/StoreContext';
@@ -222,49 +223,49 @@ export default function SalesHistoryScreen() {
 // ─── Estilos ─────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  root:           { flex: 1, backgroundColor: '#f4f6f8' },
+  root:           { flex: 1, backgroundColor: COLOR.bg },
 
-  header:         { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12, padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e8ecf2' },
-  headerTitle:    { fontSize: 20, fontWeight: '900', color: '#161616', flex: 1 },
-  storeChips:     { flexDirection: 'row', gap: 6 },
-  chip:           { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: '#f4f6f8', borderWidth: 1, borderColor: '#e8ecf2' },
-  chipActive:     { backgroundColor: '#ffd43b', borderColor: '#f5c400' },
-  chipText:       { fontSize: 13, fontWeight: '700', color: '#6b7581' },
-  chipTextActive: { color: '#161616', fontWeight: '900' },
+  header:         { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: SPACE.s3, padding: SPACE.s4, backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border },
+  headerTitle:    { fontSize: FONT_SIZE.h1, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink, flex: 1 },
+  storeChips:     { flexDirection: 'row', gap: SPACE.s2 },
+  chip:           { paddingHorizontal: SPACE.s4, paddingVertical: 7, borderRadius: RADIUS.full, backgroundColor: COLOR.bg, borderWidth: 1, borderColor: COLOR.border },
+  chipActive:     { backgroundColor: COLOR.brand, borderColor: COLOR.brandDark },
+  chipText:       { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink2 },
+  chipTextActive: { color: COLOR.ink, fontWeight: FONT_WEIGHT.bold as any },
 
-  empty:          { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 10, padding: 32 },
+  empty:          { flex: 1, justifyContent: 'center', alignItems: 'center', gap: SPACE.s2, padding: SPACE.s8 },
   emptyIcon:      { fontSize: 40 },
-  emptyText:      { fontSize: 15, color: '#6b7581', fontWeight: '700', textAlign: 'center' },
-  error:          { textAlign: 'center', color: '#d32121', marginTop: 40, fontWeight: '700' },
+  emptyText:      { fontSize: FONT_SIZE.body, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.semibold as any, textAlign: 'center' },
+  error:          { textAlign: 'center', color: COLOR.expense, marginTop: 40, fontWeight: FONT_WEIGHT.semibold as any },
 
-  list:           { padding: 14, gap: 10 },
+  list:           { padding: SPACE.s4, gap: SPACE.s2 },
 
-  shiftCard:      { backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: '#e8ecf2', overflow: 'hidden' },
-  shiftRow:       { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 8 },
-  shiftCodeRow:   { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  shiftCode:      { fontSize: 14, fontWeight: '900', color: '#161616' },
-  shiftMeta:      { fontSize: 12, color: '#6b7581', fontWeight: '600' },
-  expandIcon:     { fontSize: 14, color: '#6b7581' },
+  shiftCard:      { backgroundColor: COLOR.surface, borderRadius: RADIUS.r3, borderWidth: 1, borderColor: COLOR.border, overflow: 'hidden', ...SHADOW.sm },
+  shiftRow:       { flexDirection: 'row', alignItems: 'center', padding: SPACE.s4, gap: SPACE.s2 },
+  shiftCodeRow:   { flexDirection: 'row', alignItems: 'center', gap: SPACE.s2, marginBottom: SPACE.s1 },
+  shiftCode:      { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
+  shiftMeta:      { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.medium as any },
+  expandIcon:     { fontSize: 14, color: COLOR.inkMute },
 
-  statusBadge:    { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
-  statusOpen:     { backgroundColor: '#e9f8ef' },
-  statusClosed:   { backgroundColor: '#f4f6f8' },
-  statusText:     { fontSize: 11, fontWeight: '900', color: '#53606d' },
+  statusBadge:    { borderRadius: RADIUS.r2, paddingHorizontal: SPACE.s2, paddingVertical: 3 },
+  statusOpen:     { backgroundColor: COLOR.incomeTint },
+  statusClosed:   { backgroundColor: COLOR.surface2 },
+  statusText:     { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink2 },
 
-  detail:         { borderTopWidth: 1, borderTopColor: '#f4f6f8', padding: 14, backgroundColor: '#fcfcfb' },
+  detail:         { borderTopWidth: 1, borderTopColor: COLOR.border, padding: SPACE.s4, backgroundColor: COLOR.bgAlt },
 
-  detailHeader:   { flexDirection: 'row', paddingBottom: 6, borderBottomWidth: 1, borderBottomColor: '#e8ecf2', marginBottom: 4 },
-  detailRow:      { flexDirection: 'row', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#f4f6f8' },
-  detailCol:      { fontSize: 11, fontWeight: '900', color: '#53606d' },
-  detailCell:     { fontSize: 12, fontWeight: '600', color: '#161616' },
+  detailHeader:   { flexDirection: 'row', paddingBottom: SPACE.s2, borderBottomWidth: 1, borderBottomColor: COLOR.border, marginBottom: SPACE.s1 },
+  detailRow:      { flexDirection: 'row', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: COLOR.border },
+  detailCol:      { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.inkMute },
+  detailCell:     { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.medium as any, color: COLOR.ink },
   detailColName:  { flex: 1 },
 
-  detailTotals:   { marginTop: 10, gap: 4 },
+  detailTotals:   { marginTop: SPACE.s2, gap: SPACE.s1 },
   totalLine:      { flexDirection: 'row', justifyContent: 'space-between' },
-  totalFinal:     { borderTopWidth: 2, borderTopColor: '#161616', paddingTop: 6, marginTop: 4 },
-  totalLabel:     { fontSize: 12, fontWeight: '700', color: '#6b7581' },
-  totalFinalLabel:{ fontSize: 15, fontWeight: '950', color: '#161616' },
-  totalFinalAmount:{ fontSize: 17, fontWeight: '950', color: '#161616' },
+  totalFinal:     { borderTopWidth: 2, borderTopColor: COLOR.ink, paddingTop: SPACE.s2, marginTop: SPACE.s1 },
+  totalLabel:     { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.inkMute },
+  totalFinalLabel:{ fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
+  totalFinalAmount:{ fontSize: FONT_SIZE.h2, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
 
-  noSalesText:    { fontSize: 13, color: '#6b7581', fontWeight: '700', textAlign: 'center', padding: 8 },
+  noSalesText:    { fontSize: FONT_SIZE.label, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.semibold as any, textAlign: 'center', padding: SPACE.s2 },
 });

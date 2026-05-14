@@ -7,6 +7,7 @@ import { Button, TextInput, Snackbar, IconButton } from 'react-native-paper';
 import axios from 'axios';
 import { REACT_APP_API_URL } from '../config';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW } from '../theme';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -369,47 +370,47 @@ export default function UsersScreen() {
 // ─── Estilos ─────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  root:           { flex: 1, backgroundColor: '#f4f6f8' },
+  root:           { flex: 1, backgroundColor: COLOR.bg },
 
-  header:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e8ecf2' },
-  headerTitle:    { fontSize: 20, fontWeight: '900', color: '#161616' },
+  header:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: SPACE.s2, padding: SPACE.s4, backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border },
+  headerTitle:    { fontSize: FONT_SIZE.h1, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
 
-  empty:          { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 8, padding: 40 },
+  empty:          { flex: 1, justifyContent: 'center', alignItems: 'center', gap: SPACE.s2, padding: SPACE.s8 },
   emptyIcon:      { fontSize: 40 },
-  emptyText:      { fontSize: 16, fontWeight: '800', color: '#161616' },
-  emptySub:       { fontSize: 13, color: '#6b7581' },
+  emptyText:      { fontSize: FONT_SIZE.h3, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
+  emptySub:       { fontSize: FONT_SIZE.label, color: COLOR.inkMute },
 
-  rowHeader:      { backgroundColor: '#fcfcfb', borderBottomWidth: 2, borderBottomColor: '#e8ecf2' },
-  row:            { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f4f6f8', paddingHorizontal: 4, minHeight: 56 },
-  rowSuspended:   { opacity: 0.6, backgroundColor: '#fafafa' },
-  cell:           { paddingHorizontal: 10, paddingVertical: 8 },
+  rowHeader:      { backgroundColor: COLOR.surface2, borderBottomWidth: 2, borderBottomColor: COLOR.border },
+  row:            { flexDirection: 'row', alignItems: 'center', backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border, paddingHorizontal: SPACE.s1, minHeight: 56 },
+  rowSuspended:   { opacity: 0.6, backgroundColor: COLOR.bgAlt },
+  cell:           { paddingHorizontal: SPACE.s2, paddingVertical: SPACE.s2 },
   cellName:       { flex: 1 },
   cellUser:       { width: 140 },
   cellStore:      { width: 110 },
   cellStatus:     { width: 110 },
   cellActions:    { flexDirection: 'row', alignItems: 'center', width: 160 },
-  colHeader:      { fontSize: 11, fontWeight: '900', color: '#53606d' } as any,
+  colHeader:      { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.inkMute } as any,
 
-  userName:       { fontSize: 14, fontWeight: '900', color: '#161616' },
-  userMeta:       { fontSize: 12, color: '#6b7581', fontWeight: '600', marginTop: 2 },
-  metaText:       { fontSize: 13, color: '#53606d', fontWeight: '600' },
+  userName:       { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
+  userMeta:       { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.medium as any, marginTop: 2 },
+  metaText:       { fontSize: FONT_SIZE.label, color: COLOR.ink2, fontWeight: FONT_WEIGHT.medium as any },
 
-  statusBadge:    { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, alignSelf: 'flex-start' },
-  statusText:     { fontSize: 12, fontWeight: '800' },
+  statusBadge:    { borderRadius: RADIUS.r1, paddingHorizontal: SPACE.s2, paddingVertical: 4, borderWidth: 1, alignSelf: 'flex-start' },
+  statusText:     { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.bold as any },
 
-  overlay:        { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  modal:          { backgroundColor: '#fff', borderRadius: 18, padding: 22, width: '92%', maxWidth: 440, gap: 4 },
-  modalTitle:     { fontSize: 20, fontWeight: '900', color: '#161616', marginBottom: 4 },
-  modalSub:       { fontSize: 14, color: '#53606d', fontWeight: '700', marginBottom: 8 },
-  modalActions:   { flexDirection: 'row', gap: 10, marginTop: 12 },
-  input:          { marginBottom: 10 },
-  fieldLabel:     { fontSize: 12, fontWeight: '800', color: '#53606d', marginBottom: 8, marginTop: 4 },
+  overlay:        { flex: 1, backgroundColor: COLOR.overlay, justifyContent: 'center', alignItems: 'center' },
+  modal:          { backgroundColor: COLOR.surface, borderRadius: RADIUS.r4, padding: SPACE.s5, width: '92%', maxWidth: 440, gap: SPACE.s1 },
+  modalTitle:     { fontSize: FONT_SIZE.h1, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink, marginBottom: SPACE.s1 },
+  modalSub:       { fontSize: FONT_SIZE.label, color: COLOR.ink2, fontWeight: FONT_WEIGHT.semibold as any, marginBottom: SPACE.s2 },
+  modalActions:   { flexDirection: 'row', gap: SPACE.s2, marginTop: SPACE.s3 },
+  input:          { marginBottom: SPACE.s2 },
+  fieldLabel:     { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.inkMute, marginBottom: SPACE.s2, marginTop: SPACE.s1 },
 
-  storeSelector:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
-  storeChip:      { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#f4f6f8', borderWidth: 1, borderColor: '#e8ecf2' },
-  storeChipActive:{ backgroundColor: '#ffd43b', borderColor: '#f5c400' },
-  storeChipText:  { fontSize: 13, fontWeight: '700', color: '#6b7581' },
-  storeChipTextActive: { color: '#161616', fontWeight: '900' },
+  storeSelector:  { flexDirection: 'row', flexWrap: 'wrap', gap: SPACE.s2, marginBottom: SPACE.s3 },
+  storeChip:      { paddingHorizontal: SPACE.s4, paddingVertical: SPACE.s2, borderRadius: RADIUS.full, backgroundColor: COLOR.bg, borderWidth: 1, borderColor: COLOR.border },
+  storeChipActive:{ backgroundColor: COLOR.brand, borderColor: COLOR.brandDark },
+  storeChipText:  { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink2 },
+  storeChipTextActive: { color: COLOR.ink, fontWeight: FONT_WEIGHT.bold as any },
 
-  roleNote:       { fontSize: 12, color: '#6b7581', backgroundColor: '#f4f6f8', borderRadius: 8, padding: 10, marginBottom: 4 },
+  roleNote:       { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, backgroundColor: COLOR.bgAlt, borderRadius: RADIUS.r2, padding: SPACE.s2, marginBottom: SPACE.s1 },
 });

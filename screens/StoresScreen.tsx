@@ -11,6 +11,7 @@ import { Button, TextInput, Snackbar, IconButton } from 'react-native-paper';
 import axios from 'axios';
 import { REACT_APP_API_URL } from '../config';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW } from '../theme';
 
 interface Store {
   id: number;
@@ -214,27 +215,27 @@ const StoresScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container:    { flex: 1, backgroundColor: '#f4f6f8' },
-  header:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e8ecf2' },
-  title:        { fontSize: 22, fontWeight: '900', color: '#161616' },
+  container:    { flex: 1, backgroundColor: COLOR.bg },
+  header:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: SPACE.s4, backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border },
+  title:        { fontSize: FONT_SIZE.h1, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
   loader:       { marginTop: 40 },
-  list:         { padding: 16, gap: 12 },
-  empty:        { textAlign: 'center', marginTop: 40, color: '#6b7581', fontSize: 15 },
-  card:         { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#e8ecf2', elevation: 2 },
+  list:         { padding: SPACE.s4, gap: SPACE.s3 },
+  empty:        { textAlign: 'center', marginTop: 40, color: COLOR.inkMute, fontSize: FONT_SIZE.body },
+  card:         { flexDirection: 'row', alignItems: 'center', backgroundColor: COLOR.surface, borderRadius: RADIUS.r3, padding: SPACE.s4, borderWidth: 1, borderColor: COLOR.border, ...SHADOW.sm },
   cardInfo:     { flex: 1 },
-  cardRow:      { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  storeName:    { fontSize: 16, fontWeight: '900', color: '#161616' },
-  storeDetail:  { fontSize: 13, color: '#6b7581', marginTop: 2 },
-  badge:        { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 },
-  badgeActive:  { backgroundColor: '#e9f8ef' },
-  badgeInactive:{ backgroundColor: '#ffecec' },
-  badgeText:    { fontSize: 12, fontWeight: '800' },
+  cardRow:      { flexDirection: 'row', alignItems: 'center', gap: SPACE.s2, marginBottom: SPACE.s1 },
+  storeName:    { fontSize: FONT_SIZE.h3, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
+  storeDetail:  { fontSize: FONT_SIZE.label, color: COLOR.inkMute, marginTop: 2 },
+  badge:        { borderRadius: RADIUS.r1, paddingHorizontal: SPACE.s2, paddingVertical: 2 },
+  badgeActive:  { backgroundColor: COLOR.incomeTint },
+  badgeInactive:{ backgroundColor: COLOR.expenseTint },
+  badgeText:    { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.bold as any },
   cardActions:  { flexDirection: 'row', alignItems: 'center' },
-  overlay:      { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  modal:        { backgroundColor: '#fff', borderRadius: 18, padding: 24, width: '90%', maxWidth: 440 },
-  modalTitle:   { fontSize: 20, fontWeight: '900', color: '#161616', marginBottom: 16 },
-  input:        { marginBottom: 12 },
-  modalActions: { flexDirection: 'row', gap: 12, marginTop: 8 },
+  overlay:      { flex: 1, backgroundColor: COLOR.overlay, justifyContent: 'center', alignItems: 'center' },
+  modal:        { backgroundColor: COLOR.surface, borderRadius: RADIUS.r4, padding: SPACE.s5, width: '90%', maxWidth: 440 },
+  modalTitle:   { fontSize: FONT_SIZE.h1, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink, marginBottom: SPACE.s4 },
+  input:        { marginBottom: SPACE.s3 },
+  modalActions: { flexDirection: 'row', gap: SPACE.s3, marginTop: SPACE.s2 },
 });
 
 export default StoresScreen;

@@ -114,17 +114,19 @@ export default function DashboardScreen() {
               </View>
             </View>
 
-            {/* Info del turno activo */}
-            {store.hasActiveShift && store.shiftCode ? (
-              <View style={styles.shiftInfo}>
-                <Text style={styles.shiftCode}>{store.shiftCode}</Text>
-                <Text style={styles.shiftMeta}>
-                  {store.shiftUsername}  ·  desde {store.shiftOpenedAt ? fmtTime(store.shiftOpenedAt) : '—'}
-                </Text>
-              </View>
-            ) : (
-              <Text style={styles.noShiftText}>No hay turno activo para este local</Text>
-            )}
+            {/* Info del turno — altura fija para que la fila de stats quede alineada */}
+            <View style={styles.shiftInfoBox}>
+              {store.hasActiveShift && store.shiftCode ? (
+                <View style={styles.shiftInfo}>
+                  <Text style={styles.shiftCode}>{store.shiftCode}</Text>
+                  <Text style={styles.shiftMeta}>
+                    {store.shiftUsername}  ·  desde {store.shiftOpenedAt ? fmtTime(store.shiftOpenedAt) : '—'}
+                  </Text>
+                </View>
+              ) : (
+                <Text style={styles.noShiftText}>No hay turno activo para este local</Text>
+              )}
+            </View>
 
             {/* Stats del turno */}
             <View style={styles.statsRow}>
@@ -213,6 +215,7 @@ const styles = StyleSheet.create({
   shiftClosed:      { backgroundColor: COLOR.surface2 },
   shiftBadgeText:   { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink2 },
 
+  shiftInfoBox:     { minHeight: 44, justifyContent: 'center' },
   shiftInfo:        { gap: 2 },
   shiftCode:        { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
   shiftMeta:        { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.medium as any },

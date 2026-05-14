@@ -72,15 +72,16 @@ export default function UsersScreen() {
 
   const loadAll = useCallback(async () => {
     setLoading(true);
-    try {
-      const [usersRes, storesRes] = await Promise.all([
-        axios.get<AppUser[]>(`${API}/api/v2/users`),
-        axios.get<Store[]>(`${API}/api/v2/stores/active`),
-      ]);
-      setUsers(usersRes.data);
-      setStores(storesRes.data);
-    } catch { setSnackbar('Error al cargar usuarios'); }
-    finally { setLoading(false); }
+    // Carga independiente: si usuarios falla, locales igual se cargan para el formulario
+    const [usersRes, storesRes] = await Promise.allSettled([
+      axios.get<AppUser[]>(`${API}/api/v2/users`),
+      axios.get<Store[]>(`${API}/api/v2/stores/active`),
+    ]);
+    if (usersRes.status === 'fulfilled')  setUsers(usersRes.value.data);
+    else setSnackbar('Error al cargar usuarios');
+    if (storesRes.status === 'fulfilled') setStores(storesRes.value.data);
+    else setSnackbar('Error al cargar locales');
+    setLoading(false);
   }, []);
 
   useEffect(() => { loadAll(); }, [loadAll]);

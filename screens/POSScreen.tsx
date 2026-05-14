@@ -22,6 +22,7 @@ interface StockItem {
   productType: string; productActive: boolean; price: number; quantity: number;
   minStock: number; lowStock: boolean; categoryPath: string; categoryId: number | null;
 }
+interface CartItem { productId: number; productName: string; price: number; qty: number; subtotal: number; }
 interface ProductSummaryItem { productId: number; productName: string; quantity: number; subtotal: number; }
 interface DailySummary {
   date: string; storeId: number; storeName: string; totalSales: number;
@@ -61,8 +62,12 @@ export default function POSScreen() {
   const [selectedCat, setSelectedCat] = useState<number | null>(null);
   const [search, setSearch]           = useState('');
 
-  // cart: productId → quantity (el quantity en el card = cantidad en carrito)
-  const [cart, setCart]               = useState<Record<number, number>>({});
+  // Selección y cantidad pendiente (no se agrega al carrito hasta click en Agregar)
+  const [selectedId, setSelectedId]   = useState<number | null>(null);
+  const [pendingQty, setPendingQty]   = useState(1);
+
+  // Carrito: array fijo — solo se puede eliminar, no editar qty
+  const [cart, setCart]               = useState<CartItem[]>([]);
   const [snackbar, setSnackbar]       = useState('');
   const [submitting, setSubmitting]   = useState(false);
 
@@ -100,7 +105,7 @@ export default function POSScreen() {
   }, [storeId]);
 
   useEffect(() => { loadShift(); }, [loadShift]);
-  useEffect(() => { loadCatalog(); setCart({}); }, [loadCatalog]);
+  useEffect(() => { loadCatalog(); setCart([]); setSelectedId(null); setPendingQty(1); }, [loadCatalog]);
 
   // ── Filtrado ──────────────────────────────────────────────────────────────
 
@@ -125,27 +130,39 @@ export default function POSScreen() {
     return true;
   });
 
-  // ── Carrito (cart = { productId: qty }) ──────────────────────────────────
+  // ── Carrito ───────────────────────────────────────────────────────────────
 
-  const cartItems = Object.entries(cart)
-    .filter(([, qty]) => qty > 0)
-    .map(([id, qty]) => {
-      const item = stock.find(s => s.productId === Number(id));
-      return item ? { ...item, qty, subtotal: item.price * qty } : null;
-    })
-    .filter(Boolean) as (StockItem & { qty: number; subtotal: number })[];
-
-  const cartSubtotal  = cartItems.reduce((s, i) => s + i.subtotal, 0);
+  const cartSubtotal  = cart.reduce((s, i) => s + i.subtotal, 0);
   const cartISV       = cartSubtotal * ISV;
   const cartTotal     = cartSubtotal + cartISV;
-  const cartItemCount = cartItems.reduce((s, i) => s + i.qty, 0);
+  const cartItemCount = cart.reduce((s, i) => s + i.qty, 0);
 
-  const setQty = (productId: number, qty: number) =>
-    setCart(prev => ({ ...prev, [productId]: Math.max(0, qty) }));
+  const isInCart = (productId: number) => cart.some(c => c.productId === productId);
 
-  const addOne   = (productId: number) => setQty(productId, (cart[productId] ?? 0) + 1);
-  const removeOne = (productId: number) => setQty(productId, (cart[productId] ?? 0) - 1);
-  const clearCart = () => setCart({});
+  // Seleccionar producto (solo si no está ya en el carrito)
+  const selectProduct = (item: StockItem) => {
+    if (isInCart(item.productId)) {
+      setSnackbar('Ya está en el carrito. Eliminalo para cambiar la cantidad.');
+      return;
+    }
+    setSelectedId(item.productId);
+    setPendingQty(1);
+  };
+
+  // Confirmar adición al carrito
+  const addToCart = () => {
+    const item = stock.find(s => s.productId === selectedId);
+    if (!item || pendingQty < 1) return;
+    setCart(prev => [...prev, { productId: item.productId, productName: item.productName, price: item.price, qty: pendingQty, subtotal: item.price * pendingQty }]);
+    setSelectedId(null);
+    setPendingQty(1);
+    setSnackbar(`✓ ${item.productName} agregado`);
+  };
+
+  const removeFromCart = (productId: number) =>
+    setCart(prev => prev.filter(c => c.productId !== productId));
+
+  const clearCart = () => { setCart([]); setSelectedId(null); setPendingQty(1); };
 
   // ── Abrir turno ───────────────────────────────────────────────────────────
 
@@ -162,12 +179,12 @@ export default function POSScreen() {
   // ── Confirmar venta ───────────────────────────────────────────────────────
 
   const handleSubmitSale = async () => {
-    if (!shift || cartItems.length === 0) return;
+    if (!shift || cart.length === 0) return;
     setSubmitting(true);
     try {
       await axios.post(`${API}/api/v2/shifts/${shift.id}/sales`, {
         username: userName ?? 'empleada',
-        items: cartItems.map(i => ({ productId: i.productId, quantity: i.qty })),
+        items: cart.map(i => ({ productId: i.productId, quantity: i.qty })),
       });
       clearCart();
       setSnackbar('✓ Venta registrada');
@@ -316,9 +333,26 @@ export default function POSScreen() {
             : filtered.length === 0
               ? <Text style={styles.empty}>No hay productos en esta categoría.</Text>
               : filtered.map(item => {
-                  const qty = cart[item.productId] ?? 0;
+                  const isSelected = selectedId === item.productId;
+                  const inCart     = isInCart(item.productId);
                   return (
-                    <View key={item.productId} style={styles.productCard}>
+                    <TouchableOpacity
+                      key={item.productId}
+                      activeOpacity={0.85}
+                      onPress={() => selectProduct(item)}
+                      style={[
+                        styles.productCard,
+                        isSelected && styles.productCardSelected,
+                        inCart     && styles.productCardInCart,
+                      ]}
+                    >
+                      {/* Badge "En carrito" */}
+                      {inCart && (
+                        <View style={styles.inCartBadge}>
+                          <Text style={styles.inCartBadgeText}>✓ En carrito</Text>
+                        </View>
+                      )}
+
                       {/* Fila 1: info + precio */}
                       <View style={styles.pcTop}>
                         <View style={{ flex: 1, minWidth: 0 }}>
@@ -333,22 +367,31 @@ export default function POSScreen() {
                         Stock: {item.quantity}
                       </Text>
 
-                      {/* Fila 3: qty controls + Agregar */}
-                      <View style={styles.pcBottom}>
-                        <View style={styles.qtyControl}>
-                          <TouchableOpacity style={styles.qtyBtn} onPress={() => removeOne(item.productId)}>
-                            <Text style={styles.qtyBtnText}>−</Text>
-                          </TouchableOpacity>
-                          <Text style={styles.qtyNum}>{qty}</Text>
-                          <TouchableOpacity style={styles.qtyBtn} onPress={() => addOne(item.productId)}>
-                            <Text style={styles.qtyBtnText}>+</Text>
+                      {/* Fila 3: qty controls + Agregar (solo cuando está seleccionado) */}
+                      {isSelected ? (
+                        <View style={styles.pcBottom}>
+                          <View style={styles.qtyControl}>
+                            <TouchableOpacity style={styles.qtyBtn} onPress={() => setPendingQty(q => Math.max(1, q - 1))}>
+                              <Text style={styles.qtyBtnText}>−</Text>
+                            </TouchableOpacity>
+                            <Text style={styles.qtyNum}>{pendingQty}</Text>
+                            <TouchableOpacity style={styles.qtyBtn} onPress={() => setPendingQty(q => q + 1)}>
+                              <Text style={styles.qtyBtnText}>+</Text>
+                            </TouchableOpacity>
+                          </View>
+                          <TouchableOpacity style={styles.addBtn} onPress={addToCart}>
+                            <Text style={styles.addBtnText}>Agregar</Text>
                           </TouchableOpacity>
                         </View>
-                        <TouchableOpacity style={styles.addBtn} onPress={() => addOne(item.productId)}>
-                          <Text style={styles.addBtnText}>Agregar</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
+                      ) : (
+                        /* Estado inactivo: fila placeholder con altura fija para consistencia */
+                        <View style={styles.pcBottomInactive}>
+                          <Text style={styles.pcTapHint}>
+                            {inCart ? '✓ Agregado' : 'Toca para seleccionar'}
+                          </Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
                   );
                 })
           }
@@ -356,8 +399,8 @@ export default function POSScreen() {
 
         {/* ══ TICKET ══ */}
         {isDesktop
-          ? <View style={styles.ticketDesktop}><Ticket cart={cartItems} subtotal={cartSubtotal} isv={cartISV} total={cartTotal} itemCount={cartItemCount} onRemove={id => setQty(id, 0)} onUpdate={setQty} onClear={clearCart} onSubmit={handleSubmitSale} submitting={submitting} full /></View>
-          : <View style={styles.ticketMobile}><Ticket cart={cartItems} subtotal={cartSubtotal} isv={cartISV} total={cartTotal} itemCount={cartItemCount} onRemove={id => setQty(id, 0)} onUpdate={setQty} onClear={clearCart} onSubmit={handleSubmitSale} submitting={submitting} full={false} /></View>
+          ? <View style={styles.ticketDesktop}><Ticket cart={cart} subtotal={cartSubtotal} isv={cartISV} total={cartTotal} itemCount={cartItemCount} onRemove={removeFromCart} onClear={clearCart} onSubmit={handleSubmitSale} submitting={submitting} full /></View>
+          : <View style={styles.ticketMobile}><Ticket cart={cart} subtotal={cartSubtotal} isv={cartISV} total={cartTotal} itemCount={cartItemCount} onRemove={removeFromCart} onClear={clearCart} onSubmit={handleSubmitSale} submitting={submitting} full={false} /></View>
         }
       </View>
 
@@ -424,15 +467,14 @@ export default function POSScreen() {
 
 // ─── Ticket (componente interno) ──────────────────────────────────────────────
 
-function Ticket({ cart, subtotal, isv, total, itemCount, onRemove, onUpdate, onClear, onSubmit, submitting, full }: {
-  cart: (StockItem & { qty: number; subtotal: number })[];
+function Ticket({ cart, subtotal, isv, total, itemCount, onRemove, onClear, onSubmit, submitting, full }: {
+  cart: CartItem[];
   subtotal: number; isv: number; total: number; itemCount: number;
   onRemove: (id: number) => void;
-  onUpdate: (id: number, qty: number) => void;
   onClear: () => void;
   onSubmit: () => void;
   submitting: boolean;
-  full: boolean; // true = muestra items; false = solo totales
+  full: boolean;
 }) {
   const money = (v: number) => `L ${v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
   return (
@@ -450,16 +492,11 @@ function Ticket({ cart, subtotal, isv, total, itemCount, onRemove, onUpdate, onC
                 <View key={item.productId} style={tkStyles.item}>
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={tkStyles.itemName} numberOfLines={1}>{item.productName}</Text>
-                    {item.productSku ? <Text style={tkStyles.itemCode}>{item.productSku}</Text> : null}
-                  </View>
-                  <View style={tkStyles.miniqty}>
-                    <TouchableOpacity style={tkStyles.mqBtn} onPress={() => onUpdate(item.productId, item.qty - 1)}><Text style={tkStyles.mqBtnText}>−</Text></TouchableOpacity>
-                    <Text style={tkStyles.mqNum}>{item.qty}</Text>
-                    <TouchableOpacity style={tkStyles.mqBtn} onPress={() => onUpdate(item.productId, item.qty + 1)}><Text style={tkStyles.mqBtnText}>+</Text></TouchableOpacity>
+                    <Text style={tkStyles.itemCode}>{item.qty} × {money(item.price)}</Text>
                   </View>
                   <Text style={tkStyles.itemSub}>{money(item.subtotal)}</Text>
-                  <TouchableOpacity onPress={() => onRemove(item.productId)} style={{ marginLeft: 4 }}>
-                    <Text style={{ color: '#d32121', fontSize: 16 }}>🗑</Text>
+                  <TouchableOpacity onPress={() => onRemove(item.productId)} style={tkStyles.deleteBtn}>
+                    <Text style={tkStyles.deleteBtnText}>🗑</Text>
                   </TouchableOpacity>
                 </View>
               ))}
@@ -544,7 +581,13 @@ const styles = StyleSheet.create({
   empty:          { width: '100%', textAlign: 'center', color: '#6b7581', marginTop: 40 },
 
   // Product card
-  productCard:    { flex: 1, minWidth: 150, maxWidth: 220, backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#e8ecf2', padding: 10, gap: 6 },
+  productCard:         { flex: 1, minWidth: 150, maxWidth: 220, backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#e8ecf2', padding: 10, gap: 6 },
+  productCardSelected: { borderColor: '#ffd43b', borderWidth: 2, backgroundColor: '#fff9e6' },
+  productCardInCart:   { borderColor: '#168542', borderWidth: 1.5, backgroundColor: '#f5fdf8' },
+  inCartBadge:         { backgroundColor: '#168542', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2, alignSelf: 'flex-start' },
+  inCartBadgeText:     { fontSize: 10, fontWeight: '900', color: '#fff' },
+  pcBottomInactive:    { height: 30, justifyContent: 'center' },
+  pcTapHint:           { fontSize: 11, color: '#b8c0cc', fontWeight: '700' },
   pcTop:          { flexDirection: 'row', gap: 6 },
   pcName:         { fontSize: 13, fontWeight: '950', color: '#161616', lineHeight: 16 },
   pcCode:         { fontSize: 10, color: '#6b7581', fontWeight: '700', marginTop: 2 },
@@ -598,12 +641,9 @@ const tkStyles = StyleSheet.create({
   item:           { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#e8ecf2', gap: 6, minHeight: 46 },
   itemName:       { fontSize: 12, fontWeight: '900', color: '#161616' },
   itemCode:       { fontSize: 10, color: '#6b7581', fontWeight: '650' },
-  itemSub:        { fontSize: 12, fontWeight: '800', color: '#161616', width: 66, textAlign: 'right' },
-
-  miniqty:        { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#d7dde6', borderRadius: 8, overflow: 'hidden', height: 26 },
-  mqBtn:          { width: 22, height: 26, justifyContent: 'center', alignItems: 'center' },
-  mqBtnText:      { fontSize: 14, fontWeight: '900', color: '#161616', lineHeight: 16 },
-  mqNum:          { width: 26, textAlign: 'center', fontSize: 12, fontWeight: '900', color: '#161616' },
+  itemSub:        { fontSize: 12, fontWeight: '800', color: '#161616', width: 70, textAlign: 'right' },
+  deleteBtn:      { marginLeft: 6, padding: 4 },
+  deleteBtnText:  { fontSize: 16 },
 
   totals:         { paddingTop: 8, gap: 4, borderTopWidth: 1, borderTopColor: '#e8ecf2', marginTop: 8 },
   totalLine:      { flexDirection: 'row', justifyContent: 'space-between' },

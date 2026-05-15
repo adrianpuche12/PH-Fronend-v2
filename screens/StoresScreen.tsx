@@ -12,6 +12,7 @@ import axios from 'axios';
 import { REACT_APP_API_URL } from '../config';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW } from '../theme';
+import { useStore } from '../context/StoreContext';
 
 interface Store {
   id: number;
@@ -30,6 +31,7 @@ interface StoreForm {
 const EMPTY_FORM: StoreForm = { name: '', address: '', phone: '' };
 
 const StoresScreen = () => {
+  const { refreshStores: refreshContext } = useStore();
   const [stores, setStores]             = useState<Store[]>([]);
   const [loading, setLoading]           = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -82,6 +84,7 @@ const StoresScreen = () => {
       }
       setModalVisible(false);
       loadStores();
+      refreshContext();
     } catch {
       setSnackbar('Error al guardar');
     } finally {
@@ -99,6 +102,7 @@ const StoresScreen = () => {
           await axios.put(`${API}/${store.id}/toggle`);
           setSnackbar(`Local ${store.active ? 'desactivado' : 'activado'}`);
           loadStores();
+          refreshContext();
         } catch { setSnackbar('Error al cambiar estado'); }
         finally { setConfirmDlg(null); }
       }
@@ -114,6 +118,7 @@ const StoresScreen = () => {
           await axios.delete(`${API}/${store.id}`);
           setSnackbar('Local eliminado');
           loadStores();
+          refreshContext();
         } catch (e: any) {
           setSnackbar(e.response?.data?.error || 'No se puede eliminar — tiene historial de operaciones');
         } finally { setConfirmDlg(null); }

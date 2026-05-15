@@ -13,6 +13,7 @@ interface StoreContextType {
   selectedStore: Store | null;
   setSelectedStore: (store: Store) => void;
   loadingStores: boolean;
+  refreshStores: () => Promise<void>;
 }
 
 const StoreContext = createContext<StoreContextType>({
@@ -20,6 +21,7 @@ const StoreContext = createContext<StoreContextType>({
   selectedStore: null,
   setSelectedStore: () => {},
   loadingStores: true,
+  refreshStores: async () => {},
 });
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -27,19 +29,24 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
   const [loadingStores, setLoadingStores] = useState(true);
 
+  const refreshStores = async () => {
+    try {
+      const r = await axios.get<Store[]>(`${REACT_APP_API_URL}/api/v2/stores`);
+      const active = r.data.filter(s => s.active);
+      setStores(active);
+      // Si el local seleccionado fue desactivado, seleccionar el primero disponible
+      setSelectedStore(prev =>
+        prev && active.find(s => s.id === prev.id) ? prev : active[0] ?? null
+      );
+    } catch {}
+  };
+
   useEffect(() => {
-    axios.get<Store[]>(`${REACT_APP_API_URL}/api/v2/stores`)
-      .then(r => {
-        const active = r.data.filter(s => s.active);
-        setStores(active);
-        if (active.length > 0) setSelectedStore(active[0]);
-      })
-      .catch(() => {})
-      .finally(() => setLoadingStores(false));
+    refreshStores().finally(() => setLoadingStores(false));
   }, []);
 
   return (
-    <StoreContext.Provider value={{ stores, selectedStore, setSelectedStore, loadingStores }}>
+    <StoreContext.Provider value={{ stores, selectedStore, setSelectedStore, loadingStores, refreshStores }}>
       {children}
     </StoreContext.Provider>
   );

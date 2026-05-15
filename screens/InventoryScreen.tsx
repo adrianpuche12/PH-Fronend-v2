@@ -12,6 +12,7 @@ import { useStore } from '../context/StoreContext';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useAuth } from '../context/AuthContext';
 import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW, CONTROL } from '../theme';
+import { formatHnl } from '../utils/format';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -23,7 +24,6 @@ interface Summary     { totalProducts: number; activeProducts: number; lowStockC
 interface ProductForm { name: string; sku: string; type: string; price: string; minStock: string; description: string; categoryId: string }
 
 const EMPTY_PRODUCT: ProductForm = { name: '', sku: '', type: 'SIMPLE', price: '', minStock: '0', description: '', categoryId: '' };
-const money = (v: number) => `L ${Number(v).toLocaleString('es-HN', { minimumFractionDigits: 2 })}`;
 
 // Aplana el árbol de categorías en lista plana con path completo
 const flattenCategories = (cats: Category[], prefix = ''): { id: number; label: string; depth: number }[] => {
@@ -561,7 +561,7 @@ const InventoryScreen = () => {
       </View>
 
       {/* Precio */}
-      <Text style={styles.rowPrice}>{money(item.price)}</Text>
+      <Text style={styles.rowPrice}>{formatHnl(item.price)}</Text>
 
       {/* Stock badge */}
       <View style={[styles.stockBadge, { backgroundColor: stockColor(item) + '18' }]}>
@@ -673,7 +673,7 @@ const InventoryScreen = () => {
               <KpiCard icon="package-variant" title="Productos activos" value={String(summary.activeProducts)} sub={`de ${summary.totalProducts} totales`} />
               <KpiCard icon="alert-circle-outline" title="Stock bajo" value={String(summary.lowStockCount)} warn={summary.lowStockCount > 0} />
               <KpiCard icon="folder-outline" title="Categorías" value={String(summary.categoryCount)} />
-              <KpiCard icon="cash-multiple" title="Valor estimado" value={money(summary.estimatedValue)} />
+              <KpiCard icon="cash-multiple" title="Valor estimado" value={formatHnl(summary.estimatedValue)} />
             </View>
           )}
         </>

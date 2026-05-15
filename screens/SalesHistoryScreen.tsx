@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW } from '../theme';
+import { formatHnl, formatDate, formatTime } from '../utils/format';
 import axios from 'axios';
 import { REACT_APP_API_URL } from '../config';
 import { useStore } from '../context/StoreContext';
@@ -40,13 +41,6 @@ interface ShiftSummary {
   productSummary: ProductSummaryItem[];
 }
 
-const money = (v: number) => `L ${Number(v).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
-
-const fmt = (iso: string) =>
-  new Date(iso).toLocaleDateString('es-HN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-
-const fmtTime = (iso: string) =>
-  new Date(iso).toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit' });
 
 // ─── SalesHistoryScreen ───────────────────────────────────────────────────────
 
@@ -160,8 +154,8 @@ export default function SalesHistoryScreen() {
                       </View>
                     </View>
                     <Text style={styles.shiftMeta}>
-                      {fmt(shift.openedAt)}  ·  {fmtTime(shift.openedAt)}
-                      {shift.closedAt ? ` — ${fmtTime(shift.closedAt)}` : ''}
+                      {formatDate(shift.openedAt)}  ·  {formatTime(shift.openedAt)}
+                      {shift.closedAt ? ` — ${formatTime(shift.closedAt)}` : ''}
                       {' · '}{shift.username}
                     </Text>
                   </View>
@@ -185,7 +179,7 @@ export default function SalesHistoryScreen() {
                           <View key={i} style={styles.detailRow}>
                             <Text style={[styles.detailCell, styles.detailColName]} numberOfLines={1}>{p.productName}</Text>
                             <Text style={[styles.detailCell, { width: 44, textAlign: 'center' }]}>{p.quantity}</Text>
-                            <Text style={[styles.detailCell, { width: 88, textAlign: 'right' }]}>{money(p.subtotal)}</Text>
+                            <Text style={[styles.detailCell, { width: 88, textAlign: 'right' }]}>{formatHnl(p.subtotal)}</Text>
                           </View>
                         ))}
 
@@ -193,15 +187,15 @@ export default function SalesHistoryScreen() {
                         <View style={styles.detailTotals}>
                           <View style={styles.totalLine}>
                             <Text style={styles.totalLabel}>{summary.totalSales} venta{summary.totalSales !== 1 ? 's' : ''}</Text>
-                            <Text style={styles.totalLabel}>Subtotal: {money(summary.totalSubtotal)}</Text>
+                            <Text style={styles.totalLabel}>Subtotal: {formatHnl(summary.totalSubtotal)}</Text>
                           </View>
                           <View style={styles.totalLine}>
                             <Text style={styles.totalLabel}>ISV (15%)</Text>
-                            <Text style={styles.totalLabel}>{money(summary.totalIsv)}</Text>
+                            <Text style={styles.totalLabel}>{formatHnl(summary.totalIsv)}</Text>
                           </View>
                           <View style={[styles.totalLine, styles.totalFinal]}>
                             <Text style={styles.totalFinalLabel}>TOTAL</Text>
-                            <Text style={styles.totalFinalAmount}>{money(summary.totalAmount)}</Text>
+                            <Text style={styles.totalFinalAmount}>{formatHnl(summary.totalAmount)}</Text>
                           </View>
                         </View>
                       </>

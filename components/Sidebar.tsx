@@ -1,13 +1,55 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   Image, Modal, useWindowDimensions, Animated, Platform, Pressable,
 } from 'react-native';
-import { IconButton, Tooltip } from 'react-native-paper';
+import { IconButton } from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAuth } from '../context/AuthContext';
 import { useUIPreferences } from '../context/UIPreferencesContext';
 import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW } from '../theme';
+
+// Tooltip custom liviano — no requiere Paper Provider
+const SidebarTooltip = ({ label, children }: { label: string; children: React.ReactNode }) => {
+  const [visible, setVisible] = useState(false);
+  return (
+    <View style={{ position: 'relative' }}>
+      <Pressable
+        onHoverIn={() => setVisible(true)}
+        onHoverOut={() => setVisible(false)}
+        onPress={() => setVisible(false)}
+      >
+        {children}
+      </Pressable>
+      {visible && (
+        <View style={tooltipStyles.box} pointerEvents="none">
+          <Text style={tooltipStyles.text}>{label}</Text>
+        </View>
+      )}
+    </View>
+  );
+};
+
+const tooltipStyles = StyleSheet.create({
+  box: {
+    position: 'absolute',
+    left: 64,
+    top: '50%' as any,
+    transform: [{ translateY: -12 }],
+    backgroundColor: COLOR.ink,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: RADIUS.r1,
+    zIndex: 999,
+    minWidth: 80,
+  },
+  text: {
+    color: COLOR.white,
+    fontSize: FONT_SIZE.label,
+    fontWeight: FONT_WEIGHT.medium as any,
+    whiteSpace: 'nowrap' as any,
+  },
+});
 
 const SIDEBAR_W_EXPANDED  = 260;
 const SIDEBAR_W_COLLAPSED = 76;
@@ -108,7 +150,7 @@ const SidebarDesktop = ({ active, onSelect }: {
           const isActive = active === item.key;
           if (sidebarCollapsed) {
             return (
-              <Tooltip key={item.key} title={item.label} enterTouchDelay={0}>
+              <SidebarTooltip key={item.key} label={item.label}>
                 <TouchableOpacity
                   style={[styles.menuItemCollapsed, isActive && styles.menuItemActive]}
                   onPress={() => onSelect(item.key)}
@@ -121,7 +163,7 @@ const SidebarDesktop = ({ active, onSelect }: {
                   />
                   {isActive && <View style={styles.activeBar} />}
                 </TouchableOpacity>
-              </Tooltip>
+              </SidebarTooltip>
             );
           }
           return (

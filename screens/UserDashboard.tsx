@@ -7,7 +7,7 @@ import { StoreProvider, useStore } from '../context/StoreContext';
 import { UIPreferencesProvider } from '../context/UIPreferencesContext';
 import { useAuth } from '../context/AuthContext';
 import { REACT_APP_API_URL } from '../config';
-import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT } from '../theme';
+import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, BREAKPOINT } from '../theme';
 import POSScreen from './POSScreen';
 import InventoryScreen from './InventoryScreen';
 import SalesHistoryScreen from './SalesHistoryScreen';
@@ -71,7 +71,7 @@ const UserSidebar = ({ active, onSelect, onClose, isDesktop }: {
 
 const UserContent = () => {
   const { width } = useWindowDimensions();
-  const isDesktop = width >= 768;
+  const isDesktop = width >= BREAKPOINT.desktop;
   const { userName } = useAuth();
   const { stores, setSelectedStore } = useStore();
 

@@ -3,7 +3,7 @@ import { View, StyleSheet, useWindowDimensions, TouchableOpacity, Text } from 'r
 import Sidebar, { SidebarScreen } from '../components/Sidebar';
 import { StoreProvider } from '../context/StoreContext';
 import { UIPreferencesProvider } from '../context/UIPreferencesContext';
-import { COLOR, SPACE, FONT_SIZE, FONT_WEIGHT, CONTROL } from '../theme';
+import { COLOR, SPACE, FONT_SIZE, FONT_WEIGHT, CONTROL, BREAKPOINT } from '../theme';
 import AdminScreen from './AdminScreen';
 import StoresScreen from './StoresScreen';
 import InventoryScreen from './InventoryScreen';
@@ -24,7 +24,7 @@ const SCREEN_TITLE: Record<SidebarScreen, string> = {
 
 const AdminDashboard = () => {
   const { width } = useWindowDimensions();
-  const isDesktop = width >= 768;
+  const isDesktop = width >= BREAKPOINT.desktop;
 
   const [activeScreen, setActiveScreen] = useState<SidebarScreen>('dashboard');
   const [drawerOpen, setDrawerOpen]     = useState(false);

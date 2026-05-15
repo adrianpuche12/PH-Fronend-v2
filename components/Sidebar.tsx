@@ -7,7 +7,7 @@ import { IconButton } from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAuth } from '../context/AuthContext';
 import { useUIPreferences } from '../context/UIPreferencesContext';
-import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW } from '../theme';
+import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW, BREAKPOINT } from '../theme';
 
 // Tooltip custom liviano — no requiere Paper Provider
 const SidebarTooltip = ({ label, children }: { label: string; children: React.ReactNode }) => {
@@ -277,7 +277,7 @@ interface Props {
 
 const Sidebar: React.FC<Props> = ({ active, onSelect, visible, onClose }) => {
   const { width } = useWindowDimensions();
-  const isDesktop = width >= 768;
+  const isDesktop = width >= BREAKPOINT.desktop;
 
   if (isDesktop) {
     return <SidebarDesktop active={active} onSelect={onSelect} />;

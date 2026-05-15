@@ -7,7 +7,7 @@ import { Button, TextInput, Snackbar, IconButton } from 'react-native-paper';
 import axios from 'axios';
 import { REACT_APP_API_URL } from '../config';
 import ConfirmDialog from '../components/ConfirmDialog';
-import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW } from '../theme';
+import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW, BREAKPOINT } from '../theme';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -40,7 +40,7 @@ const statusColor = (s: string) => s === 'ACTIVE' ? '#168542' : '#d32121';
 export default function UsersScreen() {
   const API = REACT_APP_API_URL;
   const { width } = useWindowDimensions();
-  const isDesktop = width >= 768;
+  const isDesktop = width >= BREAKPOINT.desktop;
 
   const [users, setUsers]           = useState<AppUser[]>([]);
   const [stores, setStores]         = useState<Store[]>([]);

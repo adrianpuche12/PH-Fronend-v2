@@ -8,7 +8,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import axios from 'axios';
 import { REACT_APP_API_URL } from '../config';
 import { useAuth } from '../context/AuthContext';
-import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW } from '../theme';
+import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW, BREAKPOINT } from '../theme';
 import { formatHnl, formatTime } from '../utils/format';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -42,7 +42,7 @@ export default function DashboardScreen() {
   const API = REACT_APP_API_URL;
   const { userName } = useAuth();
   const { width } = useWindowDimensions();
-  const isDesktop = width >= 768;
+  const isDesktop = width >= BREAKPOINT.desktop;
 
   const [data, setData]         = useState<DashboardData | null>(null);
   const [loading, setLoading]   = useState(true);

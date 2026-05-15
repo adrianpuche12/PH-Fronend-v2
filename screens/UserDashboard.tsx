@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions, Modal } 
 import { ActivityIndicator, IconButton } from 'react-native-paper';
 import axios from 'axios';
 import { StoreProvider, useStore } from '../context/StoreContext';
+import { UIPreferencesProvider } from '../context/UIPreferencesContext';
 import { useAuth } from '../context/AuthContext';
 import { REACT_APP_API_URL } from '../config';
 import POSScreen from './POSScreen';
@@ -128,9 +129,11 @@ const UserContent = () => {
 // ─── UserDashboard (punto de entrada) ─────────────────────────────────────────
 
 const UserDashboard = () => (
-  <StoreProvider>
-    <UserContent />
-  </StoreProvider>
+  <UIPreferencesProvider>
+    <StoreProvider>
+      <UserContent />
+    </StoreProvider>
+  </UIPreferencesProvider>
 );
 
 export default UserDashboard;

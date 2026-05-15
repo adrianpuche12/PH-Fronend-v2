@@ -60,6 +60,9 @@ export const COLOR = {
   warnTint:      '#FEF3E0',  // fondo naranja suave
   warnBorder:    '#F0C070',  // borde naranja
 
+  // ── Semánticos de UI ──────────────────────────────────────────────────────
+  catGuide:      '#E8E3DA',  // alias de border, para guías de jerarquía en CategoryTree
+
   // ── Sistema ───────────────────────────────────────────────────────────────
   white:         '#FFFFFF',
   black:         '#000000',

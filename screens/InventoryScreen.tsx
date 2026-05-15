@@ -2,9 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput as RNTextInput, ActivityIndicator, Modal,
-  useWindowDimensions,
+  useWindowDimensions, Pressable,
 } from 'react-native';
 import { Button, TextInput, Snackbar, IconButton } from 'react-native-paper';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import axios from 'axios';
 import { REACT_APP_API_URL } from '../config';
 import { useStore } from '../context/StoreContext';
@@ -35,7 +36,23 @@ const flattenCategories = (cats: Category[], prefix = ''): { id: number; label: 
   return result;
 };
 
-// ─── Árbol de categorías ─────────────────────────────────────────────────────
+// ─── Árbol de categorías — rediseñado ────────────────────────────────────────
+
+// Cuenta productos de forma recursiva
+const countProducts = (cat: Category): number =>
+  cat.productCount + cat.children.reduce((s, c) => s + countProducts(c), 0);
+
+// Filtra el árbol preservando estructura
+const filterTree = (cats: Category[], q: string): Category[] => {
+  if (!q) return cats;
+  const ql = q.toLowerCase();
+  return cats.map(c => {
+    const matchesSelf = c.name.toLowerCase().includes(ql);
+    const filteredChildren = filterTree(c.children, ql);
+    if (matchesSelf || filteredChildren.length > 0) return { ...c, children: filteredChildren };
+    return null;
+  }).filter((c): c is Category => c !== null);
+};
 
 const CategoryTree = ({ categories, selected, onSelect, onNew, onEdit, onDelete, onNewChild, onToggle, isAdmin = true }: {
   categories: Category[];
@@ -48,49 +65,171 @@ const CategoryTree = ({ categories, selected, onSelect, onNew, onEdit, onDelete,
   onToggle: (cat: Category) => void;
   isAdmin?: boolean;
 }) => {
-  const [open, setOpen] = useState<Set<number>>(new Set());
-  const toggle = (id: number) => setOpen(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+  const [open, setOpen]             = useState<Set<number>>(new Set());
+  const [hoveredRow, setHoveredRow] = useState<number | null>(null);
+  const [catFilter, setCatFilter]   = useState('');
 
-  const renderNode = (cat: Category, depth = 0) => (
-    <View key={cat.id}>
-      <View style={[styles.catRow, selected === cat.id && styles.catRowSelected, { paddingLeft: 8 + depth * 14 }]}>
-        {cat.children.length > 0 ? (
-          <TouchableOpacity onPress={() => toggle(cat.id)} style={{ padding: 2 }}>
-            <Text style={styles.catArrow}>{open.has(cat.id) ? '▾' : '▸'}</Text>
-          </TouchableOpacity>
-        ) : <View style={{ width: 18 }} />}
+  const toggleOpen = (id: number) => setOpen(prev => {
+    const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s;
+  });
+  const collapseAll = () => setOpen(new Set());
+  const expandAll = () => {
+    const all = new Set<number>();
+    const walk = (cats: Category[]) => cats.forEach(c => { all.add(c.id); walk(c.children); });
+    walk(categories);
+    setOpen(all);
+  };
 
-        <TouchableOpacity style={{ flex: 1 }} onPress={() => onSelect(selected === cat.id ? null : cat.id)}>
-          <Text style={[styles.catName, !cat.active && { opacity: 0.4 }]} numberOfLines={1}>{cat.name}</Text>
-        </TouchableOpacity>
+  // Auto-expandir padres de los matches al filtrar
+  useEffect(() => {
+    if (!catFilter) return;
+    const q = catFilter.toLowerCase();
+    const matchedAncestors = new Set<number>();
+    const walk = (cats: Category[], ancestors: number[]) => {
+      for (const c of cats) {
+        if (c.name.toLowerCase().includes(q)) ancestors.forEach(a => matchedAncestors.add(a));
+        walk(c.children, [...ancestors, c.id]);
+      }
+    };
+    walk(categories, []);
+    setOpen(prev => new Set([...prev, ...matchedAncestors]));
+  }, [catFilter, categories]);
 
-        <View style={styles.catBadge}><Text style={styles.catBadgeText}>{cat.productCount}</Text></View>
+  const totalCount = categories.reduce((s, c) => s + countProducts(c), 0);
+  const visibleCats = filterTree(categories, catFilter);
 
-        {/* Acciones — solo admin */}
-        {isAdmin && <IconButton icon="plus"       size={16} iconColor="#168542" onPress={() => onNewChild(cat.id)} style={{ margin: 0 }} />}
-        {isAdmin && <IconButton icon="pencil"     size={16} iconColor="#53606d" onPress={() => onEdit(cat)}        style={{ margin: 0 }} />}
-        {isAdmin && <IconButton icon={cat.active ? 'toggle-switch' : 'toggle-switch-off'} size={16} iconColor={cat.active ? '#168542' : '#b8c0cc'} onPress={() => onToggle(cat)} style={{ margin: 0 }} />}
-        {isAdmin && <IconButton icon="trash-can"  size={16} iconColor="#d32121" onPress={() => onDelete(cat)}      style={{ margin: 0 }} />}
+  const renderNode = (cat: Category, depth = 0): React.ReactElement => {
+    const isSelected   = selected === cat.id;
+    const isHovered    = hoveredRow === cat.id;
+    const showActions  = isAdmin && (isHovered || isSelected);
+    const isInactive   = !cat.active;
+
+    return (
+      <View key={cat.id}>
+        <Pressable
+          onHoverIn={() => setHoveredRow(cat.id)}
+          onHoverOut={() => setHoveredRow(null)}
+          onPress={() => onSelect(isSelected ? null : cat.id)}
+          style={[styles.catRow, isSelected && styles.catRowSelected]}
+        >
+          {/* Chevron expandir */}
+          {cat.children.length > 0 ? (
+            <TouchableOpacity onPress={() => toggleOpen(cat.id)} hitSlop={8}>
+              <MaterialCommunityIcons
+                name={open.has(cat.id) ? 'chevron-down' : 'chevron-right'}
+                size={14}
+                color={COLOR.inkMute}
+              />
+            </TouchableOpacity>
+          ) : <View style={{ width: 14 }} />}
+
+          {/* Icono folder/tag */}
+          <MaterialCommunityIcons
+            name={cat.children.length > 0 ? 'folder-outline' : 'tag-outline'}
+            size={14}
+            color={isSelected ? COLOR.brandDeep : COLOR.inkMute}
+            style={{ marginRight: 4 }}
+          />
+
+          {/* Nombre */}
+          <Text
+            style={[
+              styles.catName,
+              isSelected && styles.catNameSelected,
+              isInactive && styles.catNameInactive,
+            ]}
+            numberOfLines={1}
+          >
+            {cat.name}
+          </Text>
+
+          {/* Contador */}
+          <View style={[styles.catCount, isSelected && styles.catCountSelected]}>
+            <Text style={[styles.catCountText, isSelected && styles.catCountTextSelected]}>
+              {cat.productCount}
+            </Text>
+          </View>
+
+          {/* Acciones — solo visibles al hover/selección */}
+          {showActions && (
+            <View style={styles.catActions}>
+              {cat.children.length === 0 && (
+                <IconButton icon="plus" size={14} iconColor={COLOR.income} onPress={() => onNewChild(cat.id)} style={{ margin: 0 }} />
+              )}
+              <IconButton icon="pencil" size={14} iconColor={COLOR.ink2} onPress={() => onEdit(cat)} style={{ margin: 0 }} />
+              <IconButton
+                icon={cat.active ? 'toggle-switch' : 'toggle-switch-off'}
+                size={14}
+                iconColor={cat.active ? COLOR.income : COLOR.inkDisabled}
+                onPress={() => onToggle(cat)}
+                style={{ margin: 0 }}
+              />
+              <IconButton icon="trash-can" size={14} iconColor={COLOR.expense} onPress={() => onDelete(cat)} style={{ margin: 0 }} />
+            </View>
+          )}
+        </Pressable>
+
+        {/* Hijos con guía visual de indentación */}
+        {open.has(cat.id) && cat.children.length > 0 && (
+          <View style={styles.catChildren}>
+            {cat.children.map(c => renderNode(c, depth + 1))}
+          </View>
+        )}
       </View>
-      {open.has(cat.id) && cat.children.map(c => renderNode(c, depth + 1))}
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={{ flex: 1 }}>
-      {/* Botón nueva categoría raíz — solo admin */}
+
+      {/* Header: título + badge + acciones globales */}
+      <View style={styles.catpanelHead}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text style={styles.catpanelTitle}>Categorías</Text>
+          <View style={styles.catpanelBadge}>
+            <Text style={styles.catpanelBadgeText}>{flattenCategories(categories).length}</Text>
+          </View>
+        </View>
+        <View style={{ flexDirection: 'row', gap: 0 }}>
+          <IconButton icon="chevron-up"   size={14} iconColor={COLOR.inkMute} onPress={collapseAll} style={{ margin: 0 }} />
+          <IconButton icon="chevron-down" size={14} iconColor={COLOR.inkMute} onPress={expandAll}   style={{ margin: 0 }} />
+        </View>
+      </View>
+
+      {/* Buscador inline */}
+      <View style={styles.catpanelSearch}>
+        <RNTextInput
+          value={catFilter}
+          onChangeText={setCatFilter}
+          placeholder="Filtrar categorías…"
+          placeholderTextColor={COLOR.inkDisabled}
+          style={styles.catSearchInput}
+        />
+      </View>
+
+      {/* Botón nueva categoría — dashed outline */}
       {isAdmin && (
         <TouchableOpacity style={styles.newCatBtn} onPress={onNew}>
-          <Text style={styles.newCatBtnText}>+ Nueva categoría</Text>
+          <MaterialCommunityIcons name="plus" size={14} color={COLOR.inkMute} />
+          <Text style={styles.newCatBtnText}>Nueva categoría</Text>
         </TouchableOpacity>
       )}
 
-      <ScrollView>
-        <TouchableOpacity style={[styles.catRow, selected === null && styles.catRowSelected]} onPress={() => onSelect(null)}>
-          <View style={{ width: 18 }} />
-          <Text style={[styles.catName, { fontWeight: '900' }]}>Todas</Text>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Fila "Todas" */}
+        <TouchableOpacity
+          style={[styles.catRow, styles.catRowTodas, selected === null && styles.catRowTodasSelected]}
+          onPress={() => onSelect(null)}
+        >
+          <View style={{ width: 14 }} />
+          <MaterialCommunityIcons name="layers-outline" size={14} color={selected === null ? COLOR.brandDeep : COLOR.inkMute} style={{ marginRight: 4 }} />
+          <Text style={[styles.catName, styles.catNameTodas, selected === null && styles.catNameSelected]}>Todas</Text>
+          <View style={[styles.catCount, selected === null && styles.catCountSelected]}>
+            <Text style={[styles.catCountText, selected === null && styles.catCountTextSelected]}>{totalCount}</Text>
+          </View>
         </TouchableOpacity>
-        {categories.map(c => renderNode(c))}
+
+        {visibleCats.map(c => renderNode(c))}
       </ScrollView>
     </View>
   );
@@ -564,9 +703,8 @@ const InventoryScreen = () => {
 
           {/* Sidebar categorías */}
           {(isDesktop || showCatPanel) && (
-            <View style={[styles.catPanel, !isDesktop && styles.catPanelMobile]}>
-              <Text style={styles.catPanelTitle}>Categorías</Text>
-              {loading ? <ActivityIndicator color="#ffd43b" /> : (
+            <View style={[styles.catPanel, !isDesktop && styles.catPanelMobile, isDesktop && width < 1100 && { width: 300 }]}>
+              {loading ? <ActivityIndicator color={COLOR.brand} style={{ marginTop: 20 }} /> : (
                 <CategoryTree
                   categories={categories}
                   selected={selectedCat}
@@ -819,20 +957,47 @@ const styles = StyleSheet.create({
   main:               { flex: 1, flexDirection: 'column' },
   mainDesktop:        { flexDirection: 'row' },
 
-  // Categorías
-  catPanel:           { width: 280, backgroundColor: COLOR.surface, borderRightWidth: 1, borderRightColor: COLOR.border },
-  catPanelMobile:     { width: '100%', maxHeight: 240, borderRightWidth: 0, borderBottomWidth: 1, borderBottomColor: COLOR.border },
-  catPanelTitle:      { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink, padding: SPACE.s3, borderBottomWidth: 1, borderBottomColor: COLOR.border },
-  catRow:             { flexDirection: 'row', alignItems: 'center', minHeight: 34, paddingHorizontal: SPACE.s2, paddingVertical: SPACE.s1, borderRadius: RADIUS.r1, marginHorizontal: SPACE.s2, gap: SPACE.s1 },
+  // Categorías — panel
+  catPanel:           { width: 340, backgroundColor: COLOR.surface, borderRightWidth: 1, borderRightColor: COLOR.border, ...SHADOW.sm },
+  catPanelMobile:     { width: '100%', maxHeight: 280, borderRightWidth: 0, borderBottomWidth: 1, borderBottomColor: COLOR.border },
+
+  // Header del panel
+  catpanelHead:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SPACE.s4, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLOR.border },
+  catpanelTitle:      { fontSize: 15, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink, letterSpacing: -0.15 },
+  catpanelBadge:      { backgroundColor: COLOR.brandTint, paddingHorizontal: 8, paddingVertical: 2, borderRadius: RADIUS.full },
+  catpanelBadgeText:  { fontSize: 11, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.brandDeep },
+
+  // Buscador
+  catpanelSearch:     { paddingHorizontal: SPACE.s3, paddingVertical: SPACE.s2, borderBottomWidth: 1, borderBottomColor: COLOR.border },
+  catSearchInput:     { backgroundColor: COLOR.bgAlt, borderRadius: RADIUS.r2, paddingHorizontal: SPACE.s3, paddingVertical: 7, fontSize: FONT_SIZE.label, color: COLOR.ink, borderWidth: 1, borderColor: COLOR.border },
+
+  // Filas del árbol
+  catRow:             { flexDirection: 'row', alignItems: 'center', paddingVertical: 7, paddingHorizontal: SPACE.s2, borderRadius: RADIUS.r2, marginHorizontal: SPACE.s2, marginVertical: 1, gap: 4 },
   catRowSelected:     { backgroundColor: COLOR.brandTint },
-  catArrow:           { fontSize: 14, color: COLOR.inkMute, width: 16 },
-  catName:            { flex: 1, fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink },
-  catBadge:           { backgroundColor: COLOR.bg, borderRadius: RADIUS.full, paddingHorizontal: 6, paddingVertical: 1 },
-  catBadgeText:       { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.inkMute },
-  catAction:          { padding: SPACE.s1 },
-  catActionText:      { fontSize: FONT_SIZE.label, color: COLOR.inkMute },
-  newCatBtn:          { margin: SPACE.s2, padding: SPACE.s2, backgroundColor: COLOR.brandTint, borderRadius: RADIUS.r2, borderWidth: 1, borderColor: COLOR.brand, alignItems: 'center' },
-  newCatBtnText:      { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
+  catRowTodas:        { backgroundColor: COLOR.surface2, marginBottom: 4 },
+  catRowTodasSelected:{ backgroundColor: COLOR.brandTint2 },
+
+  // Nombre
+  catName:            { flex: 1, fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink2 },
+  catNameSelected:    { color: COLOR.ink, fontWeight: FONT_WEIGHT.bold as any },
+  catNameTodas:       { fontWeight: FONT_WEIGHT.bold as any },
+  catNameInactive:    { opacity: 0.45, textDecorationLine: 'line-through' as any },
+
+  // Contador badge (fuente mono)
+  catCount:           { backgroundColor: COLOR.bg, paddingHorizontal: 7, paddingVertical: 2, borderRadius: RADIUS.full, minWidth: 26, alignItems: 'center' },
+  catCountSelected:   { backgroundColor: COLOR.surface },
+  catCountText:       { fontFamily: 'JetBrainsMono-Regular', fontSize: 11, fontWeight: '700', color: COLOR.inkMute, textAlign: 'center' },
+  catCountTextSelected:{ color: COLOR.brandDeep },
+
+  // Acciones inline
+  catActions:         { flexDirection: 'row', gap: 0, marginLeft: 2 },
+
+  // Guía visual de hijos
+  catChildren:        { marginLeft: 17, paddingLeft: 14, borderLeftWidth: 1, borderLeftColor: COLOR.catGuide },
+
+  // Botón nueva categoría — dashed outline
+  newCatBtn:          { margin: SPACE.s2, padding: SPACE.s3, backgroundColor: COLOR.surface, borderWidth: 1.5, borderColor: COLOR.border2, borderStyle: 'dashed', borderRadius: RADIUS.r2, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 },
+  newCatBtnText:      { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.medium as any, color: COLOR.inkMute },
 
   // Filas de productos
   empty:              { textAlign: 'center', marginTop: 40, color: COLOR.inkMute, fontSize: FONT_SIZE.body },

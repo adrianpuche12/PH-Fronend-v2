@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, useWindowDimensions, RefreshControl,
 } from 'react-native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW } from '../theme';
 import axios from 'axios';
 import { REACT_APP_API_URL } from '../config';
@@ -108,7 +109,7 @@ export default function SalesHistoryScreen() {
 
       {/* ── Header ── */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>📊 Historial de ventas</Text>
+        <Text style={styles.headerTitle}>Historial de ventas</Text>
         {/* Selector de local */}
         <View style={styles.storeChips}>
           {stores.map(s => (
@@ -132,7 +133,7 @@ export default function SalesHistoryScreen() {
         <Text style={styles.error}>{error}</Text>
       ) : shifts.length === 0 ? (
         <View style={styles.empty}>
-          <Text style={styles.emptyIcon}>📋</Text>
+          <MaterialCommunityIcons name="receipt-text-outline" size={40} color={COLOR.inkDisabled} />
           <Text style={styles.emptyText}>No hay turnos registrados para este local.</Text>
         </View>
       ) : (
@@ -164,7 +165,7 @@ export default function SalesHistoryScreen() {
                       {' · '}{shift.username}
                     </Text>
                   </View>
-                  <Text style={styles.expandIcon}>{isOpen ? '▲' : '▼'}</Text>
+                  <MaterialCommunityIcons name={isOpen ? 'chevron-up' : 'chevron-down'} size={18} color={COLOR.inkMute} />
                 </TouchableOpacity>
 
                 {/* ── Detalle expandible ── */}
@@ -234,7 +235,6 @@ const styles = StyleSheet.create({
   chipTextActive: { color: COLOR.ink, fontWeight: FONT_WEIGHT.bold as any },
 
   empty:          { flex: 1, justifyContent: 'center', alignItems: 'center', gap: SPACE.s2, padding: SPACE.s8 },
-  emptyIcon:      { fontSize: 40 },
   emptyText:      { fontSize: FONT_SIZE.body, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.semibold as any, textAlign: 'center' },
   error:          { textAlign: 'center', color: COLOR.expense, marginTop: 40, fontWeight: FONT_WEIGHT.semibold as any },
 
@@ -245,7 +245,6 @@ const styles = StyleSheet.create({
   shiftCodeRow:   { flexDirection: 'row', alignItems: 'center', gap: SPACE.s2, marginBottom: SPACE.s1 },
   shiftCode:      { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
   shiftMeta:      { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.medium as any },
-  expandIcon:     { fontSize: 14, color: COLOR.inkMute },
 
   statusBadge:    { borderRadius: RADIUS.r2, paddingHorizontal: SPACE.s2, paddingVertical: 3 },
   statusOpen:     { backgroundColor: COLOR.incomeTint },

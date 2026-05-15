@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions, Modal } from 'react-native';
 import { ActivityIndicator, IconButton } from 'react-native-paper';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import axios from 'axios';
 import { StoreProvider, useStore } from '../context/StoreContext';
 import { UIPreferencesProvider } from '../context/UIPreferencesContext';
 import { useAuth } from '../context/AuthContext';
 import { REACT_APP_API_URL } from '../config';
+import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT } from '../theme';
 import POSScreen from './POSScreen';
 import InventoryScreen from './InventoryScreen';
 import SalesHistoryScreen from './SalesHistoryScreen';
@@ -13,9 +15,9 @@ import SalesHistoryScreen from './SalesHistoryScreen';
 type UserScreen = 'sales' | 'inventory' | 'salesHistory';
 
 const MENU: { key: UserScreen; label: string; icon: string }[] = [
-  { key: 'sales',        label: 'Ventas',      icon: '🛒' },
-  { key: 'inventory',   label: 'Inventario',   icon: '📦' },
-  { key: 'salesHistory',label: 'Mis ventas',   icon: '📋' },
+  { key: 'sales',        label: 'Ventas',           icon: 'cart-outline' },
+  { key: 'inventory',    label: 'Inventario',        icon: 'package-variant' },
+  { key: 'salesHistory', label: 'Mis ventas',        icon: 'receipt-text-outline' },
 ];
 
 // ─── Sidebar del usuario ──────────────────────────────────────────────────────
@@ -29,11 +31,11 @@ const UserSidebar = ({ active, onSelect, onClose, isDesktop }: {
     <View style={styles.sidebar}>
       <View style={styles.sidebarHeader}>
         <View>
-          <Text style={styles.brandText}>🐔 POLLOS</Text>
+          <Text style={styles.brandText}>PH</Text>
           <Text style={styles.brandSub}>{userName}</Text>
         </View>
         {!isDesktop && (
-          <IconButton icon="close" size={20} iconColor="#161616" onPress={onClose} style={{ margin: 0 }} />
+          <IconButton icon="close" size={20} iconColor={COLOR.ink} onPress={onClose} style={{ margin: 0 }} />
         )}
       </View>
 
@@ -44,7 +46,11 @@ const UserSidebar = ({ active, onSelect, onClose, isDesktop }: {
             style={[styles.menuItem, active === item.key && styles.menuItemActive]}
             onPress={() => { onSelect(item.key); if (!isDesktop) onClose(); }}
           >
-            <Text style={styles.menuIcon}>{item.icon}</Text>
+            <MaterialCommunityIcons
+              name={item.icon}
+              size={20}
+              color={active === item.key ? COLOR.brandDeep : COLOR.ink2}
+            />
             <Text style={[styles.menuLabel, active === item.key && styles.menuLabelActive]}>
               {item.label}
             </Text>
@@ -54,7 +60,8 @@ const UserSidebar = ({ active, onSelect, onClose, isDesktop }: {
       </View>
 
       <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-        <Text style={styles.logoutText}>→ Cerrar sesión</Text>
+        <MaterialCommunityIcons name="logout" size={18} color={COLOR.expense} />
+        <Text style={styles.logoutText}>Cerrar sesión</Text>
       </TouchableOpacity>
     </View>
   );
@@ -72,7 +79,6 @@ const UserContent = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [ready, setReady]           = useState(false);
 
-  // Pre-seleccionar el local asignado al empleado
   useEffect(() => {
     if (!userName || stores.length === 0) return;
     axios.get(`${REACT_APP_API_URL}/api/v2/users/by-username/${userName}`)
@@ -87,22 +93,24 @@ const UserContent = () => {
 
   const screenTitle = MENU.find(m => m.key === active)?.label ?? '';
 
-  if (!ready) return <ActivityIndicator size="large" color="#ffd43b" style={{ flex: 1, marginTop: 60 }} />;
+  if (!ready) return <ActivityIndicator size="large" color={COLOR.brand} style={{ flex: 1, marginTop: 60 }} />;
 
   return (
     <View style={styles.container}>
-      {/* Sidebar fijo en desktop */}
       {isDesktop && (
         <UserSidebar active={active} onSelect={setActive} onClose={() => {}} isDesktop />
       )}
 
-      {/* Contenido */}
       <View style={styles.content}>
-        {/* Topbar mobile */}
         {!isDesktop && (
           <View style={styles.topbar}>
-            <TouchableOpacity onPress={() => setDrawerOpen(true)} style={styles.menuBtn}>
-              <Text style={styles.menuBtnIcon}>☰</Text>
+            <TouchableOpacity
+              onPress={() => setDrawerOpen(true)}
+              style={styles.menuBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Abrir menú"
+            >
+              <MaterialCommunityIcons name="menu" size={24} color={COLOR.ink} />
             </TouchableOpacity>
             <Text style={styles.topbarTitle}>{screenTitle}</Text>
           </View>
@@ -113,7 +121,6 @@ const UserContent = () => {
         {active === 'salesHistory' && <SalesHistoryScreen />}
       </View>
 
-      {/* Drawer mobile */}
       {!isDesktop && (
         <Modal visible={drawerOpen} transparent animationType="slide" onRequestClose={() => setDrawerOpen(false)}>
           <View style={styles.drawerOverlay}>
@@ -141,30 +148,28 @@ export default UserDashboard;
 // ─── Estilos ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container:      { flex: 1, flexDirection: 'row', backgroundColor: '#f4f6f8' },
-  content:        { flex: 1, flexDirection: 'column' },
+  container:       { flex: 1, flexDirection: 'row', backgroundColor: COLOR.bg },
+  content:         { flex: 1, flexDirection: 'column' },
 
-  sidebar:        { width: 220, backgroundColor: '#fff', borderRightWidth: 1, borderRightColor: '#e8ecf2', flexDirection: 'column' },
-  sidebarHeader:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, borderBottomWidth: 1, borderBottomColor: '#e8ecf2', backgroundColor: '#ffd43b' },
-  brandText:      { fontSize: 15, fontWeight: '950', color: '#161616' },
-  brandSub:       { fontSize: 11, color: '#53606d', fontWeight: '700', marginTop: 2 },
+  sidebar:         { width: 220, backgroundColor: COLOR.surface, borderRightWidth: 1, borderRightColor: COLOR.border, flexDirection: 'column' },
+  sidebarHeader:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: SPACE.s3, borderBottomWidth: 1, borderBottomColor: COLOR.brandDark, backgroundColor: COLOR.brand },
+  brandText:       { fontSize: FONT_SIZE.h3, fontWeight: FONT_WEIGHT.black as any, color: COLOR.ink },
+  brandSub:        { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.semibold as any, marginTop: 2 },
 
-  menuScroll:     { flex: 1, paddingTop: 8 },
-  menuItem:       { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, marginHorizontal: 8, borderRadius: 12, marginBottom: 2, position: 'relative', gap: 10 },
-  menuItemActive: { backgroundColor: '#fff9e6' },
-  menuIcon:       { fontSize: 16 },
-  menuLabel:      { fontSize: 14, fontWeight: '700', color: '#53606d' },
-  menuLabelActive:{ color: '#161616', fontWeight: '900' },
-  activeBar:      { position: 'absolute', left: 0, top: 6, bottom: 6, width: 4, backgroundColor: '#ffd43b', borderRadius: 2 },
+  menuScroll:      { flex: 1, paddingTop: SPACE.s2 },
+  menuItem:        { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACE.s4, paddingVertical: SPACE.s3, marginHorizontal: SPACE.s2, borderRadius: RADIUS.r2, marginBottom: 2, position: 'relative', gap: SPACE.s3 },
+  menuItemActive:  { backgroundColor: COLOR.brandTint },
+  menuLabel:       { fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink2, flex: 1 },
+  menuLabelActive: { color: COLOR.ink, fontWeight: FONT_WEIGHT.black as any },
+  activeBar:       { position: 'absolute', left: 0, top: 6, bottom: 6, width: 4, backgroundColor: COLOR.brand, borderRadius: RADIUS.full },
 
-  logoutBtn:      { padding: 16, borderTopWidth: 1, borderTopColor: '#e8ecf2' },
-  logoutText:     { fontSize: 14, fontWeight: '700', color: '#d32121' },
+  logoutBtn:       { flexDirection: 'row', alignItems: 'center', gap: SPACE.s2, padding: SPACE.s4, borderTopWidth: 1, borderTopColor: COLOR.border },
+  logoutText:      { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.expense },
 
-  topbar:         { flexDirection: 'row', alignItems: 'center', backgroundColor: '#ffd43b', paddingHorizontal: 12, paddingVertical: 10, gap: 12 },
-  menuBtn:        { padding: 4 },
-  menuBtnIcon:    { fontSize: 22, fontWeight: '900', color: '#161616' },
-  topbarTitle:    { fontSize: 18, fontWeight: '900', color: '#161616' },
+  topbar:          { flexDirection: 'row', alignItems: 'center', backgroundColor: COLOR.brand, paddingHorizontal: SPACE.s3, paddingVertical: SPACE.s3, gap: SPACE.s3 },
+  menuBtn:         { padding: SPACE.s1 },
+  topbarTitle:     { fontSize: FONT_SIZE.h2, fontWeight: FONT_WEIGHT.black as any, color: COLOR.ink },
 
-  drawerOverlay:  { flex: 1, flexDirection: 'row' },
-  drawerBg:       { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
+  drawerOverlay:   { flex: 1, flexDirection: 'row' },
+  drawerBg:        { flex: 1, backgroundColor: COLOR.overlay },
 });

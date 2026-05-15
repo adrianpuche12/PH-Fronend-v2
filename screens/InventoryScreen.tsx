@@ -239,10 +239,10 @@ const CategoryTree = ({ categories, selected, onSelect, onNew, onEdit, onDelete,
 
 const KpiCard = ({ icon, title, value, sub, warn }: { icon: string; title: string; value: string; sub?: string; warn?: boolean }) => (
   <View style={[styles.kpi, warn && styles.kpiWarn]}>
-    <Text style={styles.kpiIcon}>{icon}</Text>
+    <MaterialCommunityIcons name={icon} size={26} color={warn ? COLOR.warn : COLOR.ink2} />
     <View>
       <Text style={styles.kpiTitle}>{title}</Text>
-      <Text style={[styles.kpiValue, warn && { color: '#c05f00' }]}>{value}</Text>
+      <Text style={[styles.kpiValue, warn && { color: COLOR.warn }]}>{value}</Text>
       {sub ? <Text style={styles.kpiSub}>{sub}</Text> : null}
     </View>
   </View>
@@ -501,11 +501,11 @@ const InventoryScreen = () => {
 
   const movTypeColor = (type: string) => {
     switch (type) {
-      case 'ENTRADA': return '#168542';
-      case 'SALIDA':  return '#d32121';
-      case 'AJUSTE':  return '#2196F3';
-      case 'VENTA':   return '#7c3aed';
-      default:        return '#53606d';
+      case 'ENTRADA': return COLOR.income;
+      case 'SALIDA':  return COLOR.expense;
+      case 'AJUSTE':  return COLOR.info;
+      case 'VENTA':   return COLOR.movementSale;
+      default:        return COLOR.ink2;
     }
   };
 
@@ -528,7 +528,7 @@ const InventoryScreen = () => {
         <Text style={styles.movProduct} numberOfLines={1}>{m.productName}</Text>
         {m.reason ? <Text style={styles.movReason} numberOfLines={1}>{m.reason}</Text> : null}
       </View>
-      <Text style={[styles.movQty, { color: (m.type === 'ENTRADA' || m.type === 'AJUSTE') ? '#168542' : '#d32121' }]}>
+      <Text style={[styles.movQty, { color: (m.type === 'ENTRADA' || m.type === 'AJUSTE') ? COLOR.income : COLOR.expense }]}>
         {m.type === 'ENTRADA' ? '+' : '-'}{m.quantity}
       </Text>
       <Text style={styles.movDate}>
@@ -541,9 +541,9 @@ const InventoryScreen = () => {
   // ── Stock color ──────────────────────────────────────────────────────────────
 
   const stockColor = (item: StockItem) => {
-    if (item.quantity === 0) return '#d32121';
-    if (item.lowStock)       return '#c05f00';
-    return '#168542';
+    if (item.quantity === 0) return COLOR.expense;
+    if (item.lowStock)       return COLOR.warn;
+    return COLOR.income;
   };
 
   // ── Render fila de producto ──────────────────────────────────────────────────
@@ -576,21 +576,21 @@ const InventoryScreen = () => {
           style={styles.adjustBtn}
           onPress={() => { setAdjustType('ENTRADA'); setAdjustItem(item); }}
         >
-          <Text style={styles.adjustBtnText}>{isAdmin ? '📦 Ajustar' : '📦 Agregar'}</Text>
+          <Text style={styles.adjustBtnText}>{isAdmin ? 'Ajustar' : 'Agregar'}</Text>
         </TouchableOpacity>
 
         {/* Acciones de admin: editar, toggle, eliminar */}
-        {isAdmin && <IconButton icon="pencil" size={18} iconColor="#53606d" onPress={() => openEditProduct(item)} style={styles.actionIcon} />}
+        {isAdmin && <IconButton icon="pencil" size={18} iconColor={COLOR.ink2} onPress={() => openEditProduct(item)} style={styles.actionIcon} />}
         {isAdmin && (
           <IconButton
             icon={item.productActive ? 'toggle-switch' : 'toggle-switch-off'}
             size={18}
-            iconColor={item.productActive ? '#168542' : '#b8c0cc'}
+            iconColor={item.productActive ? COLOR.income : COLOR.inkDisabled}
             onPress={() => handleToggleProduct(item)}
             style={styles.actionIcon}
           />
         )}
-        {isAdmin && <IconButton icon="trash-can" size={18} iconColor="#d32121" onPress={() => handleDeleteProduct(item)} style={styles.actionIcon} />}
+        {isAdmin && <IconButton icon="trash-can" size={18} iconColor={COLOR.expense} onPress={() => handleDeleteProduct(item)} style={styles.actionIcon} />}
       </View>
     </View>
   );
@@ -620,8 +620,8 @@ const InventoryScreen = () => {
               ))}
             </View>
           ) : (
-            <Text style={{ fontSize: 13, fontWeight: '700', color: '#53606d' }}>
-              📍 {selectedStore?.name}
+            <Text style={{ fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink2 }}>
+              {selectedStore?.name}
             </Text>
           )}
         </View>
@@ -632,26 +632,26 @@ const InventoryScreen = () => {
               style={[styles.viewTab, activeView === 'stock' && styles.viewTabActive]}
               onPress={() => handleViewChange('stock')}
             >
-              <Text style={[styles.viewTabText, activeView === 'stock' && styles.viewTabTextActive]}>📦 Stock</Text>
+              <Text style={[styles.viewTabText, activeView === 'stock' && styles.viewTabTextActive]}>Stock</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.viewTab, activeView === 'movements' && styles.viewTabActive]}
               onPress={() => handleViewChange('movements')}
             >
-              <Text style={[styles.viewTabText, activeView === 'movements' && styles.viewTabTextActive]}>📋 Historial</Text>
+              <Text style={[styles.viewTabText, activeView === 'movements' && styles.viewTabTextActive]}>Historial</Text>
             </TouchableOpacity>
           </View>
 
           {activeView === 'stock' && (
             <>
               <Button mode="outlined" onPress={() => setTopExpanded(v => !v)}
-                textColor="#53606d" style={{ borderColor: '#e8ecf2', borderRadius: 10 }}
-                labelStyle={{ fontSize: 12 }}>
-                {topExpanded ? 'Cerrar ▲' : 'Resumen ▼'}
+                textColor={COLOR.ink2} style={{ borderColor: COLOR.border, borderRadius: RADIUS.r2 }}
+                labelStyle={{ fontSize: FONT_SIZE.caption }}>
+                {topExpanded ? 'Cerrar' : 'Resumen'}
               </Button>
               {isAdmin && (
-                <Button mode="contained" onPress={openCreateProduct} buttonColor="#ffd43b" textColor="#161616" style={{ borderRadius: 10 }}>
-                  + Nuevo Producto
+                <Button mode="contained" onPress={openCreateProduct} buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ borderRadius: RADIUS.r2 }}>
+                  + Nuevo producto
                 </Button>
               )}
             </>
@@ -664,15 +664,16 @@ const InventoryScreen = () => {
         <>
           {summary && summary.lowStockCount > 0 && (
             <View style={styles.alertBanner}>
-              <Text style={styles.alertText}>⚠ {summary.lowStockCount} producto{summary.lowStockCount > 1 ? 's' : ''} con stock bajo — revisá el inventario</Text>
+              <MaterialCommunityIcons name="alert-circle-outline" size={16} color={COLOR.warn} />
+          <Text style={styles.alertText}>{summary.lowStockCount} producto{summary.lowStockCount > 1 ? 's' : ''} con stock bajo — revisá el inventario</Text>
             </View>
           )}
           {summary && (
             <View style={styles.kpis}>
-              <KpiCard icon="📦" title="Productos activos" value={String(summary.activeProducts)} sub={`de ${summary.totalProducts} totales`} />
-              <KpiCard icon="⚠" title="Stock bajo" value={String(summary.lowStockCount)} warn={summary.lowStockCount > 0} />
-              <KpiCard icon="🗂" title="Categorías" value={String(summary.categoryCount)} />
-              <KpiCard icon="💰" title="Valor estimado" value={money(summary.estimatedValue)} />
+              <KpiCard icon="package-variant" title="Productos activos" value={String(summary.activeProducts)} sub={`de ${summary.totalProducts} totales`} />
+              <KpiCard icon="alert-circle-outline" title="Stock bajo" value={String(summary.lowStockCount)} warn={summary.lowStockCount > 0} />
+              <KpiCard icon="folder-outline" title="Categorías" value={String(summary.categoryCount)} />
+              <KpiCard icon="cash-multiple" title="Valor estimado" value={money(summary.estimatedValue)} />
             </View>
           )}
         </>
@@ -682,17 +683,17 @@ const InventoryScreen = () => {
       {activeView === 'stock' && (
         <View style={styles.searchRow}>
           <View style={styles.searchBox}>
-            <Text style={{ color: '#6b7581', marginRight: 6 }}>⌕</Text>
+            <MaterialCommunityIcons name="magnify" size={18} color={COLOR.inkMute} style={{ marginRight: SPACE.s1 }} />
             <RNTextInput
               placeholder="Buscar producto por nombre o SKU..."
-              placeholderTextColor="#b8c0cc"
+              placeholderTextColor={COLOR.inkDisabled}
               value={search}
               onChangeText={setSearch}
               style={styles.searchInput}
             />
           </View>
           {!isDesktop && (
-            <IconButton icon="filter-variant" size={22} iconColor="#2f3944" onPress={() => setShowCatPanel(v => !v)} />
+            <IconButton icon="filter-variant" size={22} iconColor={COLOR.ink} onPress={() => setShowCatPanel(v => !v)} />
           )}
         </View>
       )}
@@ -723,7 +724,7 @@ const InventoryScreen = () => {
           {/* Lista de productos */}
           <View style={{ flex: 1 }}>
             {loading ? (
-              <ActivityIndicator size="large" color="#ffd43b" style={{ marginTop: 40 }} />
+              <ActivityIndicator size="large" color={COLOR.brand} style={{ marginTop: 40 }} />
             ) : filtered.length === 0 ? (
               <Text style={styles.empty}>No hay productos para mostrar.</Text>
             ) : (
@@ -754,7 +755,7 @@ const InventoryScreen = () => {
         /* ── Vista Historial de Movimientos ── */
         <View style={{ flex: 1 }}>
           {loadingMov ? (
-            <ActivityIndicator size="large" color="#ffd43b" style={{ marginTop: 40 }} />
+            <ActivityIndicator size="large" color={COLOR.brand} style={{ marginTop: 40 }} />
           ) : movements.length === 0 ? (
             <Text style={styles.empty}>No hay movimientos registrados aún.</Text>
           ) : (
@@ -779,7 +780,7 @@ const InventoryScreen = () => {
         <View style={styles.overlay}>
           <View style={styles.modal}>
             <Text style={styles.modalTitle}>
-              {adjustType === 'ENTRADA' ? '➕ Agregar stock' : '➖ Descontar stock'}
+              {adjustType === 'ENTRADA' ? 'Agregar stock' : 'Descontar stock'}
             </Text>
             <Text style={styles.modalSub}>{adjustItem?.productName}</Text>
             <Text style={styles.modalStock}>Stock actual: <Text style={{ fontWeight: '900' }}>{adjustItem?.quantity}</Text></Text>
@@ -788,8 +789,8 @@ const InventoryScreen = () => {
             <View style={styles.typeRow}>
               {(isAdmin ? (['ENTRADA', 'SALIDA'] as const) : (['ENTRADA'] as const)).map(t => (
                 <Button key={t} mode="contained" onPress={() => setAdjustType(t)}
-                  buttonColor={adjustType === t ? (t === 'ENTRADA' ? '#168542' : '#d32121') : '#f4f6f8'}
-                  textColor={adjustType === t ? '#fff' : '#6b7581'} style={{ flex: 1, borderRadius: 8 }}>
+                  buttonColor={adjustType === t ? (t === 'ENTRADA' ? COLOR.income : COLOR.expense) : COLOR.bg}
+                  textColor={adjustType === t ? COLOR.white : COLOR.ink2} style={{ flex: 1, borderRadius: RADIUS.r2 }}>
                   {t === 'ENTRADA' ? 'Entrada' : 'Salida'}
                 </Button>
               ))}
@@ -801,7 +802,7 @@ const InventoryScreen = () => {
             <View style={styles.modalActions}>
               <Button mode="outlined" onPress={() => setAdjustItem(null)} style={{ flex: 1 }}>Cancelar</Button>
               <Button mode="contained" onPress={handleAdjust} loading={adjustSaving}
-                buttonColor={adjustType === 'ENTRADA' ? '#168542' : '#d32121'} style={{ flex: 1 }}>
+                buttonColor={adjustType === 'ENTRADA' ? COLOR.income : COLOR.expense} style={{ flex: 1 }}>
                 Confirmar
               </Button>
             </View>
@@ -826,8 +827,8 @@ const InventoryScreen = () => {
               <View style={styles.typeRow}>
                 {['SIMPLE', 'FABRICATED'].map(t => (
                   <Button key={t} mode="contained" onPress={() => setProductForm({ ...productForm, type: t })}
-                    buttonColor={productForm.type === t ? '#ffd43b' : '#f4f6f8'}
-                    textColor={productForm.type === t ? '#161616' : '#6b7581'} style={{ flex: 1, borderRadius: 8 }}>
+                    buttonColor={productForm.type === t ? COLOR.brand : COLOR.bg}
+                    textColor={productForm.type === t ? COLOR.inkOnBrand : COLOR.ink2} style={{ flex: 1, borderRadius: RADIUS.r2 }}>
                     {t === 'SIMPLE' ? 'Simple' : 'Fabricado'}
                   </Button>
                 ))}
@@ -842,14 +843,14 @@ const InventoryScreen = () => {
                 <Text style={catPickerLabel ? styles.catPickerValue : styles.catPickerPlaceholder} numberOfLines={1}>
                   {catPickerLabel || 'Seleccionar categoría...'}
                 </Text>
-                <Text style={{ color: '#6b7581' }}>▾</Text>
+                <MaterialCommunityIcons name="chevron-down" size={18} color={COLOR.ink2} />
               </TouchableOpacity>
 
               <TextInput label="Descripción" value={productForm.description} onChangeText={v => setProductForm({ ...productForm, description: v })} mode="outlined" style={styles.input} multiline numberOfLines={2} />
 
               <View style={styles.modalActions}>
                 <Button mode="outlined" onPress={() => setProductModal(false)} style={{ flex: 1 }}>Cancelar</Button>
-                <Button mode="contained" onPress={handleSaveProduct} loading={productSaving} buttonColor="#ffd43b" textColor="#161616" style={{ flex: 1 }}>Guardar</Button>
+                <Button mode="contained" onPress={handleSaveProduct} loading={productSaving} buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ flex: 1 }}>Guardar</Button>
               </View>
             </View>
           </ScrollView>
@@ -877,7 +878,7 @@ const InventoryScreen = () => {
                   onPress={() => { setProductForm({ ...productForm, categoryId: String(cat.id) }); setCatPickerLabel(cat.label); setCatPickerOpen(false); }}
                 >
                   <Text style={styles.catPickerItemText} numberOfLines={1}>{cat.label}</Text>
-                  {productForm.categoryId === String(cat.id) && <Text style={{ color: '#ffd43b', fontWeight: '900' }}>✓</Text>}
+                  {productForm.categoryId === String(cat.id) && <MaterialCommunityIcons name="check" size={16} color={COLOR.brand} />}
                 </TouchableOpacity>
               ))}
             </ScrollView>

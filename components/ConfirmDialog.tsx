@@ -20,7 +20,7 @@ interface Props {
 const ConfirmDialog: React.FC<Props> = ({
   visible, title, message,
   confirmLabel = 'Confirmar',
-  confirmColor = '#d32121',
+  confirmColor = COLOR.expense,
   onConfirm, onCancel,
 }) => (
   <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
@@ -36,7 +36,7 @@ const ConfirmDialog: React.FC<Props> = ({
             mode="contained"
             onPress={onConfirm}
             buttonColor={confirmColor}
-            textColor="#fff"
+            textColor={COLOR.white}
             style={styles.btn}
           >
             {confirmLabel}

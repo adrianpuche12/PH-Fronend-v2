@@ -5,6 +5,7 @@ import {
   useWindowDimensions, Platform,
 } from 'react-native';
 import { Button, Snackbar } from 'react-native-paper';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW, CONTROL } from '../theme';
 import axios from 'axios';
@@ -287,19 +288,19 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
   // ── Stock color ───────────────────────────────────────────────────────────
 
   const stockColor = (item: StockItem) =>
-    item.quantity === 0 ? '#d32121' : item.lowStock ? '#c05f00' : '#168542';
+    item.quantity === 0 ? COLOR.expense : item.lowStock ? COLOR.warn : COLOR.income;
 
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
   // ─────────────────────────────────────────────────────────────────────────
 
-  if (loadingShift) return <ActivityIndicator size="large" color="#ffd43b" style={{ flex: 1, marginTop: 60 }} />;
+  if (loadingShift) return <ActivityIndicator size="large" color={COLOR.brand} style={{ flex: 1, marginTop: 60 }} />;
 
   // ── Sin turno activo ──────────────────────────────────────────────────────
 
   if (!shift) return (
     <View style={styles.noShift}>
-      <Text style={styles.noShiftIcon}>⏱</Text>
+      <MaterialCommunityIcons name="clock-outline" size={52} color={COLOR.inkDisabled} />
       <Text style={styles.noShiftTitle}>Sin turno activo</Text>
       <Text style={styles.noShiftSub}>Abrí un turno para comenzar a registrar ventas</Text>
 
@@ -314,7 +315,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
         </View>
       )}
 
-      <Button mode="contained" onPress={() => setOpenShiftModal(true)} buttonColor="#ffd43b" textColor="#161616" style={{ borderRadius: 12 }} labelStyle={{ fontSize: 16, fontWeight: '900' }}>
+      <Button mode="contained" onPress={() => setOpenShiftModal(true)} buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ borderRadius: RADIUS.r2 }} labelStyle={{ fontSize: FONT_SIZE.h3, fontWeight: FONT_WEIGHT.black as any }}>
         Abrir turno
       </Button>
 
@@ -326,7 +327,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
             <Text style={styles.modalSub}>Empleada: <Text style={{ fontWeight: '900' }}>{userName ?? '—'}</Text></Text>
             <View style={styles.modalActions}>
               <Button mode="outlined" onPress={() => setOpenShiftModal(false)} style={{ flex: 1 }}>Cancelar</Button>
-              <Button mode="contained" onPress={handleOpenShift} buttonColor="#ffd43b" textColor="#161616" style={{ flex: 1 }}>Confirmar</Button>
+              <Button mode="contained" onPress={handleOpenShift} buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ flex: 1 }}>Confirmar</Button>
             </View>
           </View>
         </View>
@@ -346,7 +347,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
       {/* ══ HEADER ══ */}
       <View style={styles.header}>
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={styles.headerBrand}>🐔 POLLOS HERMANOS</Text>
+          <Text style={styles.headerBrand}>Pollos Hermanos</Text>
           <Text style={styles.headerShift} numberOfLines={1}>● {shift.code} · {shift.username}</Text>
         </View>
 
@@ -361,7 +362,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
           </View>
         )}
 
-        <Button mode="outlined" onPress={openClosing} textColor="#d32121" style={{ borderColor: '#d32121', borderRadius: 8 }} labelStyle={{ fontSize: 11, fontWeight: '900' }}>
+        <Button mode="outlined" onPress={openClosing} textColor={COLOR.expense} style={{ borderColor: COLOR.expense, borderRadius: RADIUS.r1 }} labelStyle={{ fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.black as any }}>
           Cerrar turno
         </Button>
       </View>
@@ -413,12 +414,12 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
       {/* ══ BUSCADOR (solo en tab nueva venta) ══ */}
       {posTab === 'nueva' && <View style={styles.searchWrap}>
         <View style={styles.searchBox}>
-          <Text style={{ color: '#6b7581', marginRight: 6 }}>⌕</Text>
+          <MaterialCommunityIcons name="magnify" size={18} color={COLOR.inkMute} style={{ marginRight: SPACE.s1 }} />
           <RNTextInput
-            placeholder="Buscar producto por nombre o código..." placeholderTextColor="#b8c0cc"
+            placeholder="Buscar producto por nombre o código..." placeholderTextColor={COLOR.inkDisabled}
             value={search} onChangeText={setSearch} style={styles.searchInput}
           />
-          {search ? <TouchableOpacity onPress={() => setSearch('')}><Text style={{ color: '#b8c0cc', fontSize: 18, lineHeight: 20 }}>×</Text></TouchableOpacity> : null}
+          {search ? <TouchableOpacity onPress={() => setSearch('')}><MaterialCommunityIcons name="close-circle" size={18} color={COLOR.inkDisabled} /></TouchableOpacity> : null}
         </View>
         {/* Conteo de productos + local */}
         <Text style={styles.catalogMeta}>Productos activos · {selectedStore?.name}  <Text style={styles.catalogCount}>{filtered.length} productos</Text></Text>
@@ -430,7 +431,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
         {/* Grilla de productos */}
         <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.grid}>
           {loading
-            ? <ActivityIndicator color="#ffd43b" style={{ marginTop: 40 }} />
+            ? <ActivityIndicator color={COLOR.brand} style={{ marginTop: 40 }} />
             : filtered.length === 0
               ? <Text style={styles.empty}>No hay productos en esta categoría.</Text>
               : filtered.map(item => {
@@ -453,7 +454,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                       {/* Badges de estado */}
                       {inCart && (
                         <View style={styles.inCartBadge}>
-                          <Text style={styles.inCartBadgeText}>✓ En carrito</Text>
+                          <Text style={styles.inCartBadgeText}>En carrito</Text>
                         </View>
                       )}
                       {outOfStock && (
@@ -495,8 +496,8 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                       ) : (
                         /* Estado inactivo */
                         <View style={styles.pcBottomInactive}>
-                          <Text style={[styles.pcTapHint, outOfStock && { color: '#d32121' }]}>
-                            {outOfStock ? 'No disponible' : inCart ? '✓ Agregado' : 'Toca para seleccionar'}
+                          <Text style={[styles.pcTapHint, outOfStock && { color: COLOR.expense }]}>
+                            {outOfStock ? 'No disponible' : inCart ? 'En carrito' : 'Toca para seleccionar'}
                           </Text>
                         </View>
                       )}
@@ -517,12 +518,12 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
       {posTab === 'ventas' && (
         <View style={{ flex: 1 }}>
           {loadingSales ? (
-            <ActivityIndicator color="#ffd43b" size="large" style={{ marginTop: 40 }} />
+            <ActivityIndicator color={COLOR.brand} size="large" style={{ marginTop: 40 }} />
           ) : (
             <ScrollView contentContainerStyle={{ padding: 12, gap: 10 }}>
               {shiftSales.length === 0 ? (
                 <View style={styles.salesEmpty}>
-                  <Text style={styles.salesEmptyIcon}>🧾</Text>
+                  <MaterialCommunityIcons name="receipt-text-outline" size={40} color={COLOR.inkDisabled} />
                   <Text style={styles.salesEmptyText}>Todavía no hay ventas en este turno.</Text>
                   <Text style={styles.salesEmptySub}>Registrá una venta y aparecerá aquí.</Text>
                 </View>
@@ -553,7 +554,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                           disabled={cancellingId === sale.id}
                         >
                           <Text style={styles.cancelBtnText}>
-                            {cancellingId === sale.id ? '...' : '✕ Anular'}
+                            {cancellingId === sale.id ? '...' : 'Anular'}
                           </Text>
                         </TouchableOpacity>
                       </View>
@@ -562,7 +563,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                       <View style={styles.saleCardItems}>
                         {sale.items.map(item => (
                           <Text key={item.id} style={styles.saleCardItem} numberOfLines={1}>
-                            · {item.productName} × {item.quantity}  <Text style={{ color: '#6b7581' }}>{money(item.subtotal)}</Text>
+                            · {item.productName} × {item.quantity}  <Text style={{ color: COLOR.ink2 }}>{money(item.subtotal)}</Text>
                           </Text>
                         ))}
                       </View>
@@ -586,16 +587,16 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
           <View style={[styles.modal, { maxWidth: 520, maxHeight: '92%' }]}>
             {closingDone ? (
               <View style={{ alignItems: 'center', paddingVertical: 24 }}>
-                <Text style={{ fontSize: 52 }}>✅</Text>
+                <MaterialCommunityIcons name="check-circle-outline" size={52} color={COLOR.income} />
                 <Text style={[styles.modalTitle, { textAlign: 'center', marginTop: 12 }]}>Turno cerrado</Text>
-                <Text style={{ color: '#53606d', textAlign: 'center', marginTop: 8 }}>El cierre fue registrado en el sistema financiero.</Text>
-                <Button mode="contained" buttonColor="#ffd43b" textColor="#161616" style={{ marginTop: 20, borderRadius: 10 }} onPress={() => setClosingModal(false)}>Aceptar</Button>
+                <Text style={{ color: COLOR.ink2, textAlign: 'center', marginTop: 8 }}>El cierre fue registrado en el sistema financiero.</Text>
+                <Button mode="contained" buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ marginTop: 20, borderRadius: RADIUS.r2 }} onPress={() => setClosingModal(false)}>Aceptar</Button>
               </View>
             ) : loadingSummary ? (
-              <ActivityIndicator color="#ffd43b" style={{ margin: 40 }} />
+              <ActivityIndicator color={COLOR.brand} style={{ margin: 40 }} />
             ) : summary ? (
               <>
-                <Text style={styles.modalTitle}>📋 Cierre de turno</Text>
+                <Text style={styles.modalTitle}>Cierre de turno</Text>
                 <Text style={styles.modalSub}>{selectedStore?.name} · {shift.code}</Text>
 
                 <ScrollView style={{ maxHeight: 260, marginVertical: 12 }}>
@@ -617,18 +618,18 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                 <View style={{ gap: 4 }}>
                   <View style={styles.sumTotalRow}><Text style={styles.sumLabel}>Subtotal</Text><Text style={styles.sumValue}>{money(summary.totalSubtotal)}</Text></View>
                   <View style={styles.sumTotalRow}><Text style={styles.sumLabel}>ISV (15%)</Text><Text style={styles.sumValue}>{money(summary.totalIsv)}</Text></View>
-                  <View style={[styles.sumTotalRow, { borderTopWidth: 2, borderTopColor: '#161616', marginTop: 6, paddingTop: 6 }]}>
-                    <Text style={{ fontSize: 16, fontWeight: '900', color: '#161616' }}>TOTAL DEL DÍA</Text>
-                    <Text style={{ fontSize: 18, fontWeight: '900', color: '#161616' }}>{money(summary.totalAmount)}</Text>
+                  <View style={[styles.sumTotalRow, { borderTopWidth: 2, borderTopColor: COLOR.ink, marginTop: 6, paddingTop: 6 }]}>
+                    <Text style={{ fontSize: FONT_SIZE.h3, fontWeight: FONT_WEIGHT.black as any, color: COLOR.ink }}>Total del día</Text>
+                    <Text style={{ fontSize: FONT_SIZE.h2, fontWeight: FONT_WEIGHT.black as any, color: COLOR.ink }}>{money(summary.totalAmount)}</Text>
                   </View>
-                  <Text style={{ fontSize: 12, color: '#6b7581', marginTop: 4 }}>{summary.totalSales} venta{summary.totalSales !== 1 ? 's' : ''} registrada{summary.totalSales !== 1 ? 's' : ''}</Text>
+                  <Text style={{ fontSize: FONT_SIZE.caption, color: COLOR.ink2, marginTop: 4 }}>{summary.totalSales} venta{summary.totalSales !== 1 ? 's' : ''} registrada{summary.totalSales !== 1 ? 's' : ''}</Text>
                 </View>
 
-                <Text style={styles.closingWarn}>⚠ Esta acción no se puede deshacer</Text>
+                <Text style={styles.closingWarn}>Esta acción no se puede deshacer</Text>
 
                 <View style={styles.modalActions}>
                   <Button mode="outlined" onPress={() => setClosingModal(false)} style={{ flex: 1 }}>Cancelar</Button>
-                  <Button mode="contained" buttonColor="#d32121" textColor="#fff" style={{ flex: 1 }} onPress={handleConfirmClosing}>Confirmar cierre</Button>
+                  <Button mode="contained" buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ flex: 1 }} onPress={handleConfirmClosing}>Confirmar cierre</Button>
                 </View>
               </>
             ) : null}
@@ -641,7 +642,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
         title={confirmDlg?.title ?? ''}
         message={confirmDlg?.message ?? ''}
         confirmLabel="Sí, anular"
-        confirmColor="#d32121"
+        confirmColor={COLOR.expense}
         onConfirm={() => confirmDlg?.onConfirm()}
         onCancel={() => setConfirmDlg(null)}
       />
@@ -666,7 +667,7 @@ function Ticket({ cart, subtotal, isv, total, itemCount, onRemove, onClear, onSu
     <View style={tkStyles.root}>
       <View style={tkStyles.head}>
         <Text style={tkStyles.title}>Venta actual</Text>
-        {itemCount > 0 && <View style={tkStyles.badge}><Text style={tkStyles.badgeText}>🛒 {itemCount} artículos</Text></View>}
+        {itemCount > 0 && <View style={tkStyles.badge}><Text style={tkStyles.badgeText}>{itemCount} artículos</Text></View>}
       </View>
 
       {full && (
@@ -680,8 +681,8 @@ function Ticket({ cart, subtotal, isv, total, itemCount, onRemove, onClear, onSu
                     <Text style={tkStyles.itemCode}>{item.qty} × {money(item.price)}</Text>
                   </View>
                   <Text style={tkStyles.itemSub}>{money(item.subtotal)}</Text>
-                  <TouchableOpacity onPress={() => onRemove(item.productId)} style={tkStyles.deleteBtn}>
-                    <Text style={tkStyles.deleteBtnText}>🗑</Text>
+                  <TouchableOpacity onPress={() => onRemove(item.productId)} style={tkStyles.deleteBtn} accessibilityRole="button" accessibilityLabel="Quitar del carrito">
+                    <MaterialCommunityIcons name="trash-can-outline" size={18} color={COLOR.expense} />
                   </TouchableOpacity>
                 </View>
               ))}
@@ -701,19 +702,19 @@ function Ticket({ cart, subtotal, isv, total, itemCount, onRemove, onClear, onSu
       {/* Acciones */}
       <View style={tkStyles.actions}>
         <Button mode="contained" onPress={onSubmit} loading={submitting} disabled={cart.length === 0 || submitting}
-          buttonColor="#ffd43b" textColor="#161616" style={{ borderRadius: 10 }} labelStyle={{ fontWeight: '900' }}>
-          🛒 Confirmar venta
+          buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ borderRadius: RADIUS.r2 }} labelStyle={{ fontWeight: FONT_WEIGHT.black as any }}>
+          Confirmar venta
         </Button>
         {cart.length > 0 && (
-          <Button mode="outlined" onPress={onClear} style={{ borderRadius: 10, marginTop: 6 }} textColor="#53606d">
-            ✕ Cancelar venta
+          <Button mode="outlined" onPress={onClear} style={{ borderRadius: RADIUS.r2, marginTop: 6 }} textColor={COLOR.ink2}>
+            Cancelar venta
           </Button>
         )}
       </View>
 
       {full && cart.length > 0 && (
         <View style={tkStyles.audit}>
-          <Text style={tkStyles.auditText}>🛡 El sistema calcula precios, impuestos y totales automáticamente. Al confirmar se descuenta el stock.</Text>
+          <Text style={tkStyles.auditText}>El sistema calcula precios, impuestos y totales automáticamente. Al confirmar se descuenta el stock.</Text>
         </View>
       )}
     </View>
@@ -727,7 +728,6 @@ const styles = StyleSheet.create({
 
   // Sin turno
   noShift:        { flex: 1, justifyContent: 'center', alignItems: 'center', padding: SPACE.s8, gap: SPACE.s4 },
-  noShiftIcon:    { fontSize: 52 },
   noShiftTitle:   { fontSize: FONT_SIZE.h1, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
   noShiftSub:     { fontSize: FONT_SIZE.label, color: COLOR.inkMute, textAlign: 'center' },
 
@@ -759,7 +759,6 @@ const styles = StyleSheet.create({
 
   // Tab Ventas del turno
   salesEmpty:     { alignItems: 'center', paddingVertical: 48, gap: SPACE.s2 },
-  salesEmptyIcon: { fontSize: 40 },
   salesEmptyText: { fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
   salesEmptySub:  { fontSize: FONT_SIZE.label, color: COLOR.inkMute },
   salesSummary:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: COLOR.brandTint, borderRadius: RADIUS.r3, padding: SPACE.s4, borderWidth: 1, borderColor: COLOR.brandTint2 },
@@ -864,7 +863,6 @@ const tkStyles = StyleSheet.create({
   itemCode:       { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.medium as any },
   itemSub:        { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink, width: 70, textAlign: 'right' },
   deleteBtn:      { marginLeft: SPACE.s2, padding: SPACE.s1 },
-  deleteBtnText:  { fontSize: 16 },
 
   totals:         { paddingTop: SPACE.s2, gap: SPACE.s1, borderTopWidth: 1, borderTopColor: COLOR.border, marginTop: SPACE.s2 },
   totalLine:      { flexDirection: 'row', justifyContent: 'space-between' },

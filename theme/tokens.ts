@@ -62,6 +62,7 @@ export const COLOR = {
 
   // ── Semánticos de UI ──────────────────────────────────────────────────────
   catGuide:      '#E8E3DA',  // alias de border, para guías de jerarquía en CategoryTree
+  movementSale:  '#6B46C1',  // violeta — movimientos tipo VENTA en historial de inventario
 
   // ── Sistema ───────────────────────────────────────────────────────────────
   white:         '#FFFFFF',

@@ -323,20 +323,21 @@ const InventoryScreen = () => {
 
   const handleSaveCat = async () => {
     if (!catName.trim()) { setSnackbar('El nombre es obligatorio'); return; }
+    if (!storeId) { setSnackbar('Seleccioná un local primero'); return; }
     setCatSaving(true);
     try {
       if (editCat) {
         await axios.put(`${API}/api/v2/categories/${editCat.id}`, { name: catName, description: catDesc });
-        setSnackbar('Categoría actualizada');
       } else if (catParentId) {
         await axios.post(`${API}/api/v2/stores/${storeId}/categories/${catParentId}/children`, { name: catName, description: catDesc });
-        setSnackbar('Subcategoría creada');
       } else {
         await axios.post(`${API}/api/v2/stores/${storeId}/categories`, { name: catName, description: catDesc });
-        setSnackbar('Categoría creada');
       }
       setCatModal(false); loadAll();
-    } catch { setSnackbar('Error al guardar categoría'); }
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Error al guardar categoría';
+      setSnackbar(msg);
+    }
     finally { setCatSaving(false); }
   };
 
@@ -761,7 +762,7 @@ const InventoryScreen = () => {
             <TextInput label="Descripción" value={catDesc} onChangeText={setCatDesc} mode="outlined" style={styles.input} />
             <View style={styles.modalActions}>
               <Button mode="outlined" onPress={() => setCatModal(false)} style={{ flex: 1 }}>Cancelar</Button>
-              <Button mode="contained" onPress={handleSaveCat} loading={catSaving} buttonColor="#ffd43b" textColor="#161616" style={{ flex: 1 }}>Guardar</Button>
+              <Button mode="contained" onPress={handleSaveCat} loading={catSaving} buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ flex: 1 }}>Guardar</Button>
             </View>
           </View>
         </View>

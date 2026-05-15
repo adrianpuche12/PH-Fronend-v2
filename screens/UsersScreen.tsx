@@ -196,14 +196,14 @@ export default function UsersScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>👥 Usuarios</Text>
-        <Button mode="contained" onPress={() => setCreateModal(true)} buttonColor="#ffd43b" textColor="#161616" style={{ borderRadius: 10 }}>
+        <Button mode="contained" onPress={() => setCreateModal(true)} buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ borderRadius: 10 }}>
           + Nuevo usuario
         </Button>
       </View>
 
       {/* Tabla */}
       {loading ? (
-        <ActivityIndicator size="large" color="#ffd43b" style={{ marginTop: 40 }} />
+        <ActivityIndicator size="large" color={COLOR.brand} style={{ marginTop: 40 }} />
       ) : users.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyIcon}>👤</Text>
@@ -249,12 +249,12 @@ export default function UsersScreen() {
               {/* Acciones */}
               <View style={[styles.cell, styles.cellActions]}>
                 {user.status === 'ACTIVE'
-                  ? <IconButton icon="pause-circle" size={20} iconColor="#c05f00" onPress={() => handleSuspend(user)} style={{ margin: 0 }} />
-                  : <IconButton icon="play-circle" size={20} iconColor="#168542" onPress={() => handleActivate(user)} style={{ margin: 0 }} />
+                  ? <IconButton icon="pause-circle" size={20} iconColor={COLOR.warn} onPress={() => handleSuspend(user)} style={{ margin: 0 }} />
+                  : <IconButton icon="play-circle" size={20} iconColor={COLOR.income} onPress={() => handleActivate(user)} style={{ margin: 0 }} />
                 }
-                <IconButton icon="store-edit" size={20} iconColor="#2196F3" onPress={() => { setReassignModal(user); setReassignStoreId(String(user.storeId)); }} style={{ margin: 0 }} />
-                <IconButton icon="lock-reset" size={20} iconColor="#53606d" onPress={() => { setResetModal(user); setNewPassword(''); }} style={{ margin: 0 }} />
-                <IconButton icon="delete" size={20} iconColor="#d32121" onPress={() => handleDelete(user)} style={{ margin: 0 }} />
+                <IconButton icon="store-edit" size={20} iconColor={COLOR.info} onPress={() => { setReassignModal(user); setReassignStoreId(String(user.storeId)); }} style={{ margin: 0 }} />
+                <IconButton icon="lock-reset" size={20} iconColor={COLOR.ink2} onPress={() => { setResetModal(user); setNewPassword(''); }} style={{ margin: 0 }} />
+                <IconButton icon="delete" size={20} iconColor={COLOR.expense} onPress={() => handleDelete(user)} style={{ margin: 0 }} />
               </View>
             </View>
           ))}
@@ -298,7 +298,7 @@ export default function UsersScreen() {
 
               <View style={styles.modalActions}>
                 <Button mode="outlined" onPress={() => { setCreateModal(false); setForm(EMPTY_FORM); }} style={{ flex: 1 }}>Cancelar</Button>
-                <Button mode="contained" onPress={handleCreate} loading={saving} buttonColor="#ffd43b" textColor="#161616" style={{ flex: 1 }}>Crear usuario</Button>
+                <Button mode="contained" onPress={handleCreate} loading={saving} buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ flex: 1 }}>Crear usuario</Button>
               </View>
             </View>
           </ScrollView>
@@ -327,7 +327,7 @@ export default function UsersScreen() {
             </View>
             <View style={styles.modalActions}>
               <Button mode="outlined" onPress={() => setReassignModal(null)} style={{ flex: 1 }}>Cancelar</Button>
-              <Button mode="contained" onPress={handleReassign} loading={reassigning} buttonColor="#2196F3" textColor="#fff" style={{ flex: 1 }}>Reasignar</Button>
+              <Button mode="contained" onPress={handleReassign} loading={reassigning} buttonColor={COLOR.info} textColor={COLOR.white} style={{ flex: 1 }}>Reasignar</Button>
             </View>
           </View>
         </View>
@@ -348,7 +348,7 @@ export default function UsersScreen() {
             />
             <View style={styles.modalActions}>
               <Button mode="outlined" onPress={() => setResetModal(null)} style={{ flex: 1 }}>Cancelar</Button>
-              <Button mode="contained" onPress={handleResetPassword} loading={resetting} buttonColor="#ffd43b" textColor="#161616" style={{ flex: 1 }}>Guardar</Button>
+              <Button mode="contained" onPress={handleResetPassword} loading={resetting} buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ flex: 1 }}>Guardar</Button>
             </View>
           </View>
         </View>

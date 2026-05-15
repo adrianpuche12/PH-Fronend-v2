@@ -126,14 +126,14 @@ const StoresScreen = () => {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Locales</Text>
-        <Button mode="contained" onPress={openCreate} buttonColor="#ffd43b" textColor="#161616">
+        <Button mode="contained" onPress={openCreate} buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand}>
           + Nuevo Local
         </Button>
       </View>
 
       {/* Lista */}
       {loading ? (
-        <ActivityIndicator size="large" color="#ffd43b" style={styles.loader} />
+        <ActivityIndicator size="large" color={COLOR.brand} style={styles.loader} />
       ) : (
         <ScrollView contentContainerStyle={styles.list}>
           {stores.length === 0 ? (
@@ -145,7 +145,7 @@ const StoresScreen = () => {
                   <View style={styles.cardRow}>
                     <Text style={styles.storeName}>{store.name}</Text>
                     <View style={[styles.badge, store.active ? styles.badgeActive : styles.badgeInactive]}>
-                      <Text style={[styles.badgeText, { color: store.active ? '#168542' : '#d32121' }]}>
+                      <Text style={[styles.badgeText, { color: store.active ? COLOR.income : COLOR.expense }]}>
                         {store.active ? 'Activo' : 'Inactivo'}
                       </Text>
                     </View>
@@ -159,7 +159,7 @@ const StoresScreen = () => {
                   <IconButton
                     icon="pencil"
                     size={22}
-                    iconColor="#2f3944"
+                    iconColor={COLOR.ink2}
                     onPress={() => openEdit(store)}
                   />
                   {/* Activar / Desactivar */}
@@ -173,7 +173,7 @@ const StoresScreen = () => {
                   <IconButton
                     icon="trash-can"
                     size={22}
-                    iconColor="#d32121"
+                    iconColor={COLOR.expense}
                     onPress={() => handleDelete(store)}
                   />
                 </View>
@@ -195,7 +195,7 @@ const StoresScreen = () => {
 
             <View style={styles.modalActions}>
               <Button mode="outlined" onPress={() => setModalVisible(false)} style={{ flex: 1 }}>Cancelar</Button>
-              <Button mode="contained" onPress={handleSave} loading={saving} buttonColor="#ffd43b" textColor="#161616" style={{ flex: 1 }}>Guardar</Button>
+              <Button mode="contained" onPress={handleSave} loading={saving} buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ flex: 1 }}>Guardar</Button>
             </View>
           </View>
         </View>

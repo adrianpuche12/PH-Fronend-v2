@@ -127,7 +127,7 @@ export default function SalesHistoryScreen() {
 
       {/* ── Contenido ── */}
       {loading ? (
-        <ActivityIndicator size="large" color="#ffd43b" style={{ marginTop: 40 }} />
+        <ActivityIndicator size="large" color={COLOR.brand} style={{ marginTop: 40 }} />
       ) : error ? (
         <Text style={styles.error}>{error}</Text>
       ) : shifts.length === 0 ? (
@@ -138,7 +138,7 @@ export default function SalesHistoryScreen() {
       ) : (
         <ScrollView
             contentContainerStyle={styles.list}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ffd43b" />}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLOR.brand} />}
           >
           {shifts.map(shift => {
             const isOpen    = expanded[shift.id];
@@ -171,7 +171,7 @@ export default function SalesHistoryScreen() {
                 {isOpen && (
                   <View style={styles.detail}>
                     {isLoading ? (
-                      <ActivityIndicator color="#ffd43b" style={{ margin: 12 }} />
+                      <ActivityIndicator color={COLOR.brand} style={{ margin: 12 }} />
                     ) : summary && summary.totalSales > 0 ? (
                       <>
                         {/* Tabla de productos */}

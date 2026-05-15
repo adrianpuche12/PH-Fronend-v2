@@ -1,36 +1,37 @@
-/*
-import React, { useState } from 'react';
-import { View, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useRef } from 'react';
+import {
+  View, StyleSheet, KeyboardAvoidingView, Platform,
+  StatusBar, ScrollView, TextInput as RNTextInput,
+} from 'react-native';
 import { TextInput, Button, Card, Title, HelperText, Avatar } from 'react-native-paper';
-import { router } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
+import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW } from '../theme';
 
 const LoginScreen = () => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [username, setUsername]         = useState('');
+  const [password, setPassword]         = useState('');
+  const [isLoading, setIsLoading]       = useState(false);
+  const [error, setError]               = useState('');
+  const [secureTextEntry, setSecure]    = useState(true);
 
+  const passwordRef = useRef<RNTextInput>(null);
   const { login } = useAuth();
 
   const handleLogin = async () => {
     if (!username || !password) {
-      setError('Por favor complete todos los campos');
+      setError('Por favor completá todos los campos');
       return;
     }
-
     setIsLoading(true);
     setError('');
-
     try {
-      const success = await login(username, password);
-      if (success) {
-      } else {
-        setError('Credenciales inválidas');
-      }
-    } catch (err) {
-      setError('Error al intentar iniciar sesión');
-      console.error(err);
+      const success = await login(username.trim(), password.trim());
+      if (!success) setError('Usuario o contraseña incorrectos');
+    } catch (err: any) {
+      const status = err?.response?.status;
+      if (status === 401 || status === 403) setError('Usuario o contraseña incorrectos');
+      else if (status >= 500) setError('El servidor no responde, intentá más tarde');
+      else setError('Error al iniciar sesión');
     } finally {
       setIsLoading(false);
     }
@@ -38,311 +39,178 @@ const LoginScreen = () => {
 
   return (
     <KeyboardAvoidingView
+      style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
     >
-      <Card style={styles.card}>
-        <Card.Content>
+      <StatusBar barStyle="dark-content" backgroundColor={COLOR.brandTint} />
 
-          <View style={styles.logoContainer}>
-            <Avatar.Image
-              size={120}
-              source={require('../assets/images/logo_proyecto_Humberto.jpg')}
-              style={styles.logo}
-            />
-          </View>
-          <Title style={styles.title}>Iniciar Sesión</Title>
-
-          <TextInput
-            label="Usuario"
-            value={username}
-            onChangeText={setUsername}
-            mode="outlined"
-            style={styles.input}
-            autoCapitalize="none"
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Sección superior — logo + bienvenida */}
+        <View style={styles.topSection}>
+          <Avatar.Image
+            size={110}
+            source={require('../assets/images/logo_proyecto_Humberto.jpg')}
+            style={styles.logo}
           />
+          <Title style={styles.welcomeText}>Bienvenido</Title>
+        </View>
 
-          <TextInput
-            label="Contraseña"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            mode="outlined"
-            style={styles.input}
-          />
+        {/* Card del formulario */}
+        <Card style={styles.card}>
+          <Card.Content>
+            <View style={styles.formWrapper}>
+              <Title style={styles.cardTitle}>Iniciar sesión</Title>
 
-          {error ? (
-            <HelperText type="error" visible={!!error}>
-              {error}
-            </HelperText>
-          ) : null}
+              <View style={styles.inputContainer}>
+                <TextInput
+                  label="Usuario"
+                  value={username}
+                  onChangeText={setUsername}
+                  mode="outlined"
+                  style={styles.input}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  returnKeyType="next"
+                  onSubmitEditing={() => passwordRef.current?.focus()}
+                  left={<TextInput.Icon icon="account" color={COLOR.brandDark} />}
+                  outlineColor={COLOR.border2}
+                  activeOutlineColor={COLOR.brand}
+                  theme={{ colors: { primary: COLOR.brand } }}
+                />
+              </View>
 
-          <Button
-            mode="contained"
-            onPress={handleLogin}
-            style={styles.button}
-            loading={isLoading}
-            disabled={isLoading}
-          >
-            {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
-          </Button>
-        </Card.Content>
-      </Card>
+              <View style={styles.inputContainer}>
+                <TextInput
+                  label="Contraseña"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={secureTextEntry}
+                  mode="outlined"
+                  style={styles.input}
+                  returnKeyType="go"
+                  onSubmitEditing={handleLogin}
+                  left={<TextInput.Icon icon="lock" color={COLOR.brandDark} />}
+                  right={
+                    <TextInput.Icon
+                      icon={secureTextEntry ? 'eye' : 'eye-off'}
+                      onPress={() => setSecure(v => !v)}
+                      color={COLOR.brandDark}
+                    />
+                  }
+                  outlineColor={COLOR.border2}
+                  activeOutlineColor={COLOR.brand}
+                  theme={{ colors: { primary: COLOR.brand } }}
+                />
+              </View>
+
+              {error ? (
+                <HelperText type="error" visible={!!error} style={styles.errorText}>
+                  {error}
+                </HelperText>
+              ) : null}
+
+              <Button
+                mode="contained"
+                onPress={handleLogin}
+                style={styles.loginButton}
+                contentStyle={styles.buttonContent}
+                loading={isLoading}
+                disabled={isLoading}
+                labelStyle={styles.buttonText}
+                buttonColor={COLOR.brand}
+                textColor={COLOR.inkOnBrand}
+              >
+                {isLoading ? 'Iniciando…' : 'Iniciar sesión'}
+              </Button>
+
+              <Title style={styles.helperText}>
+                ¿Olvidaste tu contraseña? Pedísela al encargado.
+              </Title>
+            </View>
+          </Card.Content>
+        </Card>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 16,
-    backgroundColor: '#f5f5f5',
-  },
-  card: {
-    elevation: 4,
-    borderRadius: 8,
-  },
-  logoContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  logo: {
-    width: 120,
-    height: 120,
-  },
-  title: {
-    fontSize: 24,
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-  input: {
-    marginBottom: 16,
-  },
-  button: {
-    marginTop: 8,
-  },
-});
-
-export default LoginScreen;
-
-*/
-
-import React, { useState } from 'react';
-import { 
-  View, 
-  StyleSheet, 
-  KeyboardAvoidingView, 
-  Platform, 
-  StatusBar
-} from 'react-native';
-import { 
-  TextInput, 
-  Button, 
-  Card, 
-  Title, 
-  HelperText, 
-  Avatar
-} from 'react-native-paper';
-import { router } from 'expo-router';
-import { useAuth } from '../context/AuthContext';
-
-const LoginScreen = () => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [secureTextEntry, setSecureTextEntry] = useState(true);
-  
-  const { login } = useAuth();
-
-  const handleLogin = async () => {
-    if (!username || !password) {
-      setError('Por favor complete todos los campos');
-      return;
-    }
-
-    setIsLoading(true);
-    setError('');
-
-    try {
-      // Trim whitespace from username and password
-      const success = await login(username.trim(), password.trim());
-      if (success) {
-        // Login successful
-      } else {
-        setError('Credenciales inválidas');
-      }
-    } catch (err) {
-      setError('Error al intentar iniciar sesión');
-      console.error(err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const toggleSecureEntry = () => {
-    setSecureTextEntry(!secureTextEntry);
-  };
-
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFF0A8" />
-      
-      <View style={styles.topSection}>
-        <View style={styles.logoContainer}>
-          <Avatar.Image
-            size={120}
-            source={require('../assets/images/logo_proyecto_Humberto.jpg')}
-            style={styles.logo}
-          />
-        </View>
-        <Title style={styles.welcomeText}>Bienvenido</Title>
-      </View>
-      
-      <Card style={styles.card}>
-      <Card.Content>
-        <View style={styles.formWrapper}>
-          <Title style={styles.cardTitle}>Iniciar Sesión</Title>
-
-          <View style={styles.inputContainer}>
-            <TextInput
-              label="Usuario"
-              value={username}
-              onChangeText={setUsername}
-              mode="outlined"
-              style={styles.input}
-              autoCapitalize="none"
-              left={<TextInput.Icon icon="account" color="#D4A72B" />}
-              outlineColor="#DDDDDD"
-              activeOutlineColor="#D4A72B"
-              theme={{ colors: { primary: '#D4A72B' } }}
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <TextInput
-              label="Contraseña"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={secureTextEntry}
-              mode="outlined"
-              style={styles.input}
-              left={<TextInput.Icon icon="lock" color="#D4A72B" />}
-              right={
-                <TextInput.Icon 
-                  icon={secureTextEntry ? "eye" : "eye-off"} 
-                  onPress={toggleSecureEntry}
-                  color="#D4A72B"
-                />
-              }
-              outlineColor="#DDDDDD"
-              activeOutlineColor="#D4A72B"
-              theme={{ colors: { primary: '#D4A72B' } }}
-            />
-          </View>
-
-          {error ? (
-            <HelperText type="error" visible={!!error} style={styles.errorText}>
-              {error}
-            </HelperText>
-          ) : null}
-
-          <Button
-            mode="contained"
-            onPress={handleLogin}
-            style={styles.loginButton}
-            contentStyle={styles.buttonContent}
-            loading={isLoading}
-            disabled={isLoading}
-            labelStyle={styles.buttonText}
-            buttonColor="#2196F3"
-          >
-            {isLoading ? 'INICIANDO SESIÓN...' : 'INICIAR SESIÓN'}
-          </Button>
-        </View>
-      </Card.Content>
-    </Card>
-
-    </View>
-  );
-};
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
+  scroll: {
+    flexGrow: 1,
+    backgroundColor: COLOR.bg,
   },
   topSection: {
-    backgroundColor: '#FFF0A8', // Soft yellow background
-    paddingVertical: 40,
+    backgroundColor: COLOR.brandTint,
+    paddingVertical: SPACE.s7,
     alignItems: 'center',
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  logoContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
+    borderBottomLeftRadius: RADIUS.r5,
+    borderBottomRightRadius: RADIUS.r5,
+    ...SHADOW.md,
   },
   logo: {
-    backgroundColor: 'white',
+    backgroundColor: COLOR.surface,
     borderWidth: 2,
-    borderColor: 'white',
+    borderColor: COLOR.surface,
+    marginBottom: SPACE.s2,
   },
   welcomeText: {
-    color: '#8B7214', // Darker yellow/gold for contrast on light yellow
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginTop: 10,
+    color: COLOR.brandDeep,
+    fontSize: FONT_SIZE.display,
+    fontWeight: FONT_WEIGHT.bold as any,
+    marginTop: SPACE.s2,
   },
   card: {
-    marginHorizontal: 20,
-    marginTop: -30,
-    borderRadius: 15,
+    marginHorizontal: SPACE.s5,
+    marginTop: -SPACE.s7,
+    borderRadius: RADIUS.r4,
     elevation: 6,
-    paddingVertical: 10,
+    paddingVertical: SPACE.s2,
   },
   cardTitle: {
     textAlign: 'center',
-    fontSize: 20,
-    marginBottom: 20,
-    color: '#333',
-  },
-  inputContainer: {
-    marginBottom: 16,
-  },
-  input: {
-    backgroundColor: 'white',
-  },
-  errorText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  loginButton: {
-    marginTop: 10,
-    marginBottom: 15,
-    borderRadius: 30,
-    elevation: 2,
-  },
-  buttonContent: {
-    paddingVertical: 8,
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: FONT_SIZE.h2,
+    marginBottom: SPACE.s5,
+    color: COLOR.ink,
   },
   formWrapper: {
     width: '100%',
     maxWidth: 400,
     alignSelf: 'center',
+  },
+  inputContainer: {
+    marginBottom: SPACE.s4,
+  },
+  input: {
+    backgroundColor: COLOR.surface,
+  },
+  errorText: {
+    fontSize: FONT_SIZE.label,
+    fontWeight: FONT_WEIGHT.bold as any,
+    marginBottom: SPACE.s2,
+  },
+  loginButton: {
+    marginTop: SPACE.s2,
+    marginBottom: SPACE.s4,
+    borderRadius: RADIUS.full,
+    elevation: 2,
+  },
+  buttonContent: {
+    paddingVertical: SPACE.s2,
+  },
+  buttonText: {
+    fontSize: FONT_SIZE.body,
+    fontWeight: FONT_WEIGHT.bold as any,
+  },
+  helperText: {
+    fontSize: FONT_SIZE.caption,
+    color: COLOR.inkMute,
+    textAlign: 'center',
+    fontWeight: FONT_WEIGHT.regular as any,
+    marginBottom: SPACE.s2,
   },
 });
 

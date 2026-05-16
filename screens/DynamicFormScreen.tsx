@@ -897,14 +897,16 @@ const DynamicFormScreen = () => {
         </View>
       )}
 
-      {historial.map(op => (
+      {historial.map(op => {
+        const isIncome = op.type === 'income' || op.type === 'CLOSING';
+        return (
         <View key={`${op.type}-${op.id}`} style={histStyles.card}>
           <View style={histStyles.row}>
             <View style={histStyles.iconWrap}>
               <MaterialCommunityIcons
                 name={TYPE_ICON[op.type] ?? TYPE_ICON.default}
                 size={20}
-                color={op.type === 'income' ? COLOR.income : COLOR.expense}
+                color={isIncome ? COLOR.income : COLOR.expense}
               />
             </View>
             <View style={{ flex: 1 }}>
@@ -917,12 +919,13 @@ const DynamicFormScreen = () => {
               ) : null}
               <Text style={histStyles.date}>{op.date ? formatDate(op.date) : ''}</Text>
             </View>
-            <Text style={[histStyles.amount, { color: op.type === 'income' ? COLOR.income : COLOR.expense }]}>
-              {op.type === 'income' ? '+' : '-'}{formatHnl(op.amount)}
+            <Text style={[histStyles.amount, { color: isIncome ? COLOR.income : COLOR.expense }]}>
+              {isIncome ? '+' : '-'}{formatHnl(op.amount)}
             </Text>
           </View>
         </View>
-      ))}
+        );
+      })}
 
       {histHasMore && (
         <TouchableOpacity style={histStyles.loadMore} onPress={() => loadHistorial(false)} disabled={histLoading}>

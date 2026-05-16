@@ -49,14 +49,19 @@ export default function SalesHistoryScreen() {
   const { stores, selectedStore, setSelectedStore } = useStore();
 
   const [shifts, setShifts]           = useState<ShiftRecord[]>([]);
+  const PAGE_SIZE = 20;
+
   const [loading, setLoading]         = useState(false);
   const [refreshing, setRefreshing]   = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore]         = useState(true);
+  const [page, setPage]               = useState(0);
   const [expanded, setExpanded]       = useState<Record<number, boolean>>({});
   const [summaries, setSummaries]     = useState<Record<number, ShiftSummary>>({});
   const [loadingSum, setLoadingSum]   = useState<Record<number, boolean>>({});
   const [error, setError]             = useState('');
 
-  // ── Cargar turnos del local ───────────────────────────────────────────────
+  // ── Cargar turnos del local (primera página) ─────────────────────────────
 
   const loadShifts = useCallback(async () => {
     if (!selectedStore) return;
@@ -64,15 +69,34 @@ export default function SalesHistoryScreen() {
     setError('');
     try {
       const res = await axios.get<ShiftRecord[]>(
-        `${API}/api/v2/stores/${selectedStore.id}/shifts`
+        `${API}/api/v2/stores/${selectedStore.id}/shifts?page=0&size=${PAGE_SIZE}`
       );
       setShifts(res.data);
+      setPage(0);
+      setHasMore(res.data.length === PAGE_SIZE);
       setExpanded({});
       setSummaries({});
     } catch {
       setError('No se pudo cargar el historial de turnos.');
     } finally { setLoading(false); }
   }, [selectedStore]);
+
+  // ── Cargar más turnos ─────────────────────────────────────────────────────
+
+  const loadMore = async () => {
+    if (!selectedStore || loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const nextPage = page + 1;
+      const res = await axios.get<ShiftRecord[]>(
+        `${API}/api/v2/stores/${selectedStore.id}/shifts?page=${nextPage}&size=${PAGE_SIZE}`
+      );
+      setShifts(prev => [...prev, ...res.data]);
+      setPage(nextPage);
+      setHasMore(res.data.length === PAGE_SIZE);
+    } catch { /* silencioso */ }
+    finally { setLoadingMore(false); }
+  };
 
   useEffect(() => { loadShifts(); }, [loadShifts]);
 
@@ -209,6 +233,23 @@ export default function SalesHistoryScreen() {
               </View>
             );
           })}
+
+          {/* ── Cargar más ── */}
+          {hasMore && (
+            <TouchableOpacity
+              style={styles.loadMoreBtn}
+              onPress={loadMore}
+              disabled={loadingMore}
+            >
+              {loadingMore
+                ? <ActivityIndicator size="small" color={COLOR.brand} />
+                : <Text style={styles.loadMoreText}>Cargar más turnos</Text>
+              }
+            </TouchableOpacity>
+          )}
+          {!hasMore && shifts.length > 0 && (
+            <Text style={styles.noMoreText}>— Fin del historial —</Text>
+          )}
         </ScrollView>
       )}
     </View>
@@ -233,6 +274,10 @@ const styles = StyleSheet.create({
   error:          { textAlign: 'center', color: COLOR.expense, marginTop: 40, fontWeight: FONT_WEIGHT.semibold as any },
 
   list:           { padding: SPACE.s4, gap: SPACE.s2 },
+
+  loadMoreBtn:    { margin: SPACE.s4, padding: SPACE.s3, borderRadius: RADIUS.r2, borderWidth: 1, borderColor: COLOR.border, alignItems: 'center', backgroundColor: COLOR.surface },
+  loadMoreText:   { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink2 },
+  noMoreText:     { textAlign: 'center', color: COLOR.inkDisabled, fontSize: FONT_SIZE.caption, padding: SPACE.s4 },
 
   shiftCard:      { backgroundColor: COLOR.surface, borderRadius: RADIUS.r3, borderWidth: 1, borderColor: COLOR.border, overflow: 'hidden', ...SHADOW.sm },
   shiftRow:       { flexDirection: 'row', alignItems: 'center', padding: SPACE.s4, gap: SPACE.s2 },

@@ -7,7 +7,6 @@ import { Button } from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import axios from 'axios';
 import { REACT_APP_API_URL } from '../config';
-import { useAuth } from '../context/AuthContext';
 import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW, BREAKPOINT } from '../theme';
 import { formatHnl, formatTime } from '../utils/format';
 
@@ -40,17 +39,15 @@ interface DashboardData {
 
 export default function DashboardScreen() {
   const API = REACT_APP_API_URL;
-  const { userName } = useAuth();
   const { width } = useWindowDimensions();
   const isDesktop = width >= BREAKPOINT.desktop;
 
-  const [data, setData]         = useState<DashboardData | null>(null);
-  const [loading, setLoading]   = useState(true);
+  const [data, setData]             = useState<DashboardData | null>(null);
+  const [loading, setLoading]       = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError]       = useState('');
+  const [error, setError]           = useState('');
 
   const load = useCallback(async () => {
-    setLoading(true);
     setError('');
     try {
       const res = await axios.get<DashboardData>(`${API}/api/v2/dashboard`);
@@ -61,6 +58,12 @@ export default function DashboardScreen() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Auto-refresh cada 30 segundos
+  useEffect(() => {
+    const interval = setInterval(load, 30_000);
+    return () => clearInterval(interval);
+  }, [load]);
 
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
@@ -75,11 +78,11 @@ export default function DashboardScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLOR.brand} />}
     >
 
-      {/* ── Saludo ── */}
+      {/* ── Encabezado ── */}
       <View style={styles.greetRow}>
         <View>
-          <Text style={styles.greetTitle}>Buen día, {userName} 👋</Text>
-          <Text style={styles.greetSub}>Resumen del sistema en tiempo real</Text>
+          <Text style={styles.greetTitle}>Resumen del sistema</Text>
+          <Text style={styles.greetSub}>Actualización automática cada 30 segundos</Text>
         </View>
         <TouchableOpacity
           style={styles.refreshBtn}

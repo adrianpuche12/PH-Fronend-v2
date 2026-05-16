@@ -105,9 +105,7 @@ export const exportToExcel = async (transactions: Transaction[], fileName?: stri
   try {
     const workbook = XLSX.utils.book_new();
     const formattedData = transactions.map(tx => {
-      const storeName = tx.store?.name ||
-        (tx.storeId === 1 ? 'Danli' :
-          tx.storeId === 2 ? 'El Paraiso' : 'No asignado');
+      const storeName = tx.store?.name || 'No asignado';
 
       const typeLabel = tx.type in TRANSACTION_LABELS ? TRANSACTION_LABELS[tx.type] : tx.type;
       const formattedAmount = tx.amount.toLocaleString('en-US', {
@@ -197,11 +195,11 @@ export const createImportTemplate = async () => {
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.aoa_to_sheet([IMPORT_TEMPLATE_HEADERS]);
     XLSX.utils.sheet_add_aoa(worksheet, [
-      ['Ingreso', '1,000.00', '2023-01-01', 'Ejemplo de ingreso', 'Danli', '', '', '', ''],
-      ['Egreso', '500.00', '2023-01-02', 'Ejemplo de egreso', 'El Paraiso', '', '', '', ''],
-      ['Cierre', '2,500.00', '2023-01-03', '', 'danli', '', '5', '2023-01-01', '2023-01-15'],
-      ['Proveedor', '1,200.00', '2023-01-04', '', 'El Paraiso', 'Pollo Rey', '', '', ''],
-      ['Salario', '800.00', '2023-01-05', 'Pago de salario', 'Danli', '', '', '', '']
+      ['Ingreso', '1,000.00', '2023-01-01', 'Ejemplo de ingreso', 'Nombre del Local', '', '', '', ''],
+      ['Egreso', '500.00', '2023-01-02', 'Ejemplo de egreso', 'Nombre del Local', '', '', '', ''],
+      ['Cierre', '2,500.00', '2023-01-03', '', 'Nombre del Local', '', '5', '2023-01-01', '2023-01-15'],
+      ['Proveedor', '1,200.00', '2023-01-04', '', 'Nombre del Local', 'Proveedor SA', '', '', ''],
+      ['Salario', '800.00', '2023-01-05', 'Pago de salario', 'Nombre del Local', '', '', '', '']
     ], { origin: 1 });
 
     // Ajustar el ancho de las columnas
@@ -271,7 +269,10 @@ interface ValidationResult {
 }
 
 // Función para validar los datos importados
-const validateImportData = (data: Record<string, unknown>[]): ValidationResult => {
+const validateImportData = (
+  data: Record<string, unknown>[],
+  activeStores: {id: number; name: string}[] = []
+): ValidationResult => {
   if (!data || data.length === 0) {
     return { valid: false, errors: ['El archivo está vacío o no tiene datos'] };
   }
@@ -332,10 +333,12 @@ const validateImportData = (data: Record<string, unknown>[]): ValidationResult =
     const localValue = row['Local'] as string | undefined;
     if (!localValue) {
       errors.push(`Fila ${rowNum}: El local está vacío`);
-    } else {
+    } else if (activeStores.length > 0) {
       const normalizedLocal = String(localValue).trim().toLowerCase();
-      if (normalizedLocal !== 'danli' && normalizedLocal !== 'el paraiso' && normalizedLocal !== 'paraiso') {
-        errors.push(`Fila ${rowNum}: El local "${localValue}" no es válido. Debe ser "Danli" o "El Paraiso"`);
+      const validNames = activeStores.map(s => s.name.toLowerCase());
+      if (!validNames.includes(normalizedLocal)) {
+        const storeList = activeStores.map(s => s.name).join(', ');
+        errors.push(`Fila ${rowNum}: El local "${localValue}" no es válido. Locales disponibles: ${storeList}`);
       }
     }
 
@@ -387,18 +390,14 @@ const validateImportData = (data: Record<string, unknown>[]): ValidationResult =
 };
 
 // Función para procesar transacciones para importación
-const processTransactionsForImport = (jsonData: Record<string, unknown>[]): Record<string, unknown>[] => {
+const processTransactionsForImport = (
+  jsonData: Record<string, unknown>[],
+  activeStores: {id: number; name: string}[] = []
+): Record<string, unknown>[] => {
   return jsonData.map((row) => {
-    let storeId: number;
-    const localName = String(row['Local'] || '').trim();
-    
-    if (localName.toLowerCase() === 'danli') {
-      storeId = 1;
-    } else if (localName.toLowerCase() === 'el paraiso' || localName.toLowerCase() === 'paraiso') {
-      storeId = 2;
-    } else {
-      storeId = 1;
-    }
+    const localName = String(row['Local'] || '').trim().toLowerCase();
+    const matchedStore = activeStores.find(s => s.name.toLowerCase() === localName);
+    const storeId = matchedStore?.id ?? activeStores[0]?.id ?? 1;
 
     const typeValue = row['Tipo'] as string || '';
     const typeKey = normalizeTransactionType(typeValue);
@@ -512,9 +511,13 @@ const processSpecialTransactions = async (
 };
 
 // Función para manejar datos Excel analizados
-const handleParsedExcelData = async (jsonData: Record<string, unknown>[], apiUrl: string) => {
-  const validation = validateImportData(jsonData);
-  
+const handleParsedExcelData = async (
+  jsonData: Record<string, unknown>[],
+  apiUrl: string,
+  activeStores: {id: number; name: string}[] = []
+) => {
+  const validation = validateImportData(jsonData, activeStores);
+
   if (!validation.valid) {
     return {
       success: false,
@@ -523,7 +526,7 @@ const handleParsedExcelData = async (jsonData: Record<string, unknown>[], apiUrl
     };
   }
 
-  const transactions = processTransactionsForImport(jsonData);
+  const transactions = processTransactionsForImport(jsonData, activeStores);
   const result = await processSpecialTransactions(transactions, apiUrl);
 
   if (result.imported === transactions.length) {
@@ -547,7 +550,10 @@ const handleParsedExcelData = async (jsonData: Record<string, unknown>[], apiUrl
 };
 
 // Función principal para importar desde Excel
-export const importFromExcel = async (apiUrl: string) => {
+export const importFromExcel = async (
+  apiUrl: string,
+  activeStores: {id: number; name: string}[] = []
+) => {
   try {
     if (Platform.OS === 'web') {
       return new Promise<{ success: boolean, message: string, details?: any }>((resolve) => {
@@ -594,7 +600,7 @@ export const importFromExcel = async (apiUrl: string) => {
                 const worksheet = workbook.Sheets[firstSheetName];
                 const jsonData = XLSX.utils.sheet_to_json(worksheet) as Record<string, unknown>[];
 
-                const result = await handleParsedExcelData(jsonData, apiUrl);
+                const result = await handleParsedExcelData(jsonData, apiUrl, activeStores);
                 resolve(result);
               } catch (error: any) {
                 resolve({
@@ -642,7 +648,7 @@ export const importFromExcel = async (apiUrl: string) => {
       const worksheet = workbook.Sheets[firstSheetName];
       const jsonData = XLSX.utils.sheet_to_json(worksheet) as Record<string, unknown>[];
 
-      return await handleParsedExcelData(jsonData, apiUrl);
+      return await handleParsedExcelData(jsonData, apiUrl, activeStores);
     }
   } catch (error: any) {
     console.error('Error en importación:', error);

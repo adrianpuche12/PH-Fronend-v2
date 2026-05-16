@@ -128,20 +128,13 @@ const SidebarDesktop = ({ active, onSelect }: {
             <Text style={styles.brandSub}>Sistema de gestión</Text>
           </View>
         )}
-        {sidebarCollapsed ? (
-          // Pin circular flotante cuando colapsado
-          <TouchableOpacity style={styles.togglePin} onPress={toggleSidebar} activeOpacity={0.8}>
-            <MaterialCommunityIcons name="chevron-right" size={16} color={COLOR.ink2} />
-          </TouchableOpacity>
-        ) : (
-          <IconButton
-            icon="chevron-left"
-            size={18}
-            iconColor={COLOR.ink2}
-            onPress={toggleSidebar}
-            style={{ margin: 0 }}
+        <TouchableOpacity style={styles.togglePin} onPress={toggleSidebar} activeOpacity={0.8}>
+          <MaterialCommunityIcons
+            name={sidebarCollapsed ? 'chevron-right' : 'chevron-left'}
+            size={16}
+            color={COLOR.ink2}
           />
-        )}
+        </TouchableOpacity>
       </View>
 
       {/* ── Menú ── */}

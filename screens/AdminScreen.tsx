@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -221,6 +221,7 @@ const CompactDateFilters = ({
   onExcelPress,
   showAdminExpenses,
   onToggleAdminExpenses,
+  activeStores,
 }: {
   startDate?: Date;
   endDate?: Date;
@@ -234,6 +235,7 @@ const CompactDateFilters = ({
   onExcelPress: () => void;
   showAdminExpenses: boolean;
   onToggleAdminExpenses: () => void;
+  activeStores: {id: number; name: string}[];
 }) => {
   const { width: screenWidth } = useWindowDimensions();
   const isLargeScreen = screenWidth >= 768;
@@ -287,19 +289,25 @@ const CompactDateFilters = ({
           />
         </View>
 
-        {/* Selector de tienda */}
-        <View style={isLargeScreen ? styles.storeFilterWeb : styles.storeFilterCompact}>
-          <SegmentedButtons
-            value={selectedStore?.toString() || 'all'}
-            onValueChange={(value) => setSelectedStore(value === 'all' ? null : Number(value))}
-            buttons={[
-              { value: 'all', label: 'Todos' },
-              { value: '1', label: 'Danli' },
-              { value: '2', label: 'El Paraiso' },
-            ]}
-            style={styles.storeSelectorCompact}
-          />
-        </View>
+        {/* Selector de tienda — dinámico desde /api/v2/stores/active */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ flexDirection: 'row', gap: 8, paddingHorizontal: 4, paddingVertical: 4 }}>
+          <TouchableOpacity
+            style={[storeChipStyle.chip, selectedStore === null && storeChipStyle.active]}
+            onPress={() => setSelectedStore(null)}
+          >
+            <Text style={[storeChipStyle.text, selectedStore === null && storeChipStyle.activeText]}>Todos</Text>
+          </TouchableOpacity>
+          {activeStores.map(s => (
+            <TouchableOpacity
+              key={s.id}
+              style={[storeChipStyle.chip, selectedStore === s.id && storeChipStyle.active]}
+              onPress={() => setSelectedStore(s.id)}
+            >
+              <Text style={[storeChipStyle.text, selectedStore === s.id && storeChipStyle.activeText]}>{s.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
 
         {/* Botones — grid 2 columnas para que no se corten en mobile */}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 4, marginTop: 4 }}>
@@ -378,6 +386,9 @@ const AdminScreen = () => {
   // Estado para gestión de Excel
   const [showExcelManager, setShowExcelManager] = useState(false);
 
+  // Estado para visor de comprobante
+  const [viewingImage, setViewingImage] = useState<string | null>(null);
+
   // Campos para editar
   const [newAmount, setNewAmount] = useState('');
   const [newDate, setNewDate] = useState('');
@@ -398,6 +409,15 @@ const AdminScreen = () => {
 
   const { width: screenWidth } = useWindowDimensions();
   const isLargeScreen = screenWidth >= 768;
+
+  // Stores activos — cargados dinámicamente desde /api/v2/stores/active
+  const [activeStores, setActiveStores] = useState<{id: number; name: string}[]>([]);
+  useEffect(() => {
+    fetch(`${REACT_APP_API_URL}/api/v2/stores/active`)
+      .then(r => r.json())
+      .then(setActiveStores)
+      .catch(() => {});
+  }, []);
 
   // Manejador para éxito de importación desde Excel
   const handleImportSuccess = () => {
@@ -811,15 +831,18 @@ const renderEditFields = () => {
   const storeSelector = (
     <View style={styles.modalInputContainer}>
       <Text style={styles.modalInputLabel}>Local:</Text>
-      <SegmentedButtons
-        value={newStoreId?.toString() ?? ''}
-        onValueChange={(value) => setNewStoreId(Number(value))}
-        buttons={[
-          { value: '1', label: 'Danli' },
-          { value: '2', label: 'El Paraiso' },
-        ]}
-        style={styles.storeSelector}
-      />
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ flexDirection: 'row', gap: 8, paddingVertical: 4 }}>
+        {activeStores.map(s => (
+          <TouchableOpacity
+            key={s.id}
+            style={[storeChipStyle.chip, newStoreId === s.id && storeChipStyle.active]}
+            onPress={() => setNewStoreId(s.id)}
+          >
+            <Text style={[storeChipStyle.text, newStoreId === s.id && storeChipStyle.activeText]}>{s.name}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
     </View>
   );
 
@@ -1181,12 +1204,12 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
       try { return format(parseISO(d), 'HH:mm'); } catch { return ''; }
     };
 
+    const storeIdResolved = item.store?.id ?? item.storeId;
     const storeName =
       item.store?.name ||
       item.storeName ||
-      (item.store?.id === 1 || item.storeId === 1 ? 'Danli'
-        : item.store?.id === 2 || item.storeId === 2 ? 'El Paraíso'
-        : '—');
+      activeStores.find(s => s.id === storeIdResolved)?.name ||
+      '—';
 
     const metaParts = [
       item.closingsCount ? `${item.closingsCount} cierres` : null,
@@ -1216,11 +1239,6 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
           {metaParts.length > 0 && (
             <Text style={styles.txMeta} numberOfLines={1}>{metaParts.join(' · ')}</Text>
           )}
-          {imageUri && (
-            <View style={{ marginTop: 4 }}>
-              <ImageViewer imageUri={imageUri} size="small" />
-            </View>
-          )}
         </View>
 
         {/* Local (solo desktop) */}
@@ -1244,6 +1262,15 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
 
         {/* Acciones */}
         <View style={{ flexDirection: 'row' }}>
+          {imageUri && (
+            <IconButton
+              icon="camera"
+              size={18}
+              iconColor={COLOR.income}
+              onPress={() => setViewingImage(imageUri)}
+              accessibilityLabel="Ver comprobante"
+            />
+          )}
           <IconButton icon="pencil" size={18} onPress={() => handleEdit(item)} iconColor={COLOR.info} />
           <IconButton icon="delete" size={18} onPress={() => handleDelete(item)} iconColor={COLOR.expense} />
         </View>
@@ -1370,6 +1397,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
                   onExcelPress={() => setShowExcelManager(true)}
                   showAdminExpenses={showAdminExpenses}
                   onToggleAdminExpenses={handleToggleAdminExpenses}
+                  activeStores={activeStores}
                 />
                 <BalanceCard transactions={filteredByType} />
               </View>
@@ -1434,6 +1462,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
                 onExcelPress={() => setShowExcelManager(true)}
                 showAdminExpenses={showAdminExpenses}
                 onToggleAdminExpenses={handleToggleAdminExpenses}
+                activeStores={activeStores}
               />
               <BalanceCard transactions={filteredByType} />
             </View>
@@ -1560,6 +1589,30 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
       >
         {snackbarMessage}
       </Snackbar>
+
+      {/* ── Modal visor de comprobante ── */}
+      <Modal
+        visible={!!viewingImage}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setViewingImage(null)}
+      >
+        <TouchableOpacity
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center' }}
+          activeOpacity={1}
+          onPress={() => setViewingImage(null)}
+        >
+          {viewingImage && (
+            <Image
+              source={{ uri: viewingImage }}
+              style={{ width: '90%', height: '75%', resizeMode: 'contain', borderRadius: 8 }}
+            />
+          )}
+          <Text style={{ color: '#fff', marginTop: 16, fontSize: 13, opacity: 0.7 }}>
+            Tocá para cerrar
+          </Text>
+        </TouchableOpacity>
+      </Modal>
       <DatePickerModal
         locale="es"
         mode="single"
@@ -2042,6 +2095,13 @@ const styles = StyleSheet.create({
   txAmtWrap:   { alignItems: 'flex-end', minWidth: 90 },
   txAmt:       { fontSize: FONT_SIZE.h3, fontWeight: FONT_WEIGHT.bold as any, letterSpacing: -0.3 },
   txAmtLabel:  { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.semibold as any },
+});
+
+const storeChipStyle = StyleSheet.create({
+  chip:       { paddingHorizontal: SPACE.s3, paddingVertical: 6, borderRadius: RADIUS.full, backgroundColor: COLOR.bg, borderWidth: 1, borderColor: COLOR.border },
+  active:     { backgroundColor: COLOR.brand, borderColor: COLOR.brandDark },
+  text:       { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink2 },
+  activeText: { color: COLOR.ink, fontWeight: FONT_WEIGHT.bold as any },
 });
 
 export default AdminScreen;

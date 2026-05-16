@@ -11,13 +11,15 @@ import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, BREAKPOINT } from '../the
 import POSScreen from './POSScreen';
 import InventoryScreen from './InventoryScreen';
 import SalesHistoryScreen from './SalesHistoryScreen';
+import DynamicFormScreen from './DynamicFormScreen';
 
-type UserScreen = 'sales' | 'inventory' | 'salesHistory';
+type UserScreen = 'sales' | 'inventory' | 'salesHistory' | 'operaciones';
 
 const MENU: { key: UserScreen; label: string; icon: string }[] = [
   { key: 'sales',        label: 'Ventas',           icon: 'cart-outline' },
   { key: 'inventory',    label: 'Inventario',        icon: 'package-variant' },
   { key: 'salesHistory', label: 'Mis ventas',        icon: 'receipt-text-outline' },
+  { key: 'operaciones',  label: 'Operaciones',       icon: 'clipboard-text-outline' },
 ];
 
 // ─── Sidebar del usuario ──────────────────────────────────────────────────────
@@ -119,6 +121,7 @@ const UserContent = () => {
         {active === 'sales'        && <POSScreen hideStoreSelector />}
         {active === 'inventory'    && <InventoryScreen />}
         {active === 'salesHistory' && <SalesHistoryScreen />}
+        {active === 'operaciones'  && <DynamicFormScreen />}
       </View>
 
       {!isDesktop && (

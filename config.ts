@@ -37,6 +37,9 @@ export const KEYCLOAK_REALM    = keycloakRealm;
 export const REACT_APP_API_URL = apiUrl;
 export const IMAGE_SERVER_URL  = imageUrl;
 
+// Cloudflare R2 — URL pública para ver comprobantes
+export const R2_PUBLIC_URL = 'https://pub-7e31005d201d4d34894758b2b1d00d9a.r2.dev';
+
 // Endpoint de token Keycloak (OpenID Connect directo)
 export const API_KEYCLOAK_ADAPTER_URL = `${keycloakUrl}/realms/${keycloakRealm}/protocol/openid-connect`;
 

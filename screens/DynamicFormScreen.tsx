@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -9,7 +9,8 @@ import {
   StatusBar,
   TouchableOpacity,
   Text,
-  Image
+  Image,
+  ActivityIndicator,
 } from 'react-native';
 import {
   TextInput,
@@ -25,6 +26,9 @@ import { format } from 'date-fns';
 import ResponsiveButton from '../components/ui/responsiveButton';
 import { REACT_APP_API_URL } from '../config';
 import StoreSelector from '../components/StoreSelector';
+import { useAuth } from '../context/AuthContext';
+import { formatHnl, formatDate } from '../utils/format';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { formatAmountInput, parseFormattedNumber } from '../utils/numberFormat';
 import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW } from '../theme';
 import { ImageService } from '../utils/ImageService';
@@ -34,11 +38,53 @@ const BACKEND_URL = `${REACT_APP_API_URL}/api/forms`;
 const TRANSACTIONS_URL = `${REACT_APP_API_URL}/transactions`;
 
 const DynamicFormScreen = () => {
+  const { userName } = useAuth();
+  const [activeTab, setActiveTab] = useState<'form' | 'historial'>('form');
+
+  // ── Historial de operaciones del usuario ────────────────────────────────────
+  interface OperacionHistorial {
+    id: number; type: string; amount: number; date: string;
+    description: string; storeName: string; username: string;
+  }
+  const [historial, setHistorial]         = useState<OperacionHistorial[]>([]);
+  const [histLoading, setHistLoading]     = useState(false);
+  const [histPage, setHistPage]           = useState(0);
+  const [histHasMore, setHistHasMore]     = useState(true);
+  const HIST_SIZE = 20;
+
+  const loadHistorial = useCallback(async (reset = false) => {
+    if (!userName || histLoading) return;
+    setHistLoading(true);
+    const page = reset ? 0 : histPage;
+    try {
+      const res = await fetch(
+        `${REACT_APP_API_URL}/api/operations/mine?username=${userName}&page=${page}&size=${HIST_SIZE}`
+      );
+      const data: OperacionHistorial[] = await res.json();
+      setHistorial(prev => reset ? data : [...prev, ...data]);
+      setHistPage(page + 1);
+      setHistHasMore(data.length === HIST_SIZE);
+    } catch { /* silencioso */ }
+    finally { setHistLoading(false); }
+  }, [userName, histPage, histLoading]);
+
+  useEffect(() => {
+    if (activeTab === 'historial' && historial.length === 0) {
+      loadHistorial(true);
+    }
+  }, [activeTab]);
+
   const getCurrentFormattedDate = () => format(new Date(), 'yyyy-MM-dd');
   const parseDate = (dateString: string) => {
     const [year, month, day] = dateString.split('-').map(Number);
     return new Date(year, month - 1, day, 12, 0, 0);
   };
+
+  interface StoreDistribucion {
+    storeId: number;
+    nombre: string;
+    porcentaje: number;
+  }
 
   interface FormDataType {
     type: string;
@@ -50,8 +96,6 @@ const DynamicFormScreen = () => {
     periodEnd: string;
     storeId: number;
     supplier: string;
-    porcentajeDanli: number;
-    porcentajeParaiso: number;
     imageUri: string;
     [key: string]: any;
   }
@@ -72,10 +116,11 @@ const DynamicFormScreen = () => {
     periodEnd: '',
     storeId: 0,
     supplier: '',
-    porcentajeDanli: 50,
-    porcentajeParaiso: 50,
     imageUri: '',
   });
+
+  // Locales activos (cargados desde /api/v2/stores/active)
+  const [distribuciones, setDistribuciones] = useState<StoreDistribucion[]>([]);
 
   const [selectedImage, setSelectedImage] = useState<SelectedImage | null>(null);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
@@ -98,11 +143,25 @@ const DynamicFormScreen = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    const today = new Date();
-    setFormData(prevData => ({
-      ...prevData,
-      date: getCurrentFormattedDate()
-    }));
+    setFormData(prevData => ({ ...prevData, date: getCurrentFormattedDate() }));
+  }, []);
+
+  // Cargar locales activos y distribuir el porcentaje en partes iguales
+  useEffect(() => {
+    const STORES_URL = `${REACT_APP_API_URL}/api/v2/stores/active`;
+    fetch(STORES_URL)
+      .then(r => r.json())
+      .then((stores: { id: number; name: string }[]) => {
+        if (!stores.length) return;
+        const base     = Math.floor(100 / stores.length);
+        const resto    = 100 - base * stores.length;
+        setDistribuciones(stores.map((s, i) => ({
+          storeId:    s.id,
+          nombre:     s.name,
+          porcentaje: i === 0 ? base + resto : base,
+        })));
+      })
+      .catch(() => {});
   }, []);
 
   // Establecer tipo automáticamente para gasto-admin
@@ -136,7 +195,6 @@ const DynamicFormScreen = () => {
 
   const clearData = () => {
     const currentDate = getCurrentFormattedDate();
-
     handleInputChange('amount', '');
     handleInputChange('date', currentDate);
     handleInputChange('description', '');
@@ -146,13 +204,16 @@ const DynamicFormScreen = () => {
     handleInputChange('periodEnd', '');
     handleInputChange('storeId', 0);
     handleInputChange('supplier', '');
-    handleInputChange('porcentajeDanli', 50);
-    handleInputChange('porcentajeParaiso', 50);
     setSelectedImage(null);
-    setDateRange({
-      startDate: undefined,
-      endDate: undefined,
-    });
+    setDateRange({ startDate: undefined, endDate: undefined });
+    // Resetear porcentajes a partes iguales
+    if (distribuciones.length > 0) {
+      const base  = Math.floor(100 / distribuciones.length);
+      const resto = 100 - base * distribuciones.length;
+      setDistribuciones(prev => prev.map((d, i) => ({
+        ...d, porcentaje: i === 0 ? base + resto : base,
+      })));
+    }
   };
 
   const handleInputChange = (field: string, value: any) => {
@@ -234,10 +295,8 @@ const DynamicFormScreen = () => {
       if (!formData.amount || parseFloat(formData.amount.replace(/,/g, '')) <= 0) newErrors.amount = true;
       if (!formData.description.trim()) newErrors.description = true;
       if (!formData.date) newErrors.date = true;
-      
-      if ((formData.porcentajeDanli + formData.porcentajeParaiso) !== 100) {
-        newErrors.porcentajes = true;
-      }
+      const totalPct = distribuciones.reduce((s, d) => s + d.porcentaje, 0);
+      if (totalPct !== 100) newErrors.porcentajes = true;
     }
 
     setErrors(newErrors);
@@ -297,8 +356,10 @@ const DynamicFormScreen = () => {
               monto: amount,
               descripcion: formData.description.trim(),
               tipo: 'expense',
-              porcentajeDanli: formData.porcentajeDanli,
-              porcentajeParaiso: formData.porcentajeParaiso,
+              distribuciones: distribuciones.map(d => ({
+                storeId:    d.storeId,
+                porcentaje: d.porcentaje,
+              })),
               imageUri: imageUri,
             }
           : {
@@ -459,190 +520,135 @@ const DynamicFormScreen = () => {
     </>
   );
 
-  const renderGastoAdminForm = () => (
-    <>     
-      
+  const updatePorcentaje = (storeId: number, valor: number) => {
+    setDistribuciones(prev => prev.map(d =>
+      d.storeId === storeId ? { ...d, porcentaje: Math.max(0, Math.min(100, valor)) } : d
+    ));
+  };
 
-      <View style={styles.inputContainer}>
-        <TextInput
-          label="Monto Total"
-          value={formData.amount}
-          onChangeText={(value) => handleInputChange('amount', value)}
-          keyboardType="decimal-pad"
-          mode="outlined"
-          style={styles.input}
-          error={errors.amount}
-          left={<TextInput.Icon icon="cash-multiple" color={COLOR.brandDark} />}
-          outlineColor={COLOR.border2}
-          activeOutlineColor={COLOR.brand}
-          theme={{ colors: { primary: COLOR.brand } }}
-          placeholder="Monto a dividir entre locales"
-        />
-        {errors.amount && (
-          <HelperText type="error" visible={true}>
-            El monto debe ser mayor a 0
-          </HelperText>
-        )}
-      </View>
+  const dividirIgual = () => {
+    if (!distribuciones.length) return;
+    const base  = Math.floor(100 / distribuciones.length);
+    const resto = 100 - base * distribuciones.length;
+    setDistribuciones(prev => prev.map((d, i) => ({ ...d, porcentaje: i === 0 ? base + resto : base })));
+  };
 
-      <View style={styles.inputContainer}>
-        <TextInput
-          label="Fecha"
-          value={formData.date}
-          mode="outlined"
-          onFocus={() => {
-            setSelectedDateField('date');
-            setDatePickerVisible(true);
-          }}
-          style={styles.input}
-          error={errors.date}
-          left={<TextInput.Icon icon="calendar" color={COLOR.brandDark} />}
-          outlineColor={COLOR.border2}
-          activeOutlineColor={COLOR.brand}
-          theme={{ colors: { primary: COLOR.brand } }}
-        />
-      </View>
+  const renderGastoAdminForm = () => {
+    const montoNum   = parseFloat((formData.amount || '0').replace(/,/g, '')) || 0;
+    const totalPct   = distribuciones.reduce((s, d) => s + d.porcentaje, 0);
+    const pctValidos = totalPct === 100;
 
-      <View style={styles.inputContainer}>
-        <TextInput
-          label="Descripción"
-          value={formData.description}
-          onChangeText={(value) => handleInputChange('description', value)}
-          mode="outlined"
-          style={styles.input}
-          error={errors.description}
-          left={<TextInput.Icon icon="text" color={COLOR.brandDark} />}
-          outlineColor={COLOR.border2}
-          activeOutlineColor={COLOR.brand}
-          theme={{ colors: { primary: COLOR.brand } }}
-          placeholder="Descripción del gasto administrativo"
-        />
-        {errors.description && (
-          <HelperText type="error" visible={true}>
-            La descripción es obligatoria
-          </HelperText>
-        )}
-      </View>
+    return (
+      <>
+        <View style={styles.inputContainer}>
+          <TextInput
+            label="Monto total"
+            value={formData.amount}
+            onChangeText={(v) => handleInputChange('amount', v)}
+            keyboardType="decimal-pad"
+            mode="outlined"
+            style={styles.input}
+            error={errors.amount}
+            left={<TextInput.Icon icon="cash-multiple" color={COLOR.brandDark} />}
+            outlineColor={COLOR.border2}
+            activeOutlineColor={COLOR.brand}
+            theme={{ colors: { primary: COLOR.brand } }}
+            placeholder="Monto a dividir entre locales"
+          />
+          {errors.amount && <HelperText type="error" visible>El monto debe ser mayor a 0</HelperText>}
+        </View>
 
-      <View style={styles.divisionContainer}>
-        <Title style={styles.divisionTitle}>División entre Locales</Title>
+        <View style={styles.inputContainer}>
+          <TextInput
+            label="Fecha"
+            value={formData.date}
+            mode="outlined"
+            onFocus={() => { setSelectedDateField('date'); setDatePickerVisible(true); }}
+            style={styles.input}
+            error={errors.date}
+            left={<TextInput.Icon icon="calendar" color={COLOR.brandDark} />}
+            outlineColor={COLOR.border2}
+            activeOutlineColor={COLOR.brand}
+            theme={{ colors: { primary: COLOR.brand } }}
+          />
+        </View>
 
-        {formData.amount && parseFloat(formData.amount.replace(/,/g, '')) > 0 && (
-          <Text style={styles.totalAmount}>
-            Monto a dividir: ${parseFloat(formData.amount.replace(/,/g, '')).toFixed(2)}
-          </Text>
-        )}
+        <View style={styles.inputContainer}>
+          <TextInput
+            label="Descripción"
+            value={formData.description}
+            onChangeText={(v) => handleInputChange('description', v)}
+            mode="outlined"
+            style={styles.input}
+            error={errors.description}
+            left={<TextInput.Icon icon="text" color={COLOR.brandDark} />}
+            outlineColor={COLOR.border2}
+            activeOutlineColor={COLOR.brand}
+            theme={{ colors: { primary: COLOR.brand } }}
+          />
+          {errors.description && <HelperText type="error" visible>La descripción es obligatoria</HelperText>}
+        </View>
 
-        <View style={styles.quickButtonsContainer}>
-          <Text style={styles.quickButtonsLabel}>Divisiones rápidas:</Text>
-          <View style={styles.quickButtons}>
-            {[
-              { danli: 100, paraiso: 0, label: '100/0' },
-              { danli: 70, paraiso: 30, label: '70/30' },
-              { danli: 60, paraiso: 40, label: '60/40' },
-              { danli: 50, paraiso: 50, label: '50/50' },
-              { danli: 40, paraiso: 60, label: '40/60' },
-              { danli: 30, paraiso: 70, label: '30/70' },
-              { danli: 0, paraiso: 100, label: '0/100' }
-            ].map(preset => (
-              <TouchableOpacity
-                key={preset.label}
-                onPress={() => {
-                  handleInputChange('porcentajeDanli', preset.danli);
-                  handleInputChange('porcentajeParaiso', preset.paraiso);
-                }}
-                style={styles.quickButton}
-              >
-                <Text style={styles.quickButtonText}>{preset.label}</Text>
-              </TouchableOpacity>
+        {/* División dinámica por local */}
+        <View style={styles.divisionContainer}>
+          <Title style={styles.divisionTitle}>División entre locales</Title>
+
+          <TouchableOpacity onPress={dividirIgual} style={styles.quickButton}>
+            <Text style={styles.quickButtonText}>Dividir en partes iguales</Text>
+          </TouchableOpacity>
+
+          {distribuciones.map(d => (
+            <View key={d.storeId} style={styles.localCard}>
+              <Text style={styles.localName}>{d.nombre}</Text>
+              <View style={styles.percentageContainer}>
+                <TextInput
+                  mode="outlined"
+                  value={d.porcentaje.toString()}
+                  onChangeText={(v) => updatePorcentaje(d.storeId, parseInt(v) || 0)}
+                  keyboardType="numeric"
+                  style={styles.percentageInput}
+                  maxLength={3}
+                  theme={{ colors: { primary: COLOR.brand } }}
+                />
+                <Text style={styles.percentageSymbol}>%</Text>
+              </View>
+              {montoNum > 0 && (
+                <Text style={styles.localAmount}>
+                  L {((montoNum * d.porcentaje) / 100).toFixed(2)}
+                </Text>
+              )}
+            </View>
+          ))}
+
+          <View style={styles.validationContainer}>
+            {pctValidos ? (
+              <Text style={styles.validationSuccess}>Porcentajes válidos: {totalPct}%</Text>
+            ) : (
+              <Text style={styles.validationError}>
+                Los porcentajes deben sumar 100% (actual: {totalPct}%)
+              </Text>
+            )}
+          </View>
+        </View>
+
+        {/* Vista previa */}
+        {montoNum > 0 && formData.description && pctValidos && (
+          <View style={styles.summaryContainer}>
+            <Title style={styles.summaryTitle}>Vista previa</Title>
+            <Text style={styles.summaryText}>
+              <Text style={styles.summaryBold}>Se crearán {distribuciones.length} transacciones:</Text>
+            </Text>
+            {distribuciones.map(d => (
+              <Text key={d.storeId} style={styles.summaryText}>
+                • {d.nombre} ({d.porcentaje}%): L {((montoNum * d.porcentaje) / 100).toFixed(2)}
+              </Text>
             ))}
           </View>
-        </View>
-
-        <View style={styles.localesContainer}>
-          <View style={styles.localCard}>
-            <Text style={styles.localName}>Danli</Text>
-            <View style={styles.percentageContainer}>
-              <TextInput
-                mode="outlined"
-                value={formData.porcentajeDanli.toString()}
-                onChangeText={(value) => {
-                  const numValue = parseInt(value) || 0;
-                  const validValue = Math.max(0, Math.min(100, numValue));
-                  handleInputChange('porcentajeDanli', validValue);
-                  handleInputChange('porcentajeParaiso', Math.max(0, 100 - validValue));
-                }}
-                keyboardType="numeric"
-                style={styles.percentageInput}
-                maxLength={3}
-                theme={{ colors: { primary: COLOR.brand } }}
-              />
-              <Text style={styles.percentageSymbol}>%</Text>
-            </View>
-            {formData.amount && (
-              <Text style={styles.localAmount}>
-                ${((parseFloat(formData.amount.replace(/,/g, '')) || 0) * formData.porcentajeDanli / 100).toFixed(2)}
-              </Text>
-            )}
-          </View>
-
-          <View style={styles.localCard}>
-            <Text style={styles.localName}>El Paraíso</Text>
-            <View style={styles.percentageContainer}>
-              <TextInput
-                mode="outlined"
-                value={formData.porcentajeParaiso.toString()}
-                onChangeText={(value) => {
-                  const numValue = parseInt(value) || 0;
-                  const validValue = Math.max(0, Math.min(100, numValue));
-                  handleInputChange('porcentajeParaiso', validValue);
-                  handleInputChange('porcentajeDanli', Math.max(0, 100 - validValue));
-                }}
-                keyboardType="numeric"
-                style={styles.percentageInput}
-                maxLength={3}
-                theme={{ colors: { primary: COLOR.brand } }}
-              />
-              <Text style={styles.percentageSymbol}>%</Text>
-            </View>
-            {formData.amount && (
-              <Text style={styles.localAmount}>
-                ${((parseFloat(formData.amount.replace(/,/g, '')) || 0) * formData.porcentajeParaiso / 100).toFixed(2)}
-              </Text>
-            )}
-          </View>
-        </View>
-
-        <View style={styles.validationContainer}>
-          {(formData.porcentajeDanli + formData.porcentajeParaiso) === 100 ? (
-            <Text style={styles.validationSuccess}>
-              ✅ Porcentajes válidos: {(formData.porcentajeDanli + formData.porcentajeParaiso)}%
-            </Text>
-          ) : (
-            <Text style={styles.validationError}>
-              ❌ Los porcentajes deben sumar 100% (actual: {(formData.porcentajeDanli + formData.porcentajeParaiso)}%)
-            </Text>
-          )}
-        </View>
-      </View>
-
-      {formData.amount && formData.description && (formData.porcentajeDanli + formData.porcentajeParaiso) === 100 && (
-        <View style={styles.summaryContainer}>
-          <Title style={styles.summaryTitle}>Vista Previa</Title>
-          <Text style={styles.summaryText}>
-            <Text style={styles.summaryBold}>Se crearán 2 transacciones:</Text>
-          </Text>
-          <Text style={styles.summaryText}>
-            • Danli ({formData.porcentajeDanli}%): ${((parseFloat(formData.amount.replace(/,/g, '')) || 0) * formData.porcentajeDanli / 100).toFixed(2)}
-          </Text>
-          <Text style={styles.summaryText}>
-            • El Paraíso ({formData.porcentajeParaiso}%): ${((parseFloat(formData.amount.replace(/,/g, '')) || 0) * formData.porcentajeParaiso / 100).toFixed(2)}
-          </Text>
-        </View>
-      )}
-      {renderImagePicker()}
-    </>
-  );
+        )}
+        {renderImagePicker()}
+      </>
+    );
+  };
 
   const renderFormFields = () => {
     switch (formType) {
@@ -863,6 +869,75 @@ const DynamicFormScreen = () => {
     }
   };
 
+  const TYPE_ICON: Record<string, string> = {
+    CLOSING:  'bank-transfer',
+    SUPPLIER: 'truck-delivery-outline',
+    SALARY:   'account-cash-outline',
+    income:   'arrow-down-circle-outline',
+    expense:  'arrow-up-circle-outline',
+    default:  'file-document-outline',
+  };
+
+  const TYPE_LABEL: Record<string, string> = {
+    CLOSING:  'Cierre',
+    SUPPLIER: 'Proveedor',
+    SALARY:   'Salario',
+    income:   'Ingreso',
+    expense:  'Egreso',
+  };
+
+  const renderHistorial = () => (
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: SPACE.s4, gap: SPACE.s2 }}>
+      {historial.length === 0 && !histLoading && (
+        <View style={{ alignItems: 'center', paddingVertical: SPACE.s8 }}>
+          <MaterialCommunityIcons name="clipboard-text-outline" size={40} color={COLOR.inkDisabled} />
+          <Text style={{ color: COLOR.inkMute, marginTop: SPACE.s2, fontSize: FONT_SIZE.body }}>
+            No tenés operaciones registradas aún.
+          </Text>
+        </View>
+      )}
+
+      {historial.map(op => (
+        <View key={`${op.type}-${op.id}`} style={histStyles.card}>
+          <View style={histStyles.row}>
+            <View style={histStyles.iconWrap}>
+              <MaterialCommunityIcons
+                name={TYPE_ICON[op.type] ?? TYPE_ICON.default}
+                size={20}
+                color={op.type === 'income' ? COLOR.income : COLOR.expense}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={histStyles.label}>
+                {TYPE_LABEL[op.type] ?? op.type}
+                {op.storeName ? ` · ${op.storeName}` : ''}
+              </Text>
+              {op.description ? (
+                <Text style={histStyles.desc} numberOfLines={1}>{op.description}</Text>
+              ) : null}
+              <Text style={histStyles.date}>{op.date ? formatDate(op.date) : ''}</Text>
+            </View>
+            <Text style={[histStyles.amount, { color: op.type === 'income' ? COLOR.income : COLOR.expense }]}>
+              {op.type === 'income' ? '+' : '-'}{formatHnl(op.amount)}
+            </Text>
+          </View>
+        </View>
+      ))}
+
+      {histHasMore && (
+        <TouchableOpacity style={histStyles.loadMore} onPress={() => loadHistorial(false)} disabled={histLoading}>
+          {histLoading
+            ? <ActivityIndicator size="small" color={COLOR.brand} />
+            : <Text style={histStyles.loadMoreText}>Cargar más</Text>
+          }
+        </TouchableOpacity>
+      )}
+      {!histHasMore && historial.length > 0 && (
+        <Text style={histStyles.endText}>— Fin del historial —</Text>
+      )}
+    </ScrollView>
+  );
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -871,16 +946,28 @@ const DynamicFormScreen = () => {
       <StatusBar barStyle="dark-content" backgroundColor={COLOR.brandTint} />
 
       <View style={styles.topSection}>
-        <View style={styles.logoContainer}>
-          <Avatar.Image
-            size={100}
-            source={require('../assets/images/logo_proyecto_Humberto.jpg')}
-            style={styles.logo}
-          />
-        </View>
-        <Title style={styles.welcomeText}>Administración de Operaciones</Title>
+        <Title style={styles.welcomeText}>Operaciones</Title>
       </View>
 
+      {/* ── Tabs ── */}
+      <View style={tabStyles.bar}>
+        <TouchableOpacity
+          style={[tabStyles.tab, activeTab === 'form' && tabStyles.tabActive]}
+          onPress={() => setActiveTab('form')}
+        >
+          <MaterialCommunityIcons name="plus-circle-outline" size={16} color={activeTab === 'form' ? COLOR.brandDeep : COLOR.ink2} />
+          <Text style={[tabStyles.tabText, activeTab === 'form' && tabStyles.tabTextActive]}>Nueva operación</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[tabStyles.tab, activeTab === 'historial' && tabStyles.tabActive]}
+          onPress={() => setActiveTab('historial')}
+        >
+          <MaterialCommunityIcons name="history" size={16} color={activeTab === 'historial' ? COLOR.brandDeep : COLOR.ink2} />
+          <Text style={[tabStyles.tabText, activeTab === 'historial' && tabStyles.tabTextActive]}>Mi historial</Text>
+        </TouchableOpacity>
+      </View>
+
+      {activeTab === 'historial' ? renderHistorial() : (
       <ScrollView style={styles.scrollView}>
         <Card style={styles.card}>
           <Card.Content>
@@ -961,6 +1048,7 @@ const DynamicFormScreen = () => {
           </Card.Content>
         </Card>
       </ScrollView>
+      )}
 
       <DatePickerModal
         mode="single"
@@ -1009,11 +1097,8 @@ const styles = StyleSheet.create({
   },
   topSection: {
     backgroundColor: COLOR.brandTint,
-    paddingVertical: 30,
+    paddingVertical: SPACE.s3,
     alignItems: 'center',
-    borderBottomLeftRadius: RADIUS.r5,
-    borderBottomRightRadius: RADIUS.r5,
-    ...SHADOW.md,
   },
   logoContainer: {
     alignItems: 'center',
@@ -1033,7 +1118,6 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    marginTop: -25,
   },
   card: {
     marginHorizontal: SPACE.s5,
@@ -1265,6 +1349,27 @@ const styles = StyleSheet.create({
   summaryBold: {
     fontWeight: FONT_WEIGHT.bold as any,
   },
+});
+
+const tabStyles = StyleSheet.create({
+  bar:          { flexDirection: 'row', backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border },
+  tab:          { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACE.s1, paddingVertical: SPACE.s3 },
+  tabActive:    { borderBottomWidth: 2, borderBottomColor: COLOR.brand },
+  tabText:      { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.medium as any, color: COLOR.ink2 },
+  tabTextActive:{ color: COLOR.brandDeep, fontWeight: FONT_WEIGHT.bold as any },
+});
+
+const histStyles = StyleSheet.create({
+  card:         { backgroundColor: COLOR.surface, borderRadius: RADIUS.r3, borderWidth: 1, borderColor: COLOR.border, padding: SPACE.s3 },
+  row:          { flexDirection: 'row', alignItems: 'center', gap: SPACE.s3 },
+  iconWrap:     { width: 36, height: 36, borderRadius: RADIUS.full, backgroundColor: COLOR.bgAlt, justifyContent: 'center', alignItems: 'center' },
+  label:        { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
+  desc:         { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, marginTop: 1 },
+  date:         { fontSize: FONT_SIZE.caption, color: COLOR.inkDisabled, marginTop: 1 },
+  amount:       { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any },
+  loadMore:     { padding: SPACE.s3, borderRadius: RADIUS.r2, borderWidth: 1, borderColor: COLOR.border, alignItems: 'center', backgroundColor: COLOR.surface },
+  loadMoreText: { fontSize: FONT_SIZE.label, color: COLOR.ink2, fontWeight: FONT_WEIGHT.semibold as any },
+  endText:      { textAlign: 'center', color: COLOR.inkDisabled, fontSize: FONT_SIZE.caption, paddingVertical: SPACE.s3 },
 });
 
 export default DynamicFormScreen;

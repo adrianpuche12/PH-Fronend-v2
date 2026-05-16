@@ -386,6 +386,9 @@ const AdminScreen = () => {
   // Estado para gestión de Excel
   const [showExcelManager, setShowExcelManager] = useState(false);
 
+  // Estado para visor de comprobante
+  const [viewingImage, setViewingImage] = useState<string | null>(null);
+
   // Campos para editar
   const [newAmount, setNewAmount] = useState('');
   const [newDate, setNewDate] = useState('');
@@ -828,15 +831,18 @@ const renderEditFields = () => {
   const storeSelector = (
     <View style={styles.modalInputContainer}>
       <Text style={styles.modalInputLabel}>Local:</Text>
-      <SegmentedButtons
-        value={newStoreId?.toString() ?? ''}
-        onValueChange={(value) => setNewStoreId(Number(value))}
-        buttons={[
-          { value: '1', label: 'Danli' },
-          { value: '2', label: 'El Paraiso' },
-        ]}
-        style={styles.storeSelector}
-      />
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ flexDirection: 'row', gap: 8, paddingVertical: 4 }}>
+        {activeStores.map(s => (
+          <TouchableOpacity
+            key={s.id}
+            style={[storeChipStyle.chip, newStoreId === s.id && storeChipStyle.active]}
+            onPress={() => setNewStoreId(s.id)}
+          >
+            <Text style={[storeChipStyle.text, newStoreId === s.id && storeChipStyle.activeText]}>{s.name}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
     </View>
   );
 
@@ -1198,12 +1204,12 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
       try { return format(parseISO(d), 'HH:mm'); } catch { return ''; }
     };
 
+    const storeIdResolved = item.store?.id ?? item.storeId;
     const storeName =
       item.store?.name ||
       item.storeName ||
-      (item.store?.id === 1 || item.storeId === 1 ? 'Danli'
-        : item.store?.id === 2 || item.storeId === 2 ? 'El Paraíso'
-        : '—');
+      activeStores.find(s => s.id === storeIdResolved)?.name ||
+      '—';
 
     const metaParts = [
       item.closingsCount ? `${item.closingsCount} cierres` : null,
@@ -1233,11 +1239,6 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
           {metaParts.length > 0 && (
             <Text style={styles.txMeta} numberOfLines={1}>{metaParts.join(' · ')}</Text>
           )}
-          {imageUri && (
-            <View style={{ marginTop: 4 }}>
-              <ImageViewer imageUri={imageUri} size="small" />
-            </View>
-          )}
         </View>
 
         {/* Local (solo desktop) */}
@@ -1261,6 +1262,15 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
 
         {/* Acciones */}
         <View style={{ flexDirection: 'row' }}>
+          {imageUri && (
+            <IconButton
+              icon="camera"
+              size={18}
+              iconColor={COLOR.income}
+              onPress={() => setViewingImage(imageUri)}
+              accessibilityLabel="Ver comprobante"
+            />
+          )}
           <IconButton icon="pencil" size={18} onPress={() => handleEdit(item)} iconColor={COLOR.info} />
           <IconButton icon="delete" size={18} onPress={() => handleDelete(item)} iconColor={COLOR.expense} />
         </View>
@@ -1579,6 +1589,30 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
       >
         {snackbarMessage}
       </Snackbar>
+
+      {/* ── Modal visor de comprobante ── */}
+      <Modal
+        visible={!!viewingImage}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setViewingImage(null)}
+      >
+        <TouchableOpacity
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center' }}
+          activeOpacity={1}
+          onPress={() => setViewingImage(null)}
+        >
+          {viewingImage && (
+            <Image
+              source={{ uri: viewingImage }}
+              style={{ width: '90%', height: '75%', resizeMode: 'contain', borderRadius: 8 }}
+            />
+          )}
+          <Text style={{ color: '#fff', marginTop: 16, fontSize: 13, opacity: 0.7 }}>
+            Tocá para cerrar
+          </Text>
+        </TouchableOpacity>
+      </Modal>
       <DatePickerModal
         locale="es"
         mode="single"

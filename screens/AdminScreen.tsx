@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -221,6 +221,7 @@ const CompactDateFilters = ({
   onExcelPress,
   showAdminExpenses,
   onToggleAdminExpenses,
+  activeStores,
 }: {
   startDate?: Date;
   endDate?: Date;
@@ -234,6 +235,7 @@ const CompactDateFilters = ({
   onExcelPress: () => void;
   showAdminExpenses: boolean;
   onToggleAdminExpenses: () => void;
+  activeStores: {id: number; name: string}[];
 }) => {
   const { width: screenWidth } = useWindowDimensions();
   const isLargeScreen = screenWidth >= 768;
@@ -287,19 +289,25 @@ const CompactDateFilters = ({
           />
         </View>
 
-        {/* Selector de tienda */}
-        <View style={isLargeScreen ? styles.storeFilterWeb : styles.storeFilterCompact}>
-          <SegmentedButtons
-            value={selectedStore?.toString() || 'all'}
-            onValueChange={(value) => setSelectedStore(value === 'all' ? null : Number(value))}
-            buttons={[
-              { value: 'all', label: 'Todos' },
-              { value: '1', label: 'Danli' },
-              { value: '2', label: 'El Paraiso' },
-            ]}
-            style={styles.storeSelectorCompact}
-          />
-        </View>
+        {/* Selector de tienda — dinámico desde /api/v2/stores/active */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ flexDirection: 'row', gap: 8, paddingHorizontal: 4, paddingVertical: 4 }}>
+          <TouchableOpacity
+            style={[storeChipStyle.chip, selectedStore === null && storeChipStyle.active]}
+            onPress={() => setSelectedStore(null)}
+          >
+            <Text style={[storeChipStyle.text, selectedStore === null && storeChipStyle.activeText]}>Todos</Text>
+          </TouchableOpacity>
+          {activeStores.map(s => (
+            <TouchableOpacity
+              key={s.id}
+              style={[storeChipStyle.chip, selectedStore === s.id && storeChipStyle.active]}
+              onPress={() => setSelectedStore(s.id)}
+            >
+              <Text style={[storeChipStyle.text, selectedStore === s.id && storeChipStyle.activeText]}>{s.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
 
         {/* Botones — grid 2 columnas para que no se corten en mobile */}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 4, marginTop: 4 }}>
@@ -398,6 +406,15 @@ const AdminScreen = () => {
 
   const { width: screenWidth } = useWindowDimensions();
   const isLargeScreen = screenWidth >= 768;
+
+  // Stores activos — cargados dinámicamente desde /api/v2/stores/active
+  const [activeStores, setActiveStores] = useState<{id: number; name: string}[]>([]);
+  useEffect(() => {
+    fetch(`${REACT_APP_API_URL}/api/v2/stores/active`)
+      .then(r => r.json())
+      .then(setActiveStores)
+      .catch(() => {});
+  }, []);
 
   // Manejador para éxito de importación desde Excel
   const handleImportSuccess = () => {
@@ -1370,6 +1387,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
                   onExcelPress={() => setShowExcelManager(true)}
                   showAdminExpenses={showAdminExpenses}
                   onToggleAdminExpenses={handleToggleAdminExpenses}
+                  activeStores={activeStores}
                 />
                 <BalanceCard transactions={filteredByType} />
               </View>
@@ -1434,6 +1452,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
                 onExcelPress={() => setShowExcelManager(true)}
                 showAdminExpenses={showAdminExpenses}
                 onToggleAdminExpenses={handleToggleAdminExpenses}
+                activeStores={activeStores}
               />
               <BalanceCard transactions={filteredByType} />
             </View>
@@ -2042,6 +2061,13 @@ const styles = StyleSheet.create({
   txAmtWrap:   { alignItems: 'flex-end', minWidth: 90 },
   txAmt:       { fontSize: FONT_SIZE.h3, fontWeight: FONT_WEIGHT.bold as any, letterSpacing: -0.3 },
   txAmtLabel:  { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.semibold as any },
+});
+
+const storeChipStyle = StyleSheet.create({
+  chip:       { paddingHorizontal: SPACE.s3, paddingVertical: 6, borderRadius: RADIUS.full, backgroundColor: COLOR.bg, borderWidth: 1, borderColor: COLOR.border },
+  active:     { backgroundColor: COLOR.brand, borderColor: COLOR.brandDark },
+  text:       { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink2 },
+  activeText: { color: COLOR.ink, fontWeight: FONT_WEIGHT.bold as any },
 });
 
 export default AdminScreen;

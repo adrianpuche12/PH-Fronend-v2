@@ -9,7 +9,8 @@ import {
   StatusBar,
   TouchableOpacity,
   Text,
-  Image
+  Image,
+  ActivityIndicator,
 } from 'react-native';
 import {
   TextInput,
@@ -25,6 +26,9 @@ import { format } from 'date-fns';
 import ResponsiveButton from '../components/ui/responsiveButton';
 import { REACT_APP_API_URL } from '../config';
 import StoreSelector from '../components/StoreSelector';
+import { useAuth } from '../context/AuthContext';
+import { formatHnl, formatDate } from '../utils/format';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { formatAmountInput, parseFormattedNumber } from '../utils/numberFormat';
 import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW } from '../theme';
 import { ImageService } from '../utils/ImageService';
@@ -34,6 +38,42 @@ const BACKEND_URL = `${REACT_APP_API_URL}/api/forms`;
 const TRANSACTIONS_URL = `${REACT_APP_API_URL}/transactions`;
 
 const DynamicFormScreen = () => {
+  const { userName } = useAuth();
+  const [activeTab, setActiveTab] = useState<'form' | 'historial'>('form');
+
+  // ── Historial de operaciones del usuario ────────────────────────────────────
+  interface OperacionHistorial {
+    id: number; type: string; amount: number; date: string;
+    description: string; storeName: string; username: string;
+  }
+  const [historial, setHistorial]         = useState<OperacionHistorial[]>([]);
+  const [histLoading, setHistLoading]     = useState(false);
+  const [histPage, setHistPage]           = useState(0);
+  const [histHasMore, setHistHasMore]     = useState(true);
+  const HIST_SIZE = 20;
+
+  const loadHistorial = useCallback(async (reset = false) => {
+    if (!userName || histLoading) return;
+    setHistLoading(true);
+    const page = reset ? 0 : histPage;
+    try {
+      const res = await fetch(
+        `${REACT_APP_API_URL}/api/operations/mine?username=${userName}&page=${page}&size=${HIST_SIZE}`
+      );
+      const data: OperacionHistorial[] = await res.json();
+      setHistorial(prev => reset ? data : [...prev, ...data]);
+      setHistPage(page + 1);
+      setHistHasMore(data.length === HIST_SIZE);
+    } catch { /* silencioso */ }
+    finally { setHistLoading(false); }
+  }, [userName, histPage, histLoading]);
+
+  useEffect(() => {
+    if (activeTab === 'historial' && historial.length === 0) {
+      loadHistorial(true);
+    }
+  }, [activeTab]);
+
   const getCurrentFormattedDate = () => format(new Date(), 'yyyy-MM-dd');
   const parseDate = (dateString: string) => {
     const [year, month, day] = dateString.split('-').map(Number);
@@ -829,6 +869,75 @@ const DynamicFormScreen = () => {
     }
   };
 
+  const TYPE_ICON: Record<string, string> = {
+    CLOSING:  'bank-transfer',
+    SUPPLIER: 'truck-delivery-outline',
+    SALARY:   'account-cash-outline',
+    income:   'arrow-down-circle-outline',
+    expense:  'arrow-up-circle-outline',
+    default:  'file-document-outline',
+  };
+
+  const TYPE_LABEL: Record<string, string> = {
+    CLOSING:  'Cierre',
+    SUPPLIER: 'Proveedor',
+    SALARY:   'Salario',
+    income:   'Ingreso',
+    expense:  'Egreso',
+  };
+
+  const renderHistorial = () => (
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: SPACE.s4, gap: SPACE.s2 }}>
+      {historial.length === 0 && !histLoading && (
+        <View style={{ alignItems: 'center', paddingVertical: SPACE.s8 }}>
+          <MaterialCommunityIcons name="clipboard-text-outline" size={40} color={COLOR.inkDisabled} />
+          <Text style={{ color: COLOR.inkMute, marginTop: SPACE.s2, fontSize: FONT_SIZE.body }}>
+            No tenés operaciones registradas aún.
+          </Text>
+        </View>
+      )}
+
+      {historial.map(op => (
+        <View key={`${op.type}-${op.id}`} style={histStyles.card}>
+          <View style={histStyles.row}>
+            <View style={histStyles.iconWrap}>
+              <MaterialCommunityIcons
+                name={TYPE_ICON[op.type] ?? TYPE_ICON.default}
+                size={20}
+                color={op.type === 'income' ? COLOR.income : COLOR.expense}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={histStyles.label}>
+                {TYPE_LABEL[op.type] ?? op.type}
+                {op.storeName ? ` · ${op.storeName}` : ''}
+              </Text>
+              {op.description ? (
+                <Text style={histStyles.desc} numberOfLines={1}>{op.description}</Text>
+              ) : null}
+              <Text style={histStyles.date}>{op.date ? formatDate(op.date) : ''}</Text>
+            </View>
+            <Text style={[histStyles.amount, { color: op.type === 'income' ? COLOR.income : COLOR.expense }]}>
+              {op.type === 'income' ? '+' : '-'}{formatHnl(op.amount)}
+            </Text>
+          </View>
+        </View>
+      ))}
+
+      {histHasMore && (
+        <TouchableOpacity style={histStyles.loadMore} onPress={() => loadHistorial(false)} disabled={histLoading}>
+          {histLoading
+            ? <ActivityIndicator size="small" color={COLOR.brand} />
+            : <Text style={histStyles.loadMoreText}>Cargar más</Text>
+          }
+        </TouchableOpacity>
+      )}
+      {!histHasMore && historial.length > 0 && (
+        <Text style={histStyles.endText}>— Fin del historial —</Text>
+      )}
+    </ScrollView>
+  );
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -837,16 +946,28 @@ const DynamicFormScreen = () => {
       <StatusBar barStyle="dark-content" backgroundColor={COLOR.brandTint} />
 
       <View style={styles.topSection}>
-        <View style={styles.logoContainer}>
-          <Avatar.Image
-            size={100}
-            source={require('../assets/images/logo_proyecto_Humberto.jpg')}
-            style={styles.logo}
-          />
-        </View>
-        <Title style={styles.welcomeText}>Administración de Operaciones</Title>
+        <Title style={styles.welcomeText}>Operaciones</Title>
       </View>
 
+      {/* ── Tabs ── */}
+      <View style={tabStyles.bar}>
+        <TouchableOpacity
+          style={[tabStyles.tab, activeTab === 'form' && tabStyles.tabActive]}
+          onPress={() => setActiveTab('form')}
+        >
+          <MaterialCommunityIcons name="plus-circle-outline" size={16} color={activeTab === 'form' ? COLOR.brandDeep : COLOR.ink2} />
+          <Text style={[tabStyles.tabText, activeTab === 'form' && tabStyles.tabTextActive]}>Nueva operación</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[tabStyles.tab, activeTab === 'historial' && tabStyles.tabActive]}
+          onPress={() => setActiveTab('historial')}
+        >
+          <MaterialCommunityIcons name="history" size={16} color={activeTab === 'historial' ? COLOR.brandDeep : COLOR.ink2} />
+          <Text style={[tabStyles.tabText, activeTab === 'historial' && tabStyles.tabTextActive]}>Mi historial</Text>
+        </TouchableOpacity>
+      </View>
+
+      {activeTab === 'historial' ? renderHistorial() : (
       <ScrollView style={styles.scrollView}>
         <Card style={styles.card}>
           <Card.Content>
@@ -927,6 +1048,7 @@ const DynamicFormScreen = () => {
           </Card.Content>
         </Card>
       </ScrollView>
+      )}
 
       <DatePickerModal
         mode="single"
@@ -975,11 +1097,8 @@ const styles = StyleSheet.create({
   },
   topSection: {
     backgroundColor: COLOR.brandTint,
-    paddingVertical: 30,
+    paddingVertical: SPACE.s3,
     alignItems: 'center',
-    borderBottomLeftRadius: RADIUS.r5,
-    borderBottomRightRadius: RADIUS.r5,
-    ...SHADOW.md,
   },
   logoContainer: {
     alignItems: 'center',
@@ -999,7 +1118,6 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    marginTop: -25,
   },
   card: {
     marginHorizontal: SPACE.s5,
@@ -1231,6 +1349,27 @@ const styles = StyleSheet.create({
   summaryBold: {
     fontWeight: FONT_WEIGHT.bold as any,
   },
+});
+
+const tabStyles = StyleSheet.create({
+  bar:          { flexDirection: 'row', backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border },
+  tab:          { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACE.s1, paddingVertical: SPACE.s3 },
+  tabActive:    { borderBottomWidth: 2, borderBottomColor: COLOR.brand },
+  tabText:      { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.medium as any, color: COLOR.ink2 },
+  tabTextActive:{ color: COLOR.brandDeep, fontWeight: FONT_WEIGHT.bold as any },
+});
+
+const histStyles = StyleSheet.create({
+  card:         { backgroundColor: COLOR.surface, borderRadius: RADIUS.r3, borderWidth: 1, borderColor: COLOR.border, padding: SPACE.s3 },
+  row:          { flexDirection: 'row', alignItems: 'center', gap: SPACE.s3 },
+  iconWrap:     { width: 36, height: 36, borderRadius: RADIUS.full, backgroundColor: COLOR.bgAlt, justifyContent: 'center', alignItems: 'center' },
+  label:        { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
+  desc:         { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, marginTop: 1 },
+  date:         { fontSize: FONT_SIZE.caption, color: COLOR.inkDisabled, marginTop: 1 },
+  amount:       { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any },
+  loadMore:     { padding: SPACE.s3, borderRadius: RADIUS.r2, borderWidth: 1, borderColor: COLOR.border, alignItems: 'center', backgroundColor: COLOR.surface },
+  loadMoreText: { fontSize: FONT_SIZE.label, color: COLOR.ink2, fontWeight: FONT_WEIGHT.semibold as any },
+  endText:      { textAlign: 'center', color: COLOR.inkDisabled, fontSize: FONT_SIZE.caption, paddingVertical: SPACE.s3 },
 });
 
 export default DynamicFormScreen;

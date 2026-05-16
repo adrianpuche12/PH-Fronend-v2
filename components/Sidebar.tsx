@@ -52,7 +52,7 @@ const tooltipStyles = StyleSheet.create({
 });
 
 const SIDEBAR_W_EXPANDED  = 260;
-const SIDEBAR_W_COLLAPSED = 76;
+const SIDEBAR_W_COLLAPSED = 88;
 const ANIM_DURATION       = 250;
 
 export type SidebarScreen =
@@ -150,20 +150,19 @@ const SidebarDesktop = ({ active, onSelect }: {
           const isActive = active === item.key;
           if (sidebarCollapsed) {
             return (
-              <SidebarTooltip key={item.key} label={item.label}>
-                <TouchableOpacity
-                  style={[styles.menuItemCollapsed, isActive && styles.menuItemActive]}
-                  onPress={() => onSelect(item.key)}
-                  activeOpacity={0.7}
-                >
-                  <MaterialCommunityIcons
-                    name={item.icon}
-                    size={20}
-                    color={isActive ? COLOR.brandDeep : COLOR.ink2}
-                  />
-                  {isActive && <View style={styles.activeBar} />}
-                </TouchableOpacity>
-              </SidebarTooltip>
+              <TouchableOpacity
+                key={item.key}
+                style={[styles.menuItemCollapsed, isActive && styles.menuItemActive]}
+                onPress={() => onSelect(item.key)}
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons
+                  name={item.icon}
+                  size={20}
+                  color={isActive ? COLOR.brandDeep : COLOR.ink2}
+                />
+                {isActive && <View style={styles.activeBar} />}
+              </TouchableOpacity>
             );
           }
           return (
@@ -341,7 +340,7 @@ const styles = StyleSheet.create({
   // Pin toggle cuando colapsado
   togglePin: {
     position: 'absolute',
-    right: -13,
+    right: 6,
     top: '50%' as any,
     width: 26,
     height: 26,

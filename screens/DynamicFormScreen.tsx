@@ -366,7 +366,7 @@ const DynamicFormScreen = () => {
               ...formData,
               amount,
               store: { id: formData.storeId },
-              username: 'default_user',
+              username: userName ?? 'default_user',
               date: formData.date,
               salaryDate: formData.date,
               paymentDate: formData.date,

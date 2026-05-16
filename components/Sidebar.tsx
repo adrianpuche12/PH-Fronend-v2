@@ -63,7 +63,6 @@ interface MenuItem { key: SidebarScreen; label: string; icon: string }
 
 const MENU_ADMIN: MenuItem[] = [
   { key: 'dashboard',    label: 'Dashboard',        icon: 'view-dashboard-outline' },
-  { key: 'sales',        label: 'Ventas',            icon: 'cart-outline' },
   { key: 'salesHistory', label: 'Historial ventas',  icon: 'receipt-text-outline' },
   { key: 'inventory',    label: 'Inventario',        icon: 'package-variant' },
   { key: 'users',        label: 'Usuarios',          icon: 'account-multiple-outline' },

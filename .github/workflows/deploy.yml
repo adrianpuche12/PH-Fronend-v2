@@ -2,7 +2,7 @@ name: Build & Deploy Frontend
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, master, develop]
 
 jobs:
   build-and-deploy:
@@ -15,7 +15,7 @@ jobs:
       - name: Determinar ambiente
         id: env
         run: |
-          if [ "${{ github.ref_name }}" = "main" ]; then
+          if [ "${{ github.ref_name }}" = "main" ] || [ "${{ github.ref_name }}" = "master" ]; then
             echo "IMAGE_TAG=latest" >> $GITHUB_OUTPUT
             echo "DEPLOY_DIR=/opt/humberto-v2/prod" >> $GITHUB_OUTPUT
           else

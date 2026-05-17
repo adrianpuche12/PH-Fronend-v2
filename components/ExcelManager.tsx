@@ -24,12 +24,20 @@ interface ExcelManagerProps {
   onImportSuccess?: () => void;
 }
 
-const ExcelManager: React.FC<ExcelManagerProps> = ({ 
-  visible, 
-  onDismiss, 
-  transactions, 
-  onImportSuccess 
+const ExcelManager: React.FC<ExcelManagerProps> = ({
+  visible,
+  onDismiss,
+  transactions,
+  onImportSuccess
 }) => {
+  const [activeStores, setActiveStores] = useState<{id: number; name: string}[]>([]);
+  useEffect(() => {
+    fetch(`${REACT_APP_API_URL}/api/v2/stores/active`)
+      .then(r => r.json())
+      .then(setActiveStores)
+      .catch(() => {});
+  }, []);
+
   // Estados para la selección de fechas de exportación
   const [dateRange, setDateRange] = useState<{
     startDate: Date | undefined;
@@ -142,7 +150,7 @@ const ExcelManager: React.FC<ExcelManagerProps> = ({
   // Función para importar desde Excel
   const handleImport = async () => {
     setLoading(true);
-    const importResult = await importFromExcel(REACT_APP_API_URL);
+    const importResult = await importFromExcel(REACT_APP_API_URL, activeStores);
     setResult(importResult);
     setShowResult(true);
     setLoading(false);

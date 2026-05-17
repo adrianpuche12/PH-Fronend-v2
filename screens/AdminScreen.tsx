@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -28,6 +28,7 @@ import ExcelManager from '../components/ExcelManager';
 import { formatCurrency, formatNumber, formatAmountInput, parseFormattedNumber } from '../utils/numberFormat';
 import ImageViewer from '../components/ImageViewer';
 import ImageButton from '../components/ImageButton';
+import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW } from '../theme';
 
 const TRANSACTION_LABELS: Record<Transaction['type'], string> = {
   income: 'Ingreso',
@@ -113,17 +114,17 @@ const CollapsibleBalanceCard = ({ transactions }: { transactions: any[] }) => {
         }
       ]}>
         <View style={styles.balanceRow}>
-          <MaterialCommunityIcons name="arrow-down-bold-circle-outline" size={20} color="#4CAF50" />
+          <MaterialCommunityIcons name="arrow-down-bold-circle-outline" size={20} color={COLOR.income} />
           <Text style={styles.balanceLabel}>Ingresos:</Text>
           <Text style={styles.balanceValue}>{formatCurrency(ingresos)}</Text>
         </View>
         <View style={styles.balanceRow}>
-          <MaterialCommunityIcons name="arrow-up-bold-circle-outline" size={20} color="#F44336" />
+          <MaterialCommunityIcons name="arrow-up-bold-circle-outline" size={20} color={COLOR.expense} />
           <Text style={styles.balanceLabel}>Egresos:</Text>
           <Text style={styles.balanceValue}>{formatCurrency(egresos)}</Text>
         </View>
         <View style={styles.balanceRow}>
-          <MaterialCommunityIcons name="calculator-variant" size={20} color="#2196F3" />
+          <MaterialCommunityIcons name="calculator-variant" size={20} color={COLOR.info} />
           <Text style={styles.balanceLabel}>Total:</Text>
           <Text style={[styles.balanceValue, { fontWeight: 'bold' }]}>{formatCurrency(total)}</Text>
         </View>
@@ -146,22 +147,64 @@ const BalanceCard = ({ transactions }: { transactions: any[] }) => {
       <Card.Content>
         <Title style={styles.balanceTitle}>Balance General</Title>
         <View style={styles.balanceRow}>
-          <MaterialCommunityIcons name="arrow-down-bold-circle-outline" size={20} color="#4CAF50" />
+          <MaterialCommunityIcons name="arrow-down-bold-circle-outline" size={20} color={COLOR.income} />
           <Text style={styles.balanceLabel}>Ingresos:</Text>
           <Text style={styles.balanceValue}>{formatCurrency(ingresos)}</Text>
         </View>
         <View style={styles.balanceRow}>
-          <MaterialCommunityIcons name="arrow-up-bold-circle-outline" size={20} color="#F44336" />
+          <MaterialCommunityIcons name="arrow-up-bold-circle-outline" size={20} color={COLOR.expense} />
           <Text style={styles.balanceLabel}>Egresos:</Text>
           <Text style={styles.balanceValue}>{formatCurrency(egresos)}</Text>
         </View>
         <View style={styles.balanceRow}>
-          <MaterialCommunityIcons name="calculator-variant" size={20} color="#2196F3" />
+          <MaterialCommunityIcons name="calculator-variant" size={20} color={COLOR.info} />
           <Text style={styles.balanceLabel}>Total:</Text>
           <Text style={[styles.balanceValue, { fontWeight: 'bold' }]}>{formatCurrency(total)}</Text>
         </View>
       </Card.Content>
     </Card>
+  );
+};
+
+// ─── KPI Row (4 cards: Balance · Ingresos · Egresos · Promedio) ───────────────
+const KpiRow = ({ transactions }: { transactions: Transaction[] }) => {
+  const INCOME_T = ['income', 'CLOSING'];
+  const EXPENSE_T = ['expense', 'SALARY', 'SUPPLIER', 'GASTO_ADMIN', 'gasto_admin'];
+  const incomeTxs  = transactions.filter(tx => INCOME_T.includes(tx.type));
+  const expenseTxs = transactions.filter(tx => EXPENSE_T.includes(tx.type));
+  const totalIncome  = incomeTxs.reduce((s, tx) => s + tx.amount, 0);
+  const totalExpense = expenseTxs.reduce((s, tx) => s + tx.amount, 0);
+  const balance      = totalIncome - totalExpense;
+  const promedio     = balance / 30;
+
+  const L = (v: number) =>
+    `L ${Math.abs(v).toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  return (
+    <View style={styles.kpiRow}>
+      <View style={styles.kpiCard}>
+        <Text style={styles.kpiCardLabel}>BALANCE DEL PERIODO</Text>
+        <Text style={[styles.kpiCardValue, { color: balance >= 0 ? COLOR.income : COLOR.expense }]}>
+          {balance >= 0 ? '+' : '-'}{L(balance)}
+        </Text>
+        <Text style={styles.kpiCardSub}>Periodo actual</Text>
+      </View>
+      <View style={styles.kpiCard}>
+        <Text style={styles.kpiCardLabel}>INGRESOS · {incomeTxs.length} MOV.</Text>
+        <Text style={[styles.kpiCardValue, { color: COLOR.income }]}>+{L(totalIncome)}</Text>
+        <Text style={styles.kpiCardSub}> </Text>
+      </View>
+      <View style={styles.kpiCard}>
+        <Text style={styles.kpiCardLabel}>EGRESOS · {expenseTxs.length} MOV.</Text>
+        <Text style={[styles.kpiCardValue, { color: COLOR.expense }]}>-{L(totalExpense)}</Text>
+        <Text style={styles.kpiCardSub}> </Text>
+      </View>
+      <View style={styles.kpiCard}>
+        <Text style={styles.kpiCardLabel}>PROMEDIO DIARIO</Text>
+        <Text style={styles.kpiCardValue}>{L(promedio)}</Text>
+        <Text style={styles.kpiCardSub}>Sobre el balance neto</Text>
+      </View>
+    </View>
   );
 };
 
@@ -178,6 +221,7 @@ const CompactDateFilters = ({
   onExcelPress,
   showAdminExpenses,
   onToggleAdminExpenses,
+  activeStores,
 }: {
   startDate?: Date;
   endDate?: Date;
@@ -191,6 +235,7 @@ const CompactDateFilters = ({
   onExcelPress: () => void;
   showAdminExpenses: boolean;
   onToggleAdminExpenses: () => void;
+  activeStores: {id: number; name: string}[];
 }) => {
   const { width: screenWidth } = useWindowDimensions();
   const isLargeScreen = screenWidth >= 768;
@@ -222,10 +267,10 @@ const CompactDateFilters = ({
               setSelectedDateInput('start');
               setDatePickerOpen(true);
             }}
-            left={<TextInput.Icon icon="calendar" color="#D4A72B" size={20} />}
-            outlineColor="#DDDDDD"
-            activeOutlineColor="#D4A72B"
-            theme={{ colors: { primary: '#D4A72B' } }}
+            left={<TextInput.Icon icon="calendar" color={COLOR.brandDark} size={20} />}
+            outlineColor={COLOR.border2}
+            activeOutlineColor={COLOR.brand}
+            theme={{ colors: { primary: COLOR.brand } }}
           />
           <TextInput
             label="Hasta"
@@ -237,29 +282,66 @@ const CompactDateFilters = ({
               setSelectedDateInput('end');
               setDatePickerOpen(true);
             }}
-            left={<TextInput.Icon icon="calendar" color="#D4A72B" size={20} />}
-            outlineColor="#DDDDDD"
-            activeOutlineColor="#D4A72B"
-            theme={{ colors: { primary: '#D4A72B' } }}
+            left={<TextInput.Icon icon="calendar" color={COLOR.brandDark} size={20} />}
+            outlineColor={COLOR.border2}
+            activeOutlineColor={COLOR.brand}
+            theme={{ colors: { primary: COLOR.brand } }}
           />
         </View>
 
-        {/* Selector de tienda */}
-        <View style={isLargeScreen ? styles.storeFilterWeb : styles.storeFilterCompact}>
-          <SegmentedButtons
-            value={selectedStore?.toString() || 'all'}
-            onValueChange={(value) => setSelectedStore(value === 'all' ? null : Number(value))}
-            buttons={[
-              { value: 'all', label: 'Todos' },
-              { value: '1', label: 'Danli' },
-              { value: '2', label: 'El Paraiso' },
-            ]}
-            style={styles.storeSelectorCompact}
-          />
-        </View>
+        {/* Selector de tienda — dinámico desde /api/v2/stores/active */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ flexDirection: 'row', gap: 8, paddingHorizontal: 4, paddingVertical: 4 }}>
+          <TouchableOpacity
+            style={[storeChipStyle.chip, selectedStore === null && storeChipStyle.active]}
+            onPress={() => setSelectedStore(null)}
+          >
+            <Text style={[storeChipStyle.text, selectedStore === null && storeChipStyle.activeText]}>Todos</Text>
+          </TouchableOpacity>
+          {activeStores.map(s => (
+            <TouchableOpacity
+              key={s.id}
+              style={[storeChipStyle.chip, selectedStore === s.id && storeChipStyle.active]}
+              onPress={() => setSelectedStore(s.id)}
+            >
+              <Text style={[storeChipStyle.text, selectedStore === s.id && storeChipStyle.activeText]}>{s.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
 
-        {/* Botones */}
-        <View style={isLargeScreen ? styles.buttonGroupWeb : styles.compactButtonsRow}>
+        {/* Botones — grid 2 columnas para que no se corten en mobile */}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 4, marginTop: 4 }}>
+          <Button
+            mode={showAdminExpenses ? "contained" : "outlined"}
+            compact
+            onPress={onToggleAdminExpenses}
+            style={{ flex: 1, minWidth: '45%' }}
+            icon="bank"
+            buttonColor={showAdminExpenses ? COLOR.warn : COLOR.transparent}
+            textColor={showAdminExpenses ? COLOR.white : COLOR.warn}
+          >
+            G. Admin
+          </Button>
+          <Button
+            mode="contained"
+            compact
+            onPress={() => fetchData(startDate, endDate, selectedStore)}
+            style={{ flex: 1, minWidth: '45%' }}
+            icon="refresh"
+            buttonColor={COLOR.info}
+          >
+            Actualizar
+          </Button>
+          <Button
+            mode="contained"
+            compact
+            onPress={onExcelPress}
+            style={{ flex: 1, minWidth: '45%' }}
+            icon="microsoft-excel"
+            buttonColor={COLOR.income}
+          >
+            Excel
+          </Button>
           {(startDate || endDate || selectedStore || showAdminExpenses) && (
             <Button
               mode="outlined"
@@ -268,53 +350,14 @@ const CompactDateFilters = ({
                 setStartDate(undefined);
                 setEndDate(undefined);
                 setSelectedStore(null);
-                if (showAdminExpenses) {
-                  onToggleAdminExpenses();
-                }
+                if (showAdminExpenses) onToggleAdminExpenses();
               }}
-              style={styles.compactClearButton}
-              color="#D4A72B"
+              style={{ flex: 1, minWidth: '45%' }}
+              textColor={COLOR.brandDark}
             >
               Limpiar
             </Button>
           )}
-          <Button
-            mode={showAdminExpenses ? "contained" : "outlined"}
-            compact
-            onPress={onToggleAdminExpenses}
-            style={styles.compactAdminButton}
-            icon="bank"
-            buttonColor={showAdminExpenses ? "#FF9800" : "transparent"}
-            textColor={showAdminExpenses ? "white" : "#FF9800"}
-          >
-            G. Admin
-          </Button>
-          <Button
-            mode="contained"
-            compact
-            onPress={() => {
-              if (showAdminExpenses) {
-                fetchData(startDate, endDate, selectedStore);
-              } else {
-                fetchData(startDate, endDate, selectedStore);
-              }
-            }}
-            style={styles.compactRefreshButton}
-            icon="refresh"
-            buttonColor="#2196F3"
-          >
-            Actualizar
-          </Button>
-          <Button
-            mode="contained"
-            compact
-            onPress={onExcelPress}
-            style={styles.compactExcelButton}
-            icon="microsoft-excel"
-            buttonColor="#28a745"
-          >
-            Excel
-          </Button>
         </View>
       </View>
     </View>
@@ -331,6 +374,8 @@ const AdminScreen = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedStore, setSelectedStore] = useState<number | null>(null);
   const [showAdminExpenses, setShowAdminExpenses] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
 
   // Estados para el modal de edición
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -340,6 +385,9 @@ const AdminScreen = () => {
 
   // Estado para gestión de Excel
   const [showExcelManager, setShowExcelManager] = useState(false);
+
+  // Estado para visor de comprobante
+  const [viewingImage, setViewingImage] = useState<string | null>(null);
 
   // Campos para editar
   const [newAmount, setNewAmount] = useState('');
@@ -361,6 +409,15 @@ const AdminScreen = () => {
 
   const { width: screenWidth } = useWindowDimensions();
   const isLargeScreen = screenWidth >= 768;
+
+  // Stores activos — cargados dinámicamente desde /api/v2/stores/active
+  const [activeStores, setActiveStores] = useState<{id: number; name: string}[]>([]);
+  useEffect(() => {
+    fetch(`${REACT_APP_API_URL}/api/v2/stores/active`)
+      .then(r => r.json())
+      .then(setActiveStores)
+      .catch(() => {});
+  }, []);
 
   // Manejador para éxito de importación desde Excel
   const handleImportSuccess = () => {
@@ -571,9 +628,23 @@ const AdminScreen = () => {
     }
   };
 
+  // Filtro por tipo de transacción
+  const INCOME_TYPES = ['income', 'CLOSING'];
+  const EXPENSE_TYPES = ['expense', 'SALARY', 'SUPPLIER', 'GASTO_ADMIN', 'gasto_admin'];
+  const filteredByType = typeFilter === 'all'
+    ? transactions
+    : typeFilter === 'income'
+      ? transactions.filter(tx => INCOME_TYPES.includes(tx.type))
+      : transactions.filter(tx => EXPENSE_TYPES.includes(tx.type));
+
+  // Conteos para badges en las tabs
+  const incomeCount  = transactions.filter(tx => INCOME_TYPES.includes(tx.type)).length;
+  const expenseCount = transactions.filter(tx => EXPENSE_TYPES.includes(tx.type)).length;
+  const allCount     = transactions.length;
+
   // Paginación
-  const totalPages = Math.ceil(transactions.length / ITEMS_PER_PAGE);
-  const paginatedTransactions = transactions.slice(
+  const totalPages = Math.ceil(filteredByType.length / ITEMS_PER_PAGE);
+  const paginatedTransactions = filteredByType.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
@@ -760,15 +831,18 @@ const renderEditFields = () => {
   const storeSelector = (
     <View style={styles.modalInputContainer}>
       <Text style={styles.modalInputLabel}>Local:</Text>
-      <SegmentedButtons
-        value={newStoreId?.toString() ?? ''}
-        onValueChange={(value) => setNewStoreId(Number(value))}
-        buttons={[
-          { value: '1', label: 'Danli' },
-          { value: '2', label: 'El Paraiso' },
-        ]}
-        style={styles.storeSelector}
-      />
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ flexDirection: 'row', gap: 8, paddingVertical: 4 }}>
+        {activeStores.map(s => (
+          <TouchableOpacity
+            key={s.id}
+            style={[storeChipStyle.chip, newStoreId === s.id && storeChipStyle.active]}
+            onPress={() => setNewStoreId(s.id)}
+          >
+            <Text style={[storeChipStyle.text, newStoreId === s.id && storeChipStyle.activeText]}>{s.name}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
     </View>
   );
 
@@ -1097,156 +1171,112 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
   return `${REACT_APP_API_URL}/${imagePath}`;
 };
 
-  // Render de cada tarjeta de operación (se omite el ID)
   const renderTransaction = (item: Transaction, index: number) => {
-  let dateToShow = item.date;
+    const isIncome = INCOME_TYPES.includes(item.type);
 
-  if (item.type === 'CLOSING' && item.depositDate) {
-    dateToShow = item.depositDate;
-  } else if (item.type === 'SUPPLIER' && item.paymentDate) {
-    dateToShow = item.paymentDate;
-  } else if (item.type === 'SALARY' && item.depositDate) {
-    dateToShow = item.depositDate;
-  }
+    const typeIconMap: Record<string, string> = {
+      CLOSING:    'home',
+      income:     'arrow-down-circle',
+      SUPPLIER:   'truck-delivery',
+      SALARY:     'account-cash',
+      GASTO_ADMIN:'bank',
+      expense:    'arrow-up-circle',
+      gasto_admin:'bank',
+    };
+    const txIcon = typeIconMap[item.type] ?? 'help-circle';
+    const txColor = isIncome ? COLOR.income : COLOR.expense;
+    const txBg    = isIncome ? COLOR.incomeTint : COLOR.expenseTint;
 
-  let typeIcon, typeColor;
+    const dateToShow = item.type === 'CLOSING' && item.depositDate ? item.depositDate
+      : item.type === 'SUPPLIER' && item.paymentDate ? item.paymentDate
+      : item.type === 'SALARY'   && item.depositDate ? item.depositDate
+      : item.date;
 
-  switch (item.type) {
-    case 'CLOSING':
-    case 'income':
-      typeIcon = 'arrow-down-bold-circle-outline';
-      typeColor = '#4CAF50';
-      break;
-    case 'SUPPLIER':
-    case 'SALARY':
-    case 'GASTO_ADMIN':
-    case 'expense':
-    case 'gasto_admin':
-      typeIcon = 'arrow-up-bold-circle-outline';
-      typeColor = '#F44336';
-      break;
-    default:
-      typeIcon = 'help-circle-outline';
-      typeColor = '#9E9E9E';
-  }
+    const fmtDate = (d?: string) => {
+      if (!d) return '—';
+      try {
+        const dt = parseISO(d);
+        return format(dt, 'dd MMM yyyy');
+      } catch { return String(d).split('T')[0]; }
+    };
+    const fmtTime = (d?: string) => {
+      if (!d) return '';
+      try { return format(parseISO(d), 'HH:mm'); } catch { return ''; }
+    };
 
-  const imageUri = item.imageUri || (item as any).image_uri;
+    const storeIdResolved = item.store?.id ?? item.storeId;
+    const storeName =
+      item.store?.name ||
+      item.storeName ||
+      activeStores.find(s => s.id === storeIdResolved)?.name ||
+      '—';
 
-  return (
-    <Card key={`transaction-${item.id}-${index}`} style={styles.transactionCard}>
-      <Card.Content>
-        <View style={styles.transactionHeader}>
-          <View style={styles.transactionTypeContainer}>
-            <MaterialCommunityIcons name={typeIcon} size={24} color={typeColor} />
-            <Text style={[styles.transactionType, { color: typeColor }]}>
-              {TRANSACTION_LABELS[item.type]}
-            </Text>
+    const metaParts = [
+      item.closingsCount ? `${item.closingsCount} cierres` : null,
+      item.periodStart ? `Periodo ${fmtDate(item.periodStart)}` : null,
+      item.supplier || null,
+      item.description || null,
+    ].filter(Boolean);
+
+    const amtStr = `L ${item.amount.toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const imageUri = item.imageUri || (item as any).image_uri;
+
+    return (
+      <View key={`tx-${item.id}-${index}`} style={styles.txRow}>
+        {/* Icono */}
+        <View style={[styles.txIconWrap, { backgroundColor: txBg }]}>
+          <MaterialCommunityIcons name={txIcon} size={20} color={txColor} />
+        </View>
+
+        {/* Nombre + badge + metadata */}
+        <View style={styles.txMain}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+            <Text style={styles.txName}>{TRANSACTION_LABELS[item.type]}</Text>
+            <View style={[styles.txBadge, { backgroundColor: txBg }]}>
+              <Text style={[styles.txBadgeText, { color: txColor }]}>{TRANSACTION_LABELS[item.type]}</Text>
+            </View>
           </View>
-          <Text style={styles.transactionAmount}>
-            {formatCurrency(item.amount)}
+          {metaParts.length > 0 && (
+            <Text style={styles.txMeta} numberOfLines={1}>{metaParts.join(' · ')}</Text>
+          )}
+        </View>
+
+        {/* Local (solo desktop) */}
+        {isLargeScreen && (
+          <Text style={styles.txStore} numberOfLines={1}>{storeName}</Text>
+        )}
+
+        {/* Fecha */}
+        <View style={styles.txDateWrap}>
+          <Text style={styles.txDate}>{fmtDate(dateToShow)}</Text>
+          <Text style={styles.txTime}>{fmtTime(dateToShow)}</Text>
+        </View>
+
+        {/* Monto */}
+        <View style={styles.txAmtWrap}>
+          <Text style={[styles.txAmt, { color: txColor }]}>
+            {isIncome ? '+' : '-'}{amtStr}
           </Text>
+          <Text style={styles.txAmtLabel}>LEMPIRAS</Text>
         </View>
 
-        <View style={styles.transactionDetails}>
-          {dateToShow && (
-            <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="calendar" size={16} color="#8B7214" />
-              <Text style={styles.detailText}>{'Fecha: ' + formatDate(dateToShow)}</Text>
-            </View>
-          )}
-
-          {item.description && (
-            <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="text" size={16} color="#8B7214" />
-              <Text style={styles.detailText}>{'Descripción: ' + item.description}</Text>
-            </View>
-          )}
-
-          {/* Mostrar local */}
-          <View style={styles.detailRow}>
-            <MaterialCommunityIcons name="store" size={16} color="#8B7214" />
-            <Text style={styles.detailText}>
-              {'Local: ' + (
-                item.store?.name ||
-                item.storeName ||
-                (item.store?.id ?
-                  (item.store.id === 1 ? 'Danli' : 'El Paraiso') :
-                  (item.storeId ?
-                    (item.storeId === 1 ? 'Danli' : 'El Paraiso') :
-                    'No asignado'
-                  )
-                )
-              )}
-            </Text>
-          </View>
-          {/* Mostrar período para CLOSING */}
-          {item.type === 'CLOSING' && item.periodStart && item.periodEnd && (
-            <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="calendar-range" size={16} color="#8B7214" />
-              <Text style={styles.detailText}>
-                {'Período: ' + formatDate(item.periodStart) + ' al ' + formatDate(item.periodEnd)}
-              </Text>
-            </View>
-          )}
-          {/* Comprobante */}
+        {/* Acciones */}
+        <View style={{ flexDirection: 'row' }}>
           {imageUri && (
-            <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="image" size={16} color="#8B7214" />
-              <Text style={styles.detailText}>Comprobante:</Text>
-              <ImageViewer imageUri={imageUri} size="small" />
-            </View>
+            <IconButton
+              icon="camera"
+              size={18}
+              iconColor={COLOR.income}
+              onPress={() => setViewingImage(imageUri)}
+              accessibilityLabel="Ver comprobante"
+            />
           )}
-
-          {TRANSACTION_LABELS[item.type] === 'CLOSING' && item.closingsCount && (
-            <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="counter" size={16} color="#8B7214" />
-              <Text style={styles.detailText}>{'Cantidad de cierres: ' + item.closingsCount}</Text>
-            </View>
-          )}
-
-          {TRANSACTION_LABELS[item.type] === 'CLOSING' && item.periodStart && item.periodEnd && (
-            <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="calendar-range" size={16} color="#8B7214" />
-              <Text style={styles.detailText}>
-                {'Período: ' + formatDate(item.periodStart) + ' al ' + formatDate(item.periodEnd)}
-              </Text>
-            </View>
-          )}
-
-          {TRANSACTION_LABELS[item.type] === 'SUPPLIER' && item.supplier && (
-            <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="truck-delivery" size={16} color="#8B7214" />
-              <Text style={styles.detailText}>{'Proveedor: ' + item.supplier}</Text>
-            </View>
-          )}
-          
-          
+          <IconButton icon="pencil" size={18} onPress={() => handleEdit(item)} iconColor={COLOR.info} />
+          <IconButton icon="delete" size={18} onPress={() => handleDelete(item)} iconColor={COLOR.expense} />
         </View>
-
-        <View style={styles.buttonContainer}>
-          <Button
-            mode="contained"
-            onPress={() => handleEdit(item)}
-            style={styles.editButton}
-            buttonColor="#2196F3"
-            icon="pencil"
-          >
-            Editar
-          </Button>
-          <Button
-            mode="contained"
-            onPress={() => handleDelete(item)}
-            style={styles.deleteButton}
-            buttonColor="#F44336"
-            icon="delete"
-          >
-            Eliminar
-          </Button>
-        </View>
-      </Card.Content>
-    </Card>
-  );
-};
+      </View>
+    );
+  };
 
   const renderPagination = () => (
     <View style={styles.paginationContainer}>
@@ -1258,7 +1288,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
         <MaterialCommunityIcons
           name="chevron-left"
           size={24}
-          color={currentPage === 1 ? '#BBBBBB' : '#2196F3'}
+          color={currentPage === 1 ? COLOR.inkDisabled : COLOR.info}
         />
       </TouchableOpacity>
       {pageNumbers.map((page) => (
@@ -1280,7 +1310,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
         <MaterialCommunityIcons
           name="chevron-right"
           size={24}
-          color={currentPage === totalPages ? '#BBBBBB' : '#2196F3'}
+          color={currentPage === totalPages ? COLOR.inkDisabled : COLOR.info}
         />
       </TouchableOpacity>
     </View>
@@ -1306,57 +1336,158 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
 
   return (
     <ThemedView style={styles.container}>
-      <ThemedText style={styles.title}>Todas las Operaciones.</ThemedText>
 
-      {/* Botón de Logout */}
-      <LogoutButton />
+      {/* ── CABECERA MOBILE: siempre visible ── */}
+      {!isLargeScreen && (
+        <View style={{ backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border }}>
+          {/* Fila: título + botón colapsar */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingTop: 10, paddingBottom: 6 }}>
+            <ThemedText style={[styles.title, { marginBottom: 0 }]}>Operaciones</ThemedText>
+            <Button
+              mode="outlined"
+              onPress={() => setFiltersExpanded(v => !v)}
+              textColor={COLOR.ink2}
+              style={{ borderColor: COLOR.border, minWidth: 0 }}
+              labelStyle={{ fontSize: 12 }}
+            >
+              {filtersExpanded ? 'Cerrar ▲' : 'Filtros ▼'}
+            </Button>
+          </View>
 
-      {/* Para pantallas móviles, utilizamos componentes compactos */}
-      {!isLargeScreen ? (
-        <View style={styles.mobileControlsContainer}>
-          <CompactDateFilters
-            startDate={startDate}
-            endDate={endDate}
-            selectedStore={selectedStore}
-            setStartDate={setStartDate}
-            setEndDate={setEndDate}
-            setSelectedStore={setSelectedStore}
-            fetchData={fetchData}
-            setDatePickerOpen={setDatePickerOpen}
-            setSelectedDateInput={setSelectedDateInput}
-            onExcelPress={() => setShowExcelManager(true)}
-            showAdminExpenses={showAdminExpenses}
-            onToggleAdminExpenses={handleToggleAdminExpenses}
-          />
-          <CollapsibleBalanceCard transactions={transactions} />
+          {/* Filtro tipo: siempre visible */}
+          <View style={{ flexDirection: 'row', marginHorizontal: 12, marginBottom: 8, borderRadius: RADIUS.r2, overflow: 'hidden', borderWidth: 1, borderColor: COLOR.border }}>
+            {([
+              { key: 'all',     label: 'Todos',    count: allCount },
+              { key: 'income',  label: 'Ingresos', count: incomeCount },
+              { key: 'expense', label: 'Egresos',  count: expenseCount },
+            ] as const).map(({ key, label, count }) => (
+              <TouchableOpacity
+                key={key}
+                onPress={() => { setTypeFilter(key); setCurrentPage(1); }}
+                style={[styles.tabBtn, typeFilter === key && styles.tabBtnActive]}
+              >
+                <Text style={[styles.tabBtnText, typeFilter === key && styles.tabBtnTextActive]}>
+                  {label}
+                </Text>
+                <Text style={[styles.tabBtnCount, typeFilter === key && styles.tabBtnCountActive]}>
+                  {count}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Filtros colapsables con scroll */}
+          {filtersExpanded && (
+            <ScrollView
+              style={{ maxHeight: 320 }}
+              showsVerticalScrollIndicator={true}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={styles.mobileControlsContainer}>
+                <CompactDateFilters
+                  startDate={startDate}
+                  endDate={endDate}
+                  selectedStore={selectedStore}
+                  setStartDate={setStartDate}
+                  setEndDate={setEndDate}
+                  setSelectedStore={setSelectedStore}
+                  fetchData={fetchData}
+                  setDatePickerOpen={setDatePickerOpen}
+                  setSelectedDateInput={setSelectedDateInput}
+                  onExcelPress={() => setShowExcelManager(true)}
+                  showAdminExpenses={showAdminExpenses}
+                  onToggleAdminExpenses={handleToggleAdminExpenses}
+                  activeStores={activeStores}
+                />
+                <BalanceCard transactions={filteredByType} />
+              </View>
+            </ScrollView>
+          )}
         </View>
-      ) : (
-        // Para pantallas grandes, utilizamos el diseño original
-        <View style={styles.controlsContainer}>
-          {/* Filtros horizontales */}
-          <CompactDateFilters
-            startDate={startDate}
-            endDate={endDate}
-            selectedStore={selectedStore}
-            setStartDate={setStartDate}
-            setEndDate={setEndDate}
-            setSelectedStore={setSelectedStore}
-            fetchData={fetchData}
-            setDatePickerOpen={setDatePickerOpen}
-            setSelectedDateInput={setSelectedDateInput}
-            onExcelPress={() => setShowExcelManager(true)}
-            showAdminExpenses={showAdminExpenses}
-            onToggleAdminExpenses={handleToggleAdminExpenses}
-          />
+      )}
 
-          {/* Balance General desplegable */}
-          <CollapsibleBalanceCard transactions={transactions} />
+      {/* ── DESKTOP ── */}
+      {isLargeScreen && (
+        <View style={{ backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border }}>
+          {/* Fila: título + filtro tipo + botón colapsar */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8, gap: 12 }}>
+            <ThemedText style={[styles.title, { marginBottom: 0 }]}>Todas las Operaciones.</ThemedText>
+
+            {/* Filtro Todos/Ingresos/Egresos */}
+            <View style={{ flexDirection: 'row', borderRadius: RADIUS.r2, overflow: 'hidden', borderWidth: 1, borderColor: COLOR.border }}>
+              {([
+                { key: 'all',     label: 'Todos',    count: allCount },
+                { key: 'income',  label: 'Ingresos', count: incomeCount },
+                { key: 'expense', label: 'Egresos',  count: expenseCount },
+              ] as const).map(({ key, label, count }) => (
+                <TouchableOpacity
+                  key={key}
+                  onPress={() => { setTypeFilter(key); setCurrentPage(1); }}
+                  style={[styles.tabBtn, typeFilter === key && styles.tabBtnActive]}
+                >
+                  <Text style={[styles.tabBtnText, typeFilter === key && styles.tabBtnTextActive]}>
+                    {label}
+                  </Text>
+                  <Text style={[styles.tabBtnCount, typeFilter === key && styles.tabBtnCountActive]}>
+                    {count}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Button
+              mode="outlined"
+              onPress={() => setFiltersExpanded(v => !v)}
+              textColor={COLOR.ink2}
+              style={{ borderColor: COLOR.border }}
+              labelStyle={{ fontSize: 13 }}
+            >
+              {filtersExpanded ? 'Cerrar ▲' : 'Filtros ▼'}
+            </Button>
+          </View>
+
+          {/* Filtros colapsables */}
+          {filtersExpanded && (
+            <View style={styles.controlsContainer}>
+              <CompactDateFilters
+                startDate={startDate}
+                endDate={endDate}
+                selectedStore={selectedStore}
+                setStartDate={setStartDate}
+                setEndDate={setEndDate}
+                setSelectedStore={setSelectedStore}
+                fetchData={fetchData}
+                setDatePickerOpen={setDatePickerOpen}
+                setSelectedDateInput={setSelectedDateInput}
+                onExcelPress={() => setShowExcelManager(true)}
+                showAdminExpenses={showAdminExpenses}
+                onToggleAdminExpenses={handleToggleAdminExpenses}
+                activeStores={activeStores}
+              />
+              <BalanceCard transactions={filteredByType} />
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* ── KPI stats row ── */}
+      {!loading && <KpiRow transactions={transactions} />}
+
+      {/* ── Tabla header (solo desktop) ── */}
+      {!loading && isLargeScreen && (
+        <View style={styles.txTableHeader}>
+          <View style={{ width: 40 }} />
+          <Text style={[styles.txTableHeaderText, { flex: 2 }]}>OPERACIÓN</Text>
+          <Text style={[styles.txTableHeaderText, { flex: 1 }]}>LOCAL</Text>
+          <Text style={[styles.txTableHeaderText, { flex: 1, textAlign: 'right' }]}>FECHA</Text>
+          <Text style={[styles.txTableHeaderText, { flex: 1, textAlign: 'right' }]}>MONTO</Text>
+          <View style={{ width: 80 }} />
         </View>
       )}
 
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
+          <ActivityIndicator size="large" color={COLOR.brand} />
           <ThemedText style={styles.loadingText}>
             Cargando datos desde la base de datos...
           </ThemedText>
@@ -1458,6 +1589,30 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
       >
         {snackbarMessage}
       </Snackbar>
+
+      {/* ── Modal visor de comprobante ── */}
+      <Modal
+        visible={!!viewingImage}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setViewingImage(null)}
+      >
+        <TouchableOpacity
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center' }}
+          activeOpacity={1}
+          onPress={() => setViewingImage(null)}
+        >
+          {viewingImage && (
+            <Image
+              source={{ uri: viewingImage }}
+              style={{ width: '90%', height: '75%', resizeMode: 'contain', borderRadius: 8 }}
+            />
+          )}
+          <Text style={{ color: '#fff', marginTop: 16, fontSize: 13, opacity: 0.7 }}>
+            Tocá para cerrar
+          </Text>
+        </TouchableOpacity>
+      </Modal>
       <DatePickerModal
         locale="es"
         mode="single"
@@ -1488,47 +1643,47 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 0,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: COLOR.bg,
   },
   title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginVertical: 12,
+    fontSize: FONT_SIZE.h1,
+    fontWeight: FONT_WEIGHT.bold as any,
+    marginVertical: SPACE.s3,
     textAlign: 'center',
-    color: '#333',
+    color: COLOR.ink,
   },
   // Estilos para la vista de escritorio (originales)
   headerContainer: {
-    padding: 16,
+    padding: SPACE.s4,
     marginTop: -10,
   },
   dateInputsContainer: {
-    backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 15,
+    backgroundColor: COLOR.surface,
+    borderRadius: RADIUS.r2,
+    padding: SPACE.s4,
     elevation: 3,
-    marginBottom: 16,
+    marginBottom: SPACE.s4,
   },
   dateInput: {
-    backgroundColor: '#fff',
-    marginBottom: 12,
+    backgroundColor: COLOR.surface,
+    marginBottom: SPACE.s3,
     flex: 1,
     marginHorizontal: 5,
   },
   refreshButton: {
-    borderRadius: 30,
+    borderRadius: RADIUS.full,
     marginTop: 5,
     marginBottom: 10,
     elevation: 2,
-    marginRight: 8,
+    marginRight: SPACE.s2,
   },
   clearButton: {
     marginTop: 5,
-    borderColor: '#D4A72B',
-    marginRight: 8,
+    borderColor: COLOR.brand,
+    marginRight: SPACE.s2,
   },
   excelButton: {
-    borderRadius: 30,
+    borderRadius: RADIUS.full,
     marginTop: 5,
     marginBottom: 10,
     elevation: 2,
@@ -1536,31 +1691,31 @@ const styles = StyleSheet.create({
 
   // Estilos para la vista móvil (nuevos, compactos)
   controlsContainer: {
-    padding: 10,
+    padding: SPACE.s3,
     marginBottom: 5,
   },
   mobileControlsContainer: {
-    padding: 10,
+    padding: SPACE.s3,
     marginBottom: 5,
   },
   compactFiltersContainer: {
-    backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 10,
+    backgroundColor: COLOR.surface,
+    borderRadius: RADIUS.r2,
+    padding: SPACE.s3,
     elevation: 3,
-    marginBottom: 10,
+    marginBottom: SPACE.s3,
   },
   compactDateInputs: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: SPACE.s2,
   },
   compactDateInput: {
     flex: 1,
     marginHorizontal: 4,
     height: 50,
-    backgroundColor: '#fff',
-    fontSize: 15,
+    backgroundColor: COLOR.surface,
+    fontSize: FONT_SIZE.body,
     minWidth: 130,
   },
   compactButtonsRow: {
@@ -1570,37 +1725,37 @@ const styles = StyleSheet.create({
   compactClearButton: {
     flex: 1,
     marginRight: 5,
-    borderColor: '#D4A72B',
+    borderColor: COLOR.brand,
     height: 36,
   },
   compactRefreshButton: {
     flex: 1,
     marginLeft: 5,
     marginRight: 5,
-    borderRadius: 30,
+    borderRadius: RADIUS.full,
     height: 36,
   },
   compactExcelButton: {
     flex: 1,
     marginLeft: 5,
-    borderRadius: 30,
+    borderRadius: RADIUS.full,
     height: 36,
   },
   compactAdminButton: {
     flex: 1,
     marginLeft: 5,
     marginRight: 5,
-    borderRadius: 30,
+    borderRadius: RADIUS.full,
     height: 36,
-    borderColor: '#FF9800',
+    borderColor: COLOR.warn,
   },
 
   // Estilos para la selección de local
   storeFilterContainer: {
-    marginBottom: 10,
+    marginBottom: SPACE.s3,
   },
   storeFilterCompact: {
-    marginBottom: 8,
+    marginBottom: SPACE.s2,
   },
   filtersContainer: {
     width: '100%',
@@ -1613,38 +1768,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: SPACE.s2,
   },
   filtersRowWeb: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: SPACE.s3,
   },
   inputGroupWeb: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 3,
-    gap: 10,
+    gap: SPACE.s3,
   },
   buttonGroupWeb: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
     flex: 2,
-    gap: 10,
+    gap: SPACE.s3,
   },
   dateFiltersRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: SPACE.s3,
   },
   filterLabel: {
-    fontSize: 14,
-    fontWeight: 'bold',
+    fontSize: FONT_SIZE.label,
+    fontWeight: FONT_WEIGHT.bold as any,
     marginBottom: 5,
-    color: '#555',
+    color: COLOR.ink2,
   },
   storeSelector: {
     marginBottom: 5,
@@ -1660,28 +1815,28 @@ const styles = StyleSheet.create({
 
   // Estilos para el BalanceCard colapsable
   balanceCard: {
-    borderRadius: 10,
+    borderRadius: RADIUS.r2,
     elevation: 3,
-    marginBottom: 10,
+    marginBottom: SPACE.s3,
     overflow: 'hidden',
-    backgroundColor: 'white',
+    backgroundColor: COLOR.surface,
   },
   balanceHeaderContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: '#f8f8f8',
+    paddingHorizontal: SPACE.s4,
+    paddingVertical: SPACE.s2,
+    backgroundColor: COLOR.surface2,
   },
   balanceContentContainer: {
     overflow: 'hidden',
-    paddingHorizontal: 16,
+    paddingHorizontal: SPACE.s4,
   },
   balanceTitle: {
-    fontSize: 18,
-    color: '#333',
-    fontWeight: 'bold',
+    fontSize: FONT_SIZE.h2,
+    color: COLOR.ink,
+    fontWeight: FONT_WEIGHT.bold as any,
     marginBottom: 5,
     textAlign: 'center',
   },
@@ -1689,19 +1844,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 6,
-    paddingHorizontal: 10,
+    paddingHorizontal: SPACE.s3,
     paddingVertical: 5,
   },
   balanceLabel: {
-    fontSize: 16,
-    color: '#333',
-    marginLeft: 8,
+    fontSize: FONT_SIZE.h3,
+    color: COLOR.ink,
+    marginLeft: SPACE.s2,
     flex: 1,
   },
   balanceValue: {
-    fontSize: 16,
-    color: '#333',
-    fontWeight: '500',
+    fontSize: FONT_SIZE.h3,
+    color: COLOR.ink,
+    fontWeight: FONT_WEIGHT.medium as any,
   },
 
   // Estilos para la lista de transacciones
@@ -1710,36 +1865,36 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   transactionCard: {
-    marginBottom: 16,
-    borderRadius: 10,
+    marginBottom: SPACE.s4,
+    borderRadius: RADIUS.r2,
     elevation: 3,
-    backgroundColor: 'white',
+    backgroundColor: COLOR.surface,
   },
   transactionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
-    paddingBottom: 10,
+    marginBottom: SPACE.s3,
+    paddingBottom: SPACE.s3,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEEEEE',
+    borderBottomColor: COLOR.border,
   },
   transactionTypeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   transactionType: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginLeft: 8,
+    fontSize: FONT_SIZE.h3,
+    fontWeight: FONT_WEIGHT.bold as any,
+    marginLeft: SPACE.s2,
   },
   transactionAmount: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: FONT_SIZE.h2,
+    fontWeight: FONT_WEIGHT.bold as any,
+    color: COLOR.ink,
   },
   transactionDetails: {
-    marginBottom: 15,
+    marginBottom: SPACE.s4,
   },
   detailRow: {
     flexDirection: 'row',
@@ -1747,78 +1902,78 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   detailText: {
-    fontSize: 14,
-    color: '#555',
-    marginLeft: 8,
+    fontSize: FONT_SIZE.label,
+    color: COLOR.ink2,
+    marginLeft: SPACE.s2,
   },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 10,
+    marginTop: SPACE.s3,
   },
   editButton: {
     flex: 1,
     marginRight: 5,
-    borderRadius: 30,
+    borderRadius: RADIUS.full,
   },
   deleteButton: {
     flex: 1,
     marginLeft: 5,
-    borderRadius: 30,
+    borderRadius: RADIUS.full,
   },
 
   // Estilos para el modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: COLOR.overlay,
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContainer: {
     width: '90%',
-    backgroundColor: '#fff',
-    borderRadius: 15,
-    padding: 20,
+    backgroundColor: COLOR.surface,
+    borderRadius: RADIUS.r4,
+    padding: SPACE.s5,
     elevation: 5,
     maxHeight: '80%',
   },
   modalTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 15,
+    fontSize: FONT_SIZE.h1,
+    fontWeight: FONT_WEIGHT.bold as any,
+    marginBottom: SPACE.s4,
     textAlign: 'center',
-    color: '#333',
+    color: COLOR.ink,
   },
   modalInput: {
-    marginBottom: 12,
-    backgroundColor: 'white',
+    marginBottom: SPACE.s3,
+    backgroundColor: COLOR.surface,
   },
   modalButtonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 15,
+    marginTop: SPACE.s4,
   },
   modalButton: {
     flex: 1,
     marginHorizontal: 5,
-    borderRadius: 30,
+    borderRadius: RADIUS.full,
   },
   modalInputContainer: {
-    marginBottom: 12,
+    marginBottom: SPACE.s3,
   },
   modalInputLabel: {
-    fontSize: 14,
-    fontWeight: 'bold',
+    fontSize: FONT_SIZE.label,
+    fontWeight: FONT_WEIGHT.bold as any,
     marginBottom: 5,
-    color: '#555',
+    color: COLOR.ink2,
   },
 
   // Estilos para la paginación
   fixedPaginationContainer: {
-    paddingVertical: 10,
-    backgroundColor: '#f5f5f5',
+    paddingVertical: SPACE.s3,
+    backgroundColor: COLOR.bg,
     borderTopWidth: 1,
-    borderTopColor: '#ddd',
+    borderTopColor: COLOR.border,
   },
   paginationContainer: {
     flexDirection: 'row',
@@ -1832,23 +1987,23 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 20,
-    backgroundColor: 'white',
+    borderRadius: RADIUS.r4,
+    backgroundColor: COLOR.surface,
     borderWidth: 1,
-    borderColor: '#DDDDDD',
+    borderColor: COLOR.border2,
     elevation: 2,
   },
   paginationText: {
-    fontSize: 16,
-    color: '#555',
+    fontSize: FONT_SIZE.h3,
+    color: COLOR.ink2,
   },
   activeButton: {
-    backgroundColor: '#2196F3',
-    borderColor: '#2196F3',
+    backgroundColor: COLOR.info,
+    borderColor: COLOR.info,
   },
   activeText: {
-    color: 'white',
-    fontWeight: 'bold',
+    color: COLOR.white,
+    fontWeight: FONT_WEIGHT.bold as any,
   },
   disabledButton: {
     opacity: 0.5,
@@ -1859,52 +2014,94 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: SPACE.s5,
   },
   loadingText: {
-    marginTop: 15,
-    fontSize: 16,
-    color: '#D4A72B',
+    marginTop: SPACE.s4,
+    fontSize: FONT_SIZE.h3,
+    color: COLOR.brand,
     textAlign: 'center',
   },
   noDataText: {
-    fontSize: 18,
+    fontSize: FONT_SIZE.h2,
     textAlign: 'center',
     marginVertical: 40,
-    color: '#888',
+    color: COLOR.inkMute,
   },
   confirmationText: {
-    fontSize: 16,
+    fontSize: FONT_SIZE.h3,
     textAlign: 'center',
-    marginBottom: 20,
-    color: '#555',
+    marginBottom: SPACE.s5,
+    color: COLOR.ink2,
     lineHeight: 24,
   },
   snackbar: {
-    backgroundColor: '#333333',
-    borderRadius: 10,
+    backgroundColor: COLOR.ink,
+    borderRadius: RADIUS.r2,
   },
   imageContainer: {
-    marginTop: 10,
-    paddingTop: 10,
+    marginTop: SPACE.s3,
+    paddingTop: SPACE.s3,
     borderTopWidth: 1,
-    borderTopColor: '#EEEEEE',
+    borderTopColor: COLOR.border,
   },
   imageLabel: {
-    fontSize: 14,
-    fontWeight: 'bold',
+    fontSize: FONT_SIZE.label,
+    fontWeight: FONT_WEIGHT.bold as any,
     marginBottom: 5,
-    color: '#8B7214',
+    color: COLOR.brandDeep,
   },
   transactionImage: {
     width: '100%',
     height: 200,
-    borderRadius: 8,
+    borderRadius: RADIUS.r1,
     resizeMode: 'contain',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLOR.bg,
     borderWidth: 1,
-    borderColor: '#EEEEEE',
+    borderColor: COLOR.border,
   },
+
+  // ── KPI Row ───────────────────────────────────────────────────────────────
+  kpiRow:         { flexDirection: 'row', flexWrap: 'wrap', gap: SPACE.s3, padding: SPACE.s4, backgroundColor: COLOR.bg },
+  kpiCard:        { flex: 1, minWidth: 140, backgroundColor: COLOR.surface, borderRadius: RADIUS.r3, borderWidth: 1, borderColor: COLOR.border, padding: SPACE.s4, gap: 4, ...SHADOW.sm },
+  kpiCardLabel:   { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.inkMute, letterSpacing: 0.4 },
+  kpiCardValue:   { fontSize: FONT_SIZE.h2, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink, letterSpacing: -0.5 },
+  kpiCardSub:     { fontSize: FONT_SIZE.caption, color: COLOR.inkMute },
+
+  // ── Filter tabs con conteo ─────────────────────────────────────────────────
+  tabBtn:           { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, paddingHorizontal: SPACE.s2, backgroundColor: COLOR.bgAlt },
+  tabBtnActive:     { backgroundColor: COLOR.surface },
+  tabBtnText:       { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.inkMute },
+  tabBtnTextActive: { color: COLOR.ink, fontWeight: FONT_WEIGHT.bold as any },
+  tabBtnCount:      { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.inkDisabled },
+  tabBtnCountActive:{ color: COLOR.ink2 },
+
+  // ── Tabla header ──────────────────────────────────────────────────────────
+  txTableHeader:     { flexDirection: 'row', alignItems: 'center', gap: SPACE.s3, paddingHorizontal: SPACE.s4, paddingVertical: SPACE.s2, backgroundColor: COLOR.surface2, borderBottomWidth: 1, borderBottomColor: COLOR.border },
+  txTableHeaderText: { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.inkMute, letterSpacing: 0.5 },
+
+  // ── Transaction rows ──────────────────────────────────────────────────────
+  txRow:       { flexDirection: 'row', alignItems: 'center', gap: SPACE.s3, paddingHorizontal: SPACE.s4, paddingVertical: SPACE.s3, backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border },
+  txIconWrap:  { width: 40, height: 40, borderRadius: RADIUS.full, justifyContent: 'center', alignItems: 'center' },
+  txMain:      { flex: 2, gap: 2 },
+  txName:      { fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink },
+  txBadge:     { paddingHorizontal: SPACE.s2, paddingVertical: 2, borderRadius: RADIUS.full },
+  txBadgeText: { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.semibold as any },
+  txMeta:      { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, marginTop: 1 },
+  txStore:     { flex: 1, fontSize: FONT_SIZE.label, color: COLOR.ink2, fontWeight: FONT_WEIGHT.medium as any },
+  txDateWrap:  { alignItems: 'flex-end', minWidth: 80 },
+  txDate:      { fontSize: FONT_SIZE.label, color: COLOR.ink },
+  txTime:      { fontSize: FONT_SIZE.caption, color: COLOR.inkMute },
+  txAmtWrap:   { alignItems: 'flex-end', minWidth: 90 },
+  txAmt:       { fontSize: FONT_SIZE.h3, fontWeight: FONT_WEIGHT.bold as any, letterSpacing: -0.3 },
+  txAmtLabel:  { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.semibold as any },
+});
+
+const storeChipStyle = StyleSheet.create({
+  chip:       { paddingHorizontal: SPACE.s3, paddingVertical: 6, borderRadius: RADIUS.full, backgroundColor: COLOR.bg, borderWidth: 1, borderColor: COLOR.border },
+  active:     { backgroundColor: COLOR.brand, borderColor: COLOR.brandDark },
+  text:       { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink2 },
+  activeText: { color: COLOR.ink, fontWeight: FONT_WEIGHT.bold as any },
 });
 
 export default AdminScreen;

@@ -153,8 +153,8 @@ const FormScreen: React.FC<FormScreenProps> = ({ onClose }) => {
                 onValueChange={(itemValue) => setType(itemValue)}
                 style={styles.picker}
               >
-                <Picker.Item label="Income" value="income" />
-                <Picker.Item label="Expense" value="expense" />
+                <Picker.Item label="Ingreso" value="income" />
+                <Picker.Item label="Egreso" value="expense" />
               </Picker>
             </View>
             

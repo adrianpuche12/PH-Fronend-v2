@@ -1,123 +1,125 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Text } from 'react-native';  
-import { Button, IconButton } from 'react-native-paper';  
-import { router } from 'expo-router';
-import TransactionsScreen from './TransactionsScreen';
+import React, { useState } from 'react';
+import { View, StyleSheet, useWindowDimensions, TouchableOpacity, Text } from 'react-native';
+import Sidebar, { SidebarScreen } from '../components/Sidebar';
+import { StoreProvider } from '../context/StoreContext';
+import { UIPreferencesProvider } from '../context/UIPreferencesContext';
+import { COLOR, SPACE, FONT_SIZE, FONT_WEIGHT, CONTROL, BREAKPOINT } from '../theme';
 import AdminScreen from './AdminScreen';
-import LogoutButton from '../components/LogoutButton';
-import { useAuth } from '../context/AuthContext';
+import StoresScreen from './StoresScreen';
+import InventoryScreen from './InventoryScreen';
+import POSScreen from './POSScreen';
+import SalesHistoryScreen from './SalesHistoryScreen';
+import DashboardScreen from './DashboardScreen';
+import UsersScreen from './UsersScreen';
+
+const SCREEN_TITLE: Record<SidebarScreen, string> = {
+  dashboard:    'Dashboard',
+  operations:   'Operaciones',
+  inventory:    'Inventario',
+  stores:       'Locales',
+  salesHistory: 'Historial ventas',
+  users:        'Usuarios',
+  sales:        'Ventas',
+};
 
 const AdminDashboard = () => {
-  const [activeScreen, setActiveScreen] = useState<'transactions' | 'admin' | null>(null);
-  const { userName } = useAuth();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= BREAKPOINT.desktop;
+
+  const [activeScreen, setActiveScreen] = useState<SidebarScreen>('dashboard');
+  const [drawerOpen, setDrawerOpen]     = useState(false);
 
   return (
-    <View style={styles.container}>
-      {/* Botón de Home */}
-      <IconButton
-        icon="home"  
-        size={24}  
-        onPress={() => setActiveScreen(null)}
-        style={styles.homeButton}
-      />
+    <UIPreferencesProvider>
+    <StoreProvider>
+      <View style={styles.container}>
 
-      {/* Botón de Logout */}
-      <LogoutButton />
+        {/* Sidebar fijo en desktop */}
+        {isDesktop && (
+          <Sidebar
+            active={activeScreen}
+            onSelect={setActiveScreen}
+            visible={false}
+            onClose={() => {}}
+          />
+        )}
 
-      {/* Botones fijos arriba */}
-      <View style={styles.buttonContainer}>
-        <Button
-          mode="contained"
-          onPress={() => setActiveScreen('transactions')}
-          style={styles.button}
-          labelStyle={styles.buttonLabel}
-        >
-          Transacciones
-        </Button>
+        {/* Área de contenido */}
+        <View style={styles.content}>
 
-        <Button
-          mode="contained"
-          onPress={() => setActiveScreen('admin')}
-          style={styles.button}
-          labelStyle={styles.buttonLabel}
-        >
-          Operaciones
-        </Button>
-      </View>
+          {/* Topbar mobile */}
+          {!isDesktop && (
+            <View style={styles.topbar}>
+              <TouchableOpacity
+                onPress={() => setDrawerOpen(true)}
+                style={styles.menuBtn}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.menuBtnIcon}>☰</Text>
+              </TouchableOpacity>
+              <Text style={styles.topbarTitle}>
+                {SCREEN_TITLE[activeScreen] ?? 'Menú'}
+              </Text>
+            </View>
+          )}
 
-      {/* Contenido dinámico abajo */}
-      <View style={styles.contentContainer}>
-        {activeScreen === 'transactions' && <TransactionsScreen />}
-        {activeScreen === 'admin' && <AdminScreen />}
-        {activeScreen === null && (
-          <View style={styles.dashboardContainer}>
-            <Text style={styles.welcomeText}>Bienvenido, {userName}</Text>
-            <Text style={styles.dashboardText}>Panel de Administrador</Text>
-          </View>
+          {/* Pantalla activa */}
+          {activeScreen === 'dashboard'    && <DashboardScreen />}
+          {activeScreen === 'users'        && <UsersScreen />}
+          {activeScreen === 'operations'   && <AdminScreen />}
+          {activeScreen === 'inventory'    && <InventoryScreen />}
+          {activeScreen === 'stores'       && <StoresScreen />}
+          {activeScreen === 'sales'        && <POSScreen />}
+          {activeScreen === 'salesHistory' && <SalesHistoryScreen />}
+        </View>
+
+        {/* Drawer mobile */}
+        {!isDesktop && (
+          <Sidebar
+            active={activeScreen}
+            onSelect={setActiveScreen}
+            visible={drawerOpen}
+            onClose={() => setDrawerOpen(false)}
+          />
         )}
       </View>
-    </View>
+    </StoreProvider>
+    </UIPreferencesProvider>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#E8E1F3',  
-    alignSelf: 'center',
-    width: '100%',
-    height: '100%',
-  },
-  homeButton: {
-    position: 'absolute', 
-    top: 3,
-    left: 10,
-    zIndex: 10, 
-  },
-  buttonContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    backgroundColor: COLOR.bg,
+  },
+  content: {
+    flex: 1,
+    flexDirection: 'column',
+    backgroundColor: COLOR.bg,
+  },
+  topbar: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 10,
-    paddingBottom: 0,
-    elevation: 3,
-    shadowColor: '',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
+    backgroundColor: COLOR.brand,
+    paddingHorizontal: SPACE.s4,
+    paddingVertical: SPACE.s3,
+    height: CONTROL.appBarH,
+    gap: SPACE.s3,
+    borderBottomWidth: 1,
+    borderBottomColor: COLOR.brandDark,
   },
-  button: {
-    flex: 1,
-    borderRadius: 0,
-    marginHorizontal: 0,
-    backgroundColor: '#E8E1F2', 
+  menuBtn:     { padding: SPACE.s1 },
+  menuBtnIcon: {
+    fontSize: 22,
+    fontWeight: FONT_WEIGHT.black as any,
+    color: COLOR.ink,
   },
-  buttonLabel: {
-    fontSize: 16,
-    fontWeight: '400',
-    color: '#000000',
-  },
-  contentContainer: {
-    flex: 1,
-    padding: 15,
-    backgroundColor: '#fff',
-    elevation: 2,
-    justifyContent: 'flex-start',
-  },
-  dashboardContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    flex: 1,
-  },
-  welcomeText: {
-    fontSize: 20,
-    color: '#333',
-    marginBottom: 8,
-  },
-  dashboardText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
+  topbarTitle: {
+    fontSize: FONT_SIZE.h2,
+    fontWeight: FONT_WEIGHT.bold as any,
+    color: COLOR.ink,
   },
 });
 

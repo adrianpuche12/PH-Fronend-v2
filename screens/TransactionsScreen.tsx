@@ -399,8 +399,8 @@ const TransactionsScreen = () => {
                       onValueChange={(itemValue) => handleChange('type', itemValue)}
                       style={styles.input}
                     >
-                      <Picker.Item label="Income" value="income" />
-                      <Picker.Item label="Expense" value="expense" />
+                      <Picker.Item label="Ingreso" value="income" />
+                      <Picker.Item label="Egreso" value="expense" />
                     </Picker>
 
                     <TextInput

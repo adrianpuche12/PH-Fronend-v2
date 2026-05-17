@@ -1228,14 +1228,17 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
           <MaterialCommunityIcons name={txIcon} size={20} color={txColor} />
         </View>
 
-        {/* Nombre + badge + metadata */}
+        {/* Nombre + badge + metadata — ocupa todo el ancho disponible */}
         <View style={styles.txMain}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
             <Text style={styles.txName}>{TRANSACTION_LABELS[item.type]}</Text>
             <View style={[styles.txBadge, { backgroundColor: txBg }]}>
               <Text style={[styles.txBadgeText, { color: txColor }]}>{TRANSACTION_LABELS[item.type]}</Text>
             </View>
           </View>
+          {!isLargeScreen && (
+            <Text style={styles.txMeta}>{fmtDate(dateToShow)} · {fmtTime(dateToShow)}</Text>
+          )}
           {metaParts.length > 0 && (
             <Text style={styles.txMeta} numberOfLines={1}>{metaParts.join(' · ')}</Text>
           )}
@@ -1246,33 +1249,31 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
           <Text style={styles.txStore} numberOfLines={1}>{storeName}</Text>
         )}
 
-        {/* Fecha */}
-        <View style={styles.txDateWrap}>
-          <Text style={styles.txDate}>{fmtDate(dateToShow)}</Text>
-          <Text style={styles.txTime}>{fmtTime(dateToShow)}</Text>
-        </View>
+        {/* Fecha — solo desktop */}
+        {isLargeScreen && (
+          <View style={styles.txDateWrap}>
+            <Text style={styles.txDate}>{fmtDate(dateToShow)}</Text>
+            <Text style={styles.txTime}>{fmtTime(dateToShow)}</Text>
+          </View>
+        )}
 
-        {/* Monto */}
-        <View style={styles.txAmtWrap}>
-          <Text style={[styles.txAmt, { color: txColor }]}>
-            {isIncome ? '+' : '-'}{amtStr}
-          </Text>
-          <Text style={styles.txAmtLabel}>LEMPIRAS</Text>
-        </View>
-
-        {/* Acciones */}
-        <View style={{ flexDirection: 'row' }}>
-          {imageUri && (
-            <IconButton
-              icon="camera"
-              size={18}
-              iconColor={COLOR.income}
-              onPress={() => setViewingImage(imageUri)}
-              accessibilityLabel="Ver comprobante"
-            />
-          )}
-          <IconButton icon="pencil" size={18} onPress={() => handleEdit(item)} iconColor={COLOR.info} />
-          <IconButton icon="delete" size={18} onPress={() => handleDelete(item)} iconColor={COLOR.expense} />
+        {/* Columna derecha: monto + acciones apilados */}
+        <View style={{ alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
+          <View style={styles.txAmtWrap}>
+            <Text style={[styles.txAmt, { color: txColor }]}>
+              {isIncome ? '+' : '-'}{amtStr}
+            </Text>
+            <Text style={styles.txAmtLabel}>LEMPIRAS</Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            {imageUri ? (
+              <IconButton icon="camera" size={16} iconColor={COLOR.income} onPress={() => setViewingImage(imageUri)} style={{ margin: 0 }} />
+            ) : (
+              <View style={{ width: 32 }} />
+            )}
+            <IconButton icon="pencil" size={16} onPress={() => handleEdit(item)} iconColor={COLOR.info} style={{ margin: 0 }} />
+            <IconButton icon="delete" size={16} onPress={() => handleDelete(item)} iconColor={COLOR.expense} style={{ margin: 0 }} />
+          </View>
         </View>
       </View>
     );
@@ -1470,8 +1471,8 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
         </View>
       )}
 
-      {/* ── KPI stats row ── */}
-      {!loading && <KpiRow transactions={transactions} />}
+      {/* ── KPI stats row — solo desktop (mobile va dentro del scroll) ── */}
+      {!loading && isLargeScreen && <KpiRow transactions={transactions} />}
 
       {/* ── Tabla header (solo desktop) ── */}
       {!loading && isLargeScreen && (
@@ -1494,6 +1495,8 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
         </View>
       ) : (
         <ScrollView style={styles.scrollView}>
+          {/* KPI cards en mobile dentro del scroll */}
+          {!isLargeScreen && <KpiRow transactions={transactions} />}
           {paginatedTransactions.length === 0 ? (
             <ThemedText style={styles.noDataText}>No hay transacciones para mostrar</ThemedText>
           ) : (
@@ -1513,6 +1516,9 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
         onDismiss={onDismissDatePicker}
         date={selectedDateInput === 'start' ? startDate : endDate}
         onConfirm={onConfirmDate}
+        label={selectedDateInput === 'start' ? 'Fecha desde' : 'Fecha hasta'}
+        saveLabel="Confirmar"
+        animationType="fade"
       />
 
       {/* Modal para editar la transacción */}
@@ -1537,10 +1543,21 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
             />
             {renderEditFields()}
             <View style={styles.modalButtonContainer}>
-              <Button onPress={handleCancelEdit} mode="outlined" style={styles.modalButton}>
+              <Button
+                onPress={handleCancelEdit}
+                mode="outlined"
+                style={styles.modalButton}
+                textColor={COLOR.ink2}
+              >
                 Cancelar
               </Button>
-              <Button onPress={handleSaveEdit} mode="contained" style={styles.modalButton}>
+              <Button
+                onPress={handleSaveEdit}
+                mode="contained"
+                style={styles.modalButton}
+                buttonColor={COLOR.brand}
+                textColor={COLOR.inkOnBrand}
+              >
                 Guardar
               </Button>
             </View>
@@ -1562,10 +1579,10 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
               ¿Estás seguro de que deseas eliminar esta transacción?
             </Text>
             <View style={styles.modalButtonContainer}>
-              <Button onPress={() => setShowDeleteConfirmation(false)} mode="outlined" style={styles.modalButton}>
+              <Button onPress={() => setShowDeleteConfirmation(false)} mode="outlined" style={styles.modalButton} textColor={COLOR.ink2}>
                 Cancelar
               </Button>
-              <Button onPress={confirmDelete} mode="contained" style={styles.modalButton}>
+              <Button onPress={confirmDelete} mode="contained" style={styles.modalButton} buttonColor={COLOR.expense} textColor={COLOR.white}>
                 Eliminar
               </Button>
             </View>
@@ -1634,6 +1651,9 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
           }
         })()}
         onConfirm={onConfirmEditDate}
+        label="Seleccionar fecha"
+        saveLabel="Confirmar"
+        animationType="fade"
       />
     </ThemedView>
   );
@@ -1930,19 +1950,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContainer: {
-    width: '90%',
+    width: '92%',
+    maxWidth: 560,
     backgroundColor: COLOR.surface,
     borderRadius: RADIUS.r4,
     padding: SPACE.s5,
-    elevation: 5,
-    maxHeight: '80%',
+    maxHeight: '85%',
+    ...SHADOW.lg,
   },
   modalTitle: {
-    fontSize: FONT_SIZE.h1,
+    fontSize: FONT_SIZE.h2,
     fontWeight: FONT_WEIGHT.bold as any,
-    marginBottom: SPACE.s4,
+    marginBottom: SPACE.s5,
     textAlign: 'center',
     color: COLOR.ink,
+    borderBottomWidth: 1,
+    borderBottomColor: COLOR.border,
+    paddingBottom: SPACE.s3,
   },
   modalInput: {
     marginBottom: SPACE.s3,
@@ -1951,12 +1975,12 @@ const styles = StyleSheet.create({
   modalButtonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: SPACE.s4,
+    marginTop: SPACE.s5,
+    gap: SPACE.s3,
   },
   modalButton: {
     flex: 1,
-    marginHorizontal: 5,
-    borderRadius: RADIUS.full,
+    borderRadius: RADIUS.r2,
   },
   modalInputContainer: {
     marginBottom: SPACE.s3,
@@ -2062,10 +2086,10 @@ const styles = StyleSheet.create({
   },
 
   // ── KPI Row ───────────────────────────────────────────────────────────────
-  kpiRow:         { flexDirection: 'row', flexWrap: 'wrap', gap: SPACE.s3, padding: SPACE.s4, backgroundColor: COLOR.bg },
-  kpiCard:        { flex: 1, minWidth: 140, backgroundColor: COLOR.surface, borderRadius: RADIUS.r3, borderWidth: 1, borderColor: COLOR.border, padding: SPACE.s4, gap: 4, ...SHADOW.sm },
+  kpiRow:         { flexDirection: 'row', flexWrap: 'wrap', gap: SPACE.s2, padding: SPACE.s3, backgroundColor: COLOR.bg },
+  kpiCard:        { flexBasis: '47%', flexGrow: 1, backgroundColor: COLOR.surface, borderRadius: RADIUS.r3, borderWidth: 1, borderColor: COLOR.border, padding: SPACE.s3, gap: 2, ...SHADOW.sm },
   kpiCardLabel:   { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.inkMute, letterSpacing: 0.4 },
-  kpiCardValue:   { fontSize: FONT_SIZE.h2, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink, letterSpacing: -0.5 },
+  kpiCardValue:   { fontSize: FONT_SIZE.h3, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink, letterSpacing: -0.5 },
   kpiCardSub:     { fontSize: FONT_SIZE.caption, color: COLOR.inkMute },
 
   // ── Filter tabs con conteo ─────────────────────────────────────────────────
@@ -2081,9 +2105,9 @@ const styles = StyleSheet.create({
   txTableHeaderText: { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.inkMute, letterSpacing: 0.5 },
 
   // ── Transaction rows ──────────────────────────────────────────────────────
-  txRow:       { flexDirection: 'row', alignItems: 'center', gap: SPACE.s3, paddingHorizontal: SPACE.s4, paddingVertical: SPACE.s3, backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border },
-  txIconWrap:  { width: 40, height: 40, borderRadius: RADIUS.full, justifyContent: 'center', alignItems: 'center' },
-  txMain:      { flex: 2, gap: 2 },
+  txRow:       { flexDirection: 'row', alignItems: 'flex-start', gap: SPACE.s2, paddingHorizontal: SPACE.s3, paddingVertical: SPACE.s3, backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border },
+  txIconWrap:  { width: 36, height: 36, borderRadius: RADIUS.full, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  txMain:      { flex: 1, minWidth: 0, gap: 2 },
   txName:      { fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink },
   txBadge:     { paddingHorizontal: SPACE.s2, paddingVertical: 2, borderRadius: RADIUS.full },
   txBadgeText: { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.semibold as any },
@@ -2092,7 +2116,7 @@ const styles = StyleSheet.create({
   txDateWrap:  { alignItems: 'flex-end', minWidth: 80 },
   txDate:      { fontSize: FONT_SIZE.label, color: COLOR.ink },
   txTime:      { fontSize: FONT_SIZE.caption, color: COLOR.inkMute },
-  txAmtWrap:   { alignItems: 'flex-end', minWidth: 90 },
+  txAmtWrap:   { alignItems: 'flex-end', minWidth: 80, flexShrink: 0 },
   txAmt:       { fontSize: FONT_SIZE.h3, fontWeight: FONT_WEIGHT.bold as any, letterSpacing: -0.3 },
   txAmtLabel:  { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.semibold as any },
 });

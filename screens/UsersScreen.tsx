@@ -224,39 +224,54 @@ export default function UsersScreen() {
           )}
 
           {users.map(user => (
-            <View key={user.id} style={[styles.row, user.status === 'SUSPENDED' && styles.rowSuspended]}>
-              {/* Nombre */}
-              <View style={[styles.cell, styles.cellName]}>
-                <Text style={styles.userName}>{user.fullName}</Text>
-                {!isDesktop && <Text style={styles.userMeta}>@{user.username} · {user.storeName}</Text>}
-              </View>
-
-              {/* Usuario (solo desktop) */}
-              {isDesktop && <Text style={[styles.cell, styles.cellUser, styles.metaText]}>@{user.username}</Text>}
-
-              {/* Local (solo desktop) */}
-              {isDesktop && <Text style={[styles.cell, styles.cellStore, styles.metaText]}>{user.storeName}</Text>}
-
-              {/* Estado */}
-              <View style={[styles.cell, styles.cellStatus]}>
-                <View style={[styles.statusBadge, { backgroundColor: statusColor(user.status) + '18', borderColor: statusColor(user.status) + '44' }]}>
-                  <Text style={[styles.statusText, { color: statusColor(user.status) }]}>
-                    {statusLabel(user.status)}
-                  </Text>
+            isDesktop ? (
+              /* ── Desktop: tabla ── */
+              <View key={user.id} style={[styles.row, user.status === 'SUSPENDED' && styles.rowSuspended]}>
+                <View style={[styles.cell, styles.cellName]}>
+                  <Text style={styles.userName}>{user.fullName}</Text>
+                </View>
+                <Text style={[styles.cell, styles.cellUser, styles.metaText]}>@{user.username}</Text>
+                <Text style={[styles.cell, styles.cellStore, styles.metaText]}>{user.storeName}</Text>
+                <View style={[styles.cell, styles.cellStatus]}>
+                  <View style={[styles.statusBadge, { backgroundColor: statusColor(user.status) + '18', borderColor: statusColor(user.status) + '44' }]}>
+                    <Text style={[styles.statusText, { color: statusColor(user.status) }]}>{statusLabel(user.status)}</Text>
+                  </View>
+                </View>
+                <View style={[styles.cell, styles.cellActions]}>
+                  {user.status === 'ACTIVE'
+                    ? <IconButton icon="pause-circle" size={20} iconColor={COLOR.warn} onPress={() => handleSuspend(user)} style={{ margin: 0 }} />
+                    : <IconButton icon="play-circle" size={20} iconColor={COLOR.income} onPress={() => handleActivate(user)} style={{ margin: 0 }} />
+                  }
+                  <IconButton icon="store-edit" size={20} iconColor={COLOR.info} onPress={() => { setReassignModal(user); setReassignStoreId(String(user.storeId)); }} style={{ margin: 0 }} />
+                  <IconButton icon="lock-reset" size={20} iconColor={COLOR.ink2} onPress={() => { setResetModal(user); setNewPassword(''); }} style={{ margin: 0 }} />
+                  <IconButton icon="delete" size={20} iconColor={COLOR.expense} onPress={() => handleDelete(user)} style={{ margin: 0 }} />
                 </View>
               </View>
-
-              {/* Acciones */}
-              <View style={[styles.cell, styles.cellActions]}>
-                {user.status === 'ACTIVE'
-                  ? <IconButton icon="pause-circle" size={20} iconColor={COLOR.warn} onPress={() => handleSuspend(user)} style={{ margin: 0 }} />
-                  : <IconButton icon="play-circle" size={20} iconColor={COLOR.income} onPress={() => handleActivate(user)} style={{ margin: 0 }} />
-                }
-                <IconButton icon="store-edit" size={20} iconColor={COLOR.info} onPress={() => { setReassignModal(user); setReassignStoreId(String(user.storeId)); }} style={{ margin: 0 }} />
-                <IconButton icon="lock-reset" size={20} iconColor={COLOR.ink2} onPress={() => { setResetModal(user); setNewPassword(''); }} style={{ margin: 0 }} />
-                <IconButton icon="delete" size={20} iconColor={COLOR.expense} onPress={() => handleDelete(user)} style={{ margin: 0 }} />
+            ) : (
+              /* ── Mobile: card ── */
+              <View key={user.id} style={[styles.mobileCard, user.status === 'SUSPENDED' && styles.rowSuspended]}>
+                {/* Fila 1: nombre + estado */}
+                <View style={styles.mobileCardTop}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.userName} numberOfLines={1}>{user.fullName}</Text>
+                    <Text style={styles.userMeta}>@{user.username} · {user.storeName}</Text>
+                  </View>
+                  <View style={[styles.statusBadge, { backgroundColor: statusColor(user.status) + '18', borderColor: statusColor(user.status) + '44' }]}>
+                    <Text style={[styles.statusText, { color: statusColor(user.status) }]}>{statusLabel(user.status)}</Text>
+                  </View>
+                </View>
+                {/* Fila 2: acciones */}
+                <View style={styles.mobileCardActions}>
+                  {user.status === 'ACTIVE'
+                    ? <IconButton icon="pause-circle" size={22} iconColor={COLOR.warn} onPress={() => handleSuspend(user)} style={{ margin: 0 }} />
+                    : <IconButton icon="play-circle" size={22} iconColor={COLOR.income} onPress={() => handleActivate(user)} style={{ margin: 0 }} />
+                  }
+                  <IconButton icon="store-edit" size={22} iconColor={COLOR.info} onPress={() => { setReassignModal(user); setReassignStoreId(String(user.storeId)); }} style={{ margin: 0 }} />
+                  <IconButton icon="lock-reset" size={22} iconColor={COLOR.ink2} onPress={() => { setResetModal(user); setNewPassword(''); }} style={{ margin: 0 }} />
+                  <IconButton icon="delete" size={22} iconColor={COLOR.expense} onPress={() => handleDelete(user)} style={{ margin: 0 }} />
+                </View>
               </View>
-            </View>
+            )
           ))}
         </ScrollView>
       )}
@@ -413,4 +428,8 @@ const styles = StyleSheet.create({
   storeChipTextActive: { color: COLOR.ink, fontWeight: FONT_WEIGHT.bold as any },
 
   roleNote:       { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, backgroundColor: COLOR.bgAlt, borderRadius: RADIUS.r2, padding: SPACE.s2, marginBottom: SPACE.s1 },
+
+  mobileCard:       { backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border, paddingHorizontal: SPACE.s4, paddingVertical: SPACE.s3, gap: SPACE.s2 },
+  mobileCardTop:    { flexDirection: 'row', alignItems: 'center', gap: SPACE.s3 },
+  mobileCardActions:{ flexDirection: 'row', alignItems: 'center' },
 });

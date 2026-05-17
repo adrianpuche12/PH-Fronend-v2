@@ -131,7 +131,7 @@ const SidebarDesktop = ({ active, onSelect }: {
           <MaterialCommunityIcons
             name={sidebarCollapsed ? 'chevron-right' : 'chevron-left'}
             size={16}
-            color={COLOR.ink2}
+            color={COLOR.brandDeep}
           />
         </TouchableOpacity>
       </View>
@@ -205,53 +205,65 @@ const SidebarMobile = ({ active, onSelect, visible, onClose }: {
   const isAdmin = roles.includes('admin');
   const menu = isAdmin ? MENU_ADMIN : MENU_USER;
 
+  const { userName } = useAuth();
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={[styles.sidebar, { width: SIDEBAR_W_EXPANDED }]}>
+        <View style={styles.mobileDrawer}>
 
-          <View style={styles.header}>
+          {/* Header mejorado */}
+          <View style={styles.mobileDrawerHeader}>
             <Image
               source={require('../assets/images/logo_proyecto_Humberto.jpg')}
-              style={styles.logo}
+              style={styles.mobileDrawerLogo}
             />
-            <View style={styles.brandText}>
-              <Text style={styles.brandName}>Pollos Hermanos</Text>
-              <Text style={styles.brandSub}>Sistema de gestión</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.mobileDrawerBrand}>Pollos Hermanos</Text>
+              <Text style={styles.mobileDrawerUser}>{userName ?? 'Usuario'}</Text>
             </View>
-            <IconButton icon="close" size={20} iconColor={COLOR.ink2} onPress={onClose} style={{ margin: 0 }} />
+            <TouchableOpacity onPress={onClose} style={styles.mobileDrawerClose} activeOpacity={0.7}>
+              <MaterialCommunityIcons name="close" size={20} color={COLOR.inkOnBrand} />
+            </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.menuScroll} showsVerticalScrollIndicator={false}>
+          {/* Menú */}
+          <ScrollView style={{ flex: 1, paddingTop: SPACE.s3 }} showsVerticalScrollIndicator={false}>
             {menu.map(item => {
               const isActive = active === item.key;
               return (
                 <TouchableOpacity
                   key={item.key}
-                  style={[styles.menuItem, isActive && styles.menuItemActive]}
+                  style={[styles.mobileDrawerItem, isActive && styles.mobileDrawerItemActive]}
                   onPress={() => { onSelect(item.key); onClose(); }}
                   activeOpacity={0.7}
                 >
-                  <MaterialCommunityIcons
-                    name={item.icon}
-                    size={20}
-                    color={isActive ? COLOR.brandDeep : COLOR.ink2}
-                  />
-                  <Text style={[styles.menuLabel, isActive && styles.menuLabelActive]}>
+                  <View style={[styles.mobileDrawerIconWrap, isActive && styles.mobileDrawerIconWrapActive]}>
+                    <MaterialCommunityIcons
+                      name={item.icon}
+                      size={20}
+                      color={isActive ? COLOR.inkOnBrand : COLOR.ink2}
+                    />
+                  </View>
+                  <Text style={[styles.mobileDrawerLabel, isActive && styles.mobileDrawerLabelActive]}>
                     {item.label}
                   </Text>
-                  {isActive && <View style={styles.activeBar} />}
+                  {isActive && (
+                    <MaterialCommunityIcons name="chevron-right" size={16} color={COLOR.brandDark} />
+                  )}
                 </TouchableOpacity>
               );
             })}
           </ScrollView>
 
-          <TouchableOpacity style={styles.logoutBtn} onPress={logout} activeOpacity={0.7}>
-            <MaterialCommunityIcons name="logout" size={18} color={COLOR.expense} />
-            <Text style={styles.logoutLabel}>Cerrar sesión</Text>
+          {/* Logout */}
+          <TouchableOpacity style={styles.mobileDrawerLogout} onPress={logout} activeOpacity={0.7}>
+            <MaterialCommunityIcons name="logout-variant" size={20} color={COLOR.expense} />
+            <Text style={styles.mobileDrawerLogoutText}>Cerrar sesión</Text>
           </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.overlayBg} onPress={onClose} />
+
+        <TouchableOpacity style={styles.overlayBg} onPress={onClose} activeOpacity={1} />
       </View>
     </Modal>
   );
@@ -288,7 +300,100 @@ const Sidebar: React.FC<Props> = ({ active, onSelect, visible, onClose }) => {
 
 const styles = StyleSheet.create({
   overlay:   { flex: 1, flexDirection: 'row' },
-  overlayBg: { flex: 1, backgroundColor: COLOR.overlay },
+  overlayBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)' },
+
+  // ── Mobile drawer rediseñado ──────────────────────────────────────────────
+  mobileDrawer: {
+    width: 280,
+    backgroundColor: COLOR.surface,
+    flexDirection: 'column',
+    borderTopRightRadius: RADIUS.r4,
+    borderBottomRightRadius: RADIUS.r4,
+    overflow: 'hidden',
+    ...SHADOW.lg,
+  },
+  mobileDrawerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACE.s3,
+    padding: SPACE.s4,
+    paddingTop: SPACE.s5,
+    backgroundColor: COLOR.brand,
+  },
+  mobileDrawerLogo: {
+    width: 44,
+    height: 44,
+    borderRadius: RADIUS.full,
+    borderWidth: 2,
+    borderColor: COLOR.brandDeep,
+  },
+  mobileDrawerBrand: {
+    fontSize: FONT_SIZE.label,
+    fontWeight: FONT_WEIGHT.bold as any,
+    color: COLOR.ink,
+  },
+  mobileDrawerUser: {
+    fontSize: FONT_SIZE.caption,
+    color: COLOR.inkOnBrand,
+    marginTop: 2,
+    fontWeight: FONT_WEIGHT.medium as any,
+  },
+  mobileDrawerClose: {
+    width: 32,
+    height: 32,
+    borderRadius: RADIUS.full,
+    backgroundColor: 'rgba(0,0,0,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mobileDrawerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACE.s3,
+    marginHorizontal: SPACE.s3,
+    marginBottom: SPACE.s1,
+    paddingHorizontal: SPACE.s3,
+    paddingVertical: SPACE.s3,
+    borderRadius: RADIUS.r2,
+  },
+  mobileDrawerItemActive: {
+    backgroundColor: COLOR.brandTint,
+  },
+  mobileDrawerIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: RADIUS.r2,
+    backgroundColor: COLOR.bg,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mobileDrawerIconWrapActive: {
+    backgroundColor: COLOR.brand,
+  },
+  mobileDrawerLabel: {
+    flex: 1,
+    fontSize: FONT_SIZE.body,
+    fontWeight: FONT_WEIGHT.medium as any,
+    color: COLOR.ink2,
+  },
+  mobileDrawerLabelActive: {
+    color: COLOR.ink,
+    fontWeight: FONT_WEIGHT.bold as any,
+  },
+  mobileDrawerLogout: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACE.s3,
+    padding: SPACE.s4,
+    borderTopWidth: 1,
+    borderTopColor: COLOR.border,
+    marginTop: SPACE.s2,
+  },
+  mobileDrawerLogoutText: {
+    fontSize: FONT_SIZE.body,
+    fontWeight: FONT_WEIGHT.semibold as any,
+    color: COLOR.expense,
+  },
 
   sidebar: {
     backgroundColor: COLOR.surface,
@@ -337,9 +442,9 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: RADIUS.full,
-    backgroundColor: COLOR.surface,
+    backgroundColor: COLOR.brandTint2,
     borderWidth: 1,
-    borderColor: COLOR.border2,
+    borderColor: COLOR.brandDark,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,

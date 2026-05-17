@@ -971,7 +971,7 @@ const DynamicFormScreen = () => {
       </View>
 
       {activeTab === 'historial' ? renderHistorial() : (
-      <ScrollView style={styles.scrollView}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={{ paddingBottom: 120 }}>
         <Card style={styles.card}>
           <Card.Content>
             <Title style={styles.cardTitle}>Formulario de Operaciones</Title>
@@ -1123,8 +1123,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   card: {
-    marginHorizontal: SPACE.s5,
-    marginBottom: SPACE.s5,
+    marginHorizontal: SPACE.s3,
+    marginBottom: SPACE.s4,
     borderRadius: RADIUS.r4,
     elevation: 6,
     paddingVertical: 5,
@@ -1184,18 +1184,16 @@ const styles = StyleSheet.create({
     marginTop: SPACE.s4,
   },
   submitButton: {
-    marginBottom: SPACE.s4,
+    marginBottom: SPACE.s3,
     borderRadius: RADIUS.full,
     elevation: 2,
-    paddingVertical: 5,
   },
   clearButton: {
     borderRadius: RADIUS.full,
     elevation: 2,
-    paddingVertical: 5,
   },
   buttonContent: {
-    paddingVertical: SPACE.s2,
+    height: 52,
   },
   buttonText: {
     fontSize: FONT_SIZE.h3,

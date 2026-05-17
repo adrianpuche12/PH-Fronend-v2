@@ -39,7 +39,7 @@ interface DailySummary {
   productSummary: ProductSummaryItem[];
 }
 
-const ISV = 0.15;
+const ISV = 0; // ISV deshabilitado por solicitud del cliente
 
 // Aplana categorías para chips
 const flatCats = (cats: Category[]): Category[] => {
@@ -568,9 +568,8 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                         ))}
                       </View>
 
-                      {/* ISV */}
                       <View style={styles.saleCardFooter}>
-                        <Text style={styles.saleCardFooterText}>Subtotal: {formatHnl(sale.subtotal)}  ·  ISV 15%: {formatHnl(sale.isv)}</Text>
+                        <Text style={styles.saleCardFooterText}>Total: {formatHnl(sale.total)}</Text>
                       </View>
                     </View>
                   ))}
@@ -617,7 +616,6 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                 <View style={styles.sumDivider} />
                 <View style={{ gap: 4 }}>
                   <View style={styles.sumTotalRow}><Text style={styles.sumLabel}>Subtotal</Text><Text style={styles.sumValue}>{formatHnl(summary.totalSubtotal)}</Text></View>
-                  <View style={styles.sumTotalRow}><Text style={styles.sumLabel}>ISV (15%)</Text><Text style={styles.sumValue}>{formatHnl(summary.totalIsv)}</Text></View>
                   <View style={[styles.sumTotalRow, { borderTopWidth: 2, borderTopColor: COLOR.ink, marginTop: 6, paddingTop: 6 }]}>
                     <Text style={{ fontSize: FONT_SIZE.h3, fontWeight: FONT_WEIGHT.black as any, color: COLOR.ink }}>Total del día</Text>
                     <Text style={{ fontSize: FONT_SIZE.h2, fontWeight: FONT_WEIGHT.black as any, color: COLOR.ink }}>{formatHnl(summary.totalAmount)}</Text>
@@ -691,7 +689,6 @@ function Ticket({ cart, subtotal, isv, total, itemCount, onRemove, onClear, onSu
       {/* Totales */}
       <View style={tkStyles.totals}>
         <View style={tkStyles.totalLine}><Text style={tkStyles.totalLabel}>Subtotal</Text><Text style={tkStyles.totalValue}>{formatHnl(subtotal)}</Text></View>
-        <View style={tkStyles.totalLine}><Text style={tkStyles.totalLabel}>Impuestos (ISV 15%)</Text><Text style={tkStyles.totalValue}>{formatHnl(isv)}</Text></View>
         <View style={[tkStyles.totalLine, tkStyles.totalFinal]}>
           <Text style={tkStyles.totalLabelFinal}>TOTAL</Text>
           <Text style={tkStyles.totalAmount}>{formatHnl(total)}</Text>

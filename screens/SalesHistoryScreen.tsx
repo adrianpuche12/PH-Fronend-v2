@@ -213,10 +213,6 @@ export default function SalesHistoryScreen() {
                             <Text style={styles.totalLabel}>{summary.totalSales} venta{summary.totalSales !== 1 ? 's' : ''}</Text>
                             <Text style={styles.totalLabel}>Subtotal: {formatHnl(summary.totalSubtotal)}</Text>
                           </View>
-                          <View style={styles.totalLine}>
-                            <Text style={styles.totalLabel}>ISV (15%)</Text>
-                            <Text style={styles.totalLabel}>{formatHnl(summary.totalIsv)}</Text>
-                          </View>
                           <View style={[styles.totalLine, styles.totalFinal]}>
                             <Text style={styles.totalFinalLabel}>TOTAL</Text>
                             <Text style={styles.totalFinalAmount}>{formatHnl(summary.totalAmount)}</Text>

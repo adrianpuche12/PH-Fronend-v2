@@ -11,7 +11,7 @@ import { REACT_APP_API_URL } from '../config';
 import { useStore } from '../context/StoreContext';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useAuth } from '../context/AuthContext';
-import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW, CONTROL } from '../theme';
+import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW, CONTROL, BREAKPOINT } from '../theme';
 import { formatHnl } from '../utils/format';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -239,11 +239,11 @@ const CategoryTree = ({ categories, selected, onSelect, onNew, onEdit, onDelete,
 
 const KpiCard = ({ icon, title, value, sub, warn }: { icon: string; title: string; value: string; sub?: string; warn?: boolean }) => (
   <View style={[styles.kpi, warn && styles.kpiWarn]}>
-    <MaterialCommunityIcons name={icon} size={26} color={warn ? COLOR.warn : COLOR.ink2} />
-    <View>
-      <Text style={styles.kpiTitle}>{title}</Text>
-      <Text style={[styles.kpiValue, warn && { color: COLOR.warn }]}>{value}</Text>
-      {sub ? <Text style={styles.kpiSub}>{sub}</Text> : null}
+    <MaterialCommunityIcons name={icon} size={22} color={warn ? COLOR.warn : COLOR.ink2} />
+    <View style={{ flex: 1 }}>
+      <Text style={styles.kpiTitle} numberOfLines={1}>{title}</Text>
+      <Text style={[styles.kpiValue, warn && { color: COLOR.warn }]} numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
+      {sub ? <Text style={styles.kpiSub} numberOfLines={1}>{sub}</Text> : null}
     </View>
   </View>
 );
@@ -265,7 +265,7 @@ const InventoryScreen = () => {
   const [loading, setLoading]             = useState(false);
   const [search, setSearch]               = useState('');
   const [selectedCat, setSelectedCat]     = useState<number | null>(null);
-  const [showCatPanel, setShowCatPanel]   = useState(true);
+  const [showCatPanel, setShowCatPanel]   = useState(isDesktop);
   const [topExpanded, setTopExpanded]     = useState(true);
   const [snackbar, setSnackbar]           = useState('');
   const [activeView, setActiveView]       = useState<'stock' | 'movements'>('stock');
@@ -551,47 +551,81 @@ const InventoryScreen = () => {
   const renderRow = (item: StockItem) => (
     <View key={item.stockId} style={[styles.row, !item.productActive && styles.rowInactive]}>
 
-      {/* Info del producto */}
-      <View style={styles.rowInfo}>
-        <Text style={styles.rowName} numberOfLines={1}>{item.productName}</Text>
-        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 2 }}>
-          {item.productSku ? <Text style={styles.rowSku}>{item.productSku}</Text> : null}
-          {item.categoryPath ? <Text style={styles.rowCat} numberOfLines={1}>· {item.categoryPath}</Text> : null}
+      {isDesktop ? (
+        /* ── Layout desktop: tabla ── */
+        <>
+          <View style={styles.rowInfo}>
+            <Text style={styles.rowName} numberOfLines={1}>{item.productName}</Text>
+            <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 2 }}>
+              {item.productSku ? <Text style={styles.rowSku}>{item.productSku}</Text> : null}
+              {item.categoryPath ? <Text style={styles.rowCat} numberOfLines={1}>· {item.categoryPath}</Text> : null}
+            </View>
+          </View>
+          <Text style={styles.rowPrice}>{formatHnl(item.price)}</Text>
+          <View style={[styles.stockBadge, { backgroundColor: stockColor(item) + '18' }]}>
+            <Text style={[styles.stockNum, { color: stockColor(item) }]}>{item.quantity}</Text>
+            <Text style={[styles.stockMin, { color: stockColor(item) }]}>/ {item.minStock}</Text>
+          </View>
+        </>
+      ) : null}
+
+      {/* ── Layout mobile: card completo ── */}
+      {!isDesktop && (
+        <View style={styles.mobileCard}>
+          {/* Fila 1: nombre + stock */}
+          <View style={styles.mobileCardTop}>
+            <Text style={styles.mobileCardName} numberOfLines={2}>{item.productName}</Text>
+            <View style={[styles.stockBadge, { backgroundColor: stockColor(item) + '22' }]}>
+              <Text style={[styles.stockNum, { color: stockColor(item) }]}>{item.quantity}</Text>
+              <Text style={[styles.stockMin, { color: stockColor(item) }]}>/{item.minStock}</Text>
+            </View>
+          </View>
+          {/* Fila 2: precio + categoria */}
+          <View style={styles.mobileCardMeta}>
+            <Text style={styles.mobileCardPrice}>{formatHnl(item.price)}</Text>
+            {item.categoryPath ? <Text style={styles.rowCat} numberOfLines={1}>{item.categoryPath}</Text> : null}
+          </View>
+          {/* Fila 3: acciones */}
+          <View style={styles.mobileCardActions}>
+            <TouchableOpacity style={styles.adjustBtn} onPress={() => { setAdjustType('ENTRADA'); setAdjustItem(item); }}>
+              <Text style={styles.adjustBtnText}>{isAdmin ? 'Ajustar' : 'Agregar'}</Text>
+            </TouchableOpacity>
+            {isAdmin && (
+              <View style={{ flexDirection: 'row' }}>
+                <IconButton icon="pencil" size={18} iconColor={COLOR.ink2} onPress={() => openEditProduct(item)} style={styles.actionIcon} />
+                <IconButton
+                  icon={item.productActive ? 'toggle-switch' : 'toggle-switch-off'}
+                  size={18}
+                  iconColor={item.productActive ? COLOR.income : COLOR.inkDisabled}
+                  onPress={() => handleToggleProduct(item)}
+                  style={styles.actionIcon}
+                />
+                <IconButton icon="delete-outline" size={18} iconColor={COLOR.expense} onPress={() => askConfirm('Eliminar producto', `¿Eliminar "${item.productName}"?`, () => handleDeleteProduct(item.productId))} style={styles.actionIcon} />
+              </View>
+            )}
+          </View>
         </View>
-      </View>
+      )}
 
-      {/* Precio */}
-      <Text style={styles.rowPrice}>{formatHnl(item.price)}</Text>
-
-      {/* Stock badge */}
-      <View style={[styles.stockBadge, { backgroundColor: stockColor(item) + '18' }]}>
-        <Text style={[styles.stockNum, { color: stockColor(item) }]}>{item.quantity}</Text>
-        <Text style={[styles.stockMin, { color: stockColor(item) }]}>/ {item.minStock}</Text>
-      </View>
-
-      {/* Acciones */}
-      <View style={styles.rowActions}>
-        {/* Botón agregar/ajustar stock — siempre visible */}
-        <TouchableOpacity
-          style={styles.adjustBtn}
-          onPress={() => { setAdjustType('ENTRADA'); setAdjustItem(item); }}
-        >
-          <Text style={styles.adjustBtnText}>{isAdmin ? 'Ajustar' : 'Agregar'}</Text>
-        </TouchableOpacity>
-
-        {/* Acciones de admin: editar, toggle, eliminar */}
-        {isAdmin && <IconButton icon="pencil" size={18} iconColor={COLOR.ink2} onPress={() => openEditProduct(item)} style={styles.actionIcon} />}
-        {isAdmin && (
-          <IconButton
-            icon={item.productActive ? 'toggle-switch' : 'toggle-switch-off'}
-            size={18}
-            iconColor={item.productActive ? COLOR.income : COLOR.inkDisabled}
-            onPress={() => handleToggleProduct(item)}
-            style={styles.actionIcon}
-          />
-        )}
-        {isAdmin && <IconButton icon="trash-can" size={18} iconColor={COLOR.expense} onPress={() => handleDeleteProduct(item)} style={styles.actionIcon} />}
-      </View>
+      {/* Acciones — solo desktop */}
+      {isDesktop && (
+        <View style={styles.rowActions}>
+          <TouchableOpacity style={styles.adjustBtn} onPress={() => { setAdjustType('ENTRADA'); setAdjustItem(item); }}>
+            <Text style={styles.adjustBtnText}>{isAdmin ? 'Ajustar' : 'Agregar'}</Text>
+          </TouchableOpacity>
+          {isAdmin && <IconButton icon="pencil" size={18} iconColor={COLOR.ink2} onPress={() => openEditProduct(item)} style={styles.actionIcon} />}
+          {isAdmin && (
+            <IconButton
+              icon={item.productActive ? 'toggle-switch' : 'toggle-switch-off'}
+              size={18}
+              iconColor={item.productActive ? COLOR.income : COLOR.inkDisabled}
+              onPress={() => handleToggleProduct(item)}
+              style={styles.actionIcon}
+            />
+          )}
+          {isAdmin && <IconButton icon="trash-can" size={18} iconColor={COLOR.expense} onPress={() => handleDeleteProduct(item)} style={styles.actionIcon} />}
+        </View>
+      )}
     </View>
   );
 
@@ -602,61 +636,58 @@ const InventoryScreen = () => {
 
       {/* ── Header ── */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
+        {/* Fila 1: título + tabs + botones */}
+        <View style={styles.headerRow1}>
           <Text style={styles.headerTitle}>Inventario</Text>
-          {/* Selector de local — solo admin (usuario ya tiene su local asignado) */}
-          {isAdmin ? (
-            <View style={styles.storeSelector}>
-              {stores.map(s => (
-                <TouchableOpacity
-                  key={s.id}
-                  style={[styles.storeChip, selectedStore?.id === s.id && styles.storeChipActive]}
-                  onPress={() => setSelectedStore(s)}
-                >
-                  <Text style={[styles.storeChipText, selectedStore?.id === s.id && styles.storeChipTextActive]}>
-                    {s.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+          <View style={styles.headerRight}>
+            <View style={styles.viewTabs}>
+              <TouchableOpacity
+                style={[styles.viewTab, activeView === 'stock' && styles.viewTabActive]}
+                onPress={() => handleViewChange('stock')}
+              >
+                <Text style={[styles.viewTabText, activeView === 'stock' && styles.viewTabTextActive]}>Stock</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.viewTab, activeView === 'movements' && styles.viewTabActive]}
+                onPress={() => handleViewChange('movements')}
+              >
+                <Text style={[styles.viewTabText, activeView === 'movements' && styles.viewTabTextActive]}>Historial</Text>
+              </TouchableOpacity>
             </View>
-          ) : (
-            <Text style={{ fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink2 }}>
-              {selectedStore?.name}
-            </Text>
-          )}
-        </View>
-        <View style={styles.headerRight}>
-          {/* Tabs Stock / Historial */}
-          <View style={styles.viewTabs}>
-            <TouchableOpacity
-              style={[styles.viewTab, activeView === 'stock' && styles.viewTabActive]}
-              onPress={() => handleViewChange('stock')}
-            >
-              <Text style={[styles.viewTabText, activeView === 'stock' && styles.viewTabTextActive]}>Stock</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.viewTab, activeView === 'movements' && styles.viewTabActive]}
-              onPress={() => handleViewChange('movements')}
-            >
-              <Text style={[styles.viewTabText, activeView === 'movements' && styles.viewTabTextActive]}>Historial</Text>
-            </TouchableOpacity>
+            {activeView === 'stock' && (
+              <TouchableOpacity onPress={() => setTopExpanded(v => !v)} style={styles.iconBtn}>
+                <MaterialCommunityIcons name={topExpanded ? 'eye-off-outline' : 'eye-outline'} size={20} color={COLOR.ink2} />
+              </TouchableOpacity>
+            )}
+            {activeView === 'stock' && isAdmin && (
+              <TouchableOpacity onPress={openCreateProduct} style={styles.addBtn}>
+                <MaterialCommunityIcons name="plus" size={18} color={COLOR.inkOnBrand} />
+                {width >= BREAKPOINT.tablet && <Text style={styles.addBtnText}>Nuevo</Text>}
+              </TouchableOpacity>
+            )}
           </View>
-
-          {activeView === 'stock' && (
-            <>
-              <Button mode="outlined" onPress={() => setTopExpanded(v => !v)}
-                textColor={COLOR.ink2} style={{ borderColor: COLOR.border, borderRadius: RADIUS.r2 }}
-                labelStyle={{ fontSize: FONT_SIZE.caption }}>
-                {topExpanded ? 'Cerrar' : 'Resumen'}
-              </Button>
-              {isAdmin && (
-                <Button mode="contained" onPress={openCreateProduct} buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ borderRadius: RADIUS.r2 }}>
-                  + Nuevo producto
-                </Button>
-              )}
-            </>
-          )}
         </View>
+
+        {/* Fila 2: chips de locales (scrolleable) */}
+        {isAdmin ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.storeSelector}>
+            {stores.map(s => (
+              <TouchableOpacity
+                key={s.id}
+                style={[styles.storeChip, selectedStore?.id === s.id && styles.storeChipActive]}
+                onPress={() => setSelectedStore(s)}
+              >
+                <Text style={[styles.storeChipText, selectedStore?.id === s.id && styles.storeChipTextActive]}>
+                  {s.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        ) : (
+          <Text style={{ fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink2 }}>
+            {selectedStore?.name}
+          </Text>
+        )}
       </View>
 
       {/* ── Sección colapsable: alerta + KPIs (solo en vista stock) ── */}
@@ -813,8 +844,8 @@ const InventoryScreen = () => {
       {/* ── Modal producto ── */}
       <Modal visible={productModal} transparent animationType="fade" onRequestClose={() => setProductModal(false)}>
         <View style={styles.overlay}>
-          <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 16 }}>
-            <View style={[styles.modal, { width: '100%', maxWidth: 480 }]}>
+          <ScrollView style={{ width: '100%' }} contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 16 }}>
+            <View style={[styles.modal, { alignSelf: 'center', width: '100%', maxWidth: 900 }]}>
               <Text style={styles.modalTitle}>{editProduct ? 'Editar Producto' : 'Nuevo Producto'}</Text>
 
               <TextInput label="Nombre *" value={productForm.name} onChangeText={v => setProductForm({ ...productForm, name: v })} mode="outlined" style={styles.input} />
@@ -926,14 +957,17 @@ const styles = StyleSheet.create({
   container:          { flex: 1, backgroundColor: COLOR.bg },
 
   // Header
-  header:             { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: SPACE.s2, padding: SPACE.s4, backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border },
-  headerLeft:         { flexDirection: 'column', gap: SPACE.s2 },
+  header:             { flexDirection: 'column', gap: SPACE.s2, paddingHorizontal: SPACE.s4, paddingTop: SPACE.s3, paddingBottom: SPACE.s2, backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border },
+  headerRow1:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headerTitle:        { fontSize: FONT_SIZE.h1, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
-  headerRight:        { flexDirection: 'row', alignItems: 'center', gap: SPACE.s2, flexWrap: 'wrap' },
-  storeSelector:      { flexDirection: 'row', gap: SPACE.s2, flexWrap: 'wrap' },
+  headerRight:        { flexDirection: 'row', alignItems: 'center', gap: SPACE.s2 },
+  storeSelector:      { flexDirection: 'row', gap: SPACE.s2, paddingBottom: SPACE.s1 },
   storeChip:          { paddingHorizontal: SPACE.s4, paddingVertical: 7, borderRadius: RADIUS.full, backgroundColor: COLOR.bg, borderWidth: 1, borderColor: COLOR.border },
   storeChipActive:    { backgroundColor: COLOR.brand, borderColor: COLOR.brandDark },
   storeChipText:      { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink2 },
+  iconBtn:            { width: 36, height: 36, borderRadius: RADIUS.r2, borderWidth: 1, borderColor: COLOR.border, justifyContent: 'center', alignItems: 'center', backgroundColor: COLOR.bg },
+  addBtn:             { flexDirection: 'row', alignItems: 'center', gap: SPACE.s1, paddingHorizontal: SPACE.s3, paddingVertical: SPACE.s2, borderRadius: RADIUS.r2, backgroundColor: COLOR.brand },
+  addBtnText:         { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.inkOnBrand },
   storeChipTextActive:{ color: COLOR.ink, fontWeight: FONT_WEIGHT.bold as any },
 
   // Alert
@@ -942,7 +976,7 @@ const styles = StyleSheet.create({
 
   // KPIs
   kpis:               { flexDirection: 'row', flexWrap: 'wrap', gap: SPACE.s2, padding: SPACE.s3 },
-  kpi:                { flex: 1, minWidth: 140, backgroundColor: COLOR.surface, borderRadius: RADIUS.r3, borderWidth: 1, borderColor: COLOR.border, padding: SPACE.s4, flexDirection: 'row', alignItems: 'center', gap: SPACE.s3, ...SHADOW.sm },
+  kpi:                { flexBasis: '47%', flexGrow: 1, backgroundColor: COLOR.surface, borderRadius: RADIUS.r3, borderWidth: 1, borderColor: COLOR.border, padding: SPACE.s3, flexDirection: 'row', alignItems: 'center', gap: SPACE.s2, ...SHADOW.sm },
   kpiWarn:            { borderColor: COLOR.warnBorder, backgroundColor: COLOR.warnTint },
   kpiIcon:            { fontSize: 26 },
   kpiTitle:           { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.inkMute, marginBottom: 2 },
@@ -1004,7 +1038,7 @@ const styles = StyleSheet.create({
   empty:              { textAlign: 'center', marginTop: 40, color: COLOR.inkMute, fontSize: FONT_SIZE.body },
   rowHeader:          { backgroundColor: COLOR.surface2, borderBottomWidth: 2, borderBottomColor: COLOR.border },
   colHeader:          { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink2 } as any,
-  row:                { flexDirection: 'row', alignItems: 'center', backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border, paddingHorizontal: SPACE.s2, paddingVertical: SPACE.s2, gap: SPACE.s2 },
+  row:                { flexDirection: 'row', alignItems: 'center', backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border, paddingHorizontal: SPACE.s3, paddingVertical: SPACE.s3, gap: SPACE.s2 },
   rowInactive:        { opacity: 0.5 },
   rowInfo:            { flex: 1, minWidth: 0 },
   rowName:            { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
@@ -1015,6 +1049,14 @@ const styles = StyleSheet.create({
   stockNum:           { fontSize: FONT_SIZE.h3, fontWeight: FONT_WEIGHT.bold as any },
   stockMin:           { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.semibold as any },
   rowActions:         { flexDirection: 'row', alignItems: 'center', gap: 2 },
+
+  // Mobile card
+  mobileCard:         { flex: 1, minWidth: 0, gap: SPACE.s1 },
+  mobileCardTop:      { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: SPACE.s2 },
+  mobileCardName:     { flex: 1, fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink, lineHeight: 20 },
+  mobileCardMeta:     { flexDirection: 'row', alignItems: 'center', gap: SPACE.s2 },
+  mobileCardPrice:    { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink2 },
+  mobileCardActions:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: SPACE.s1 },
   adjustBtn:          { backgroundColor: COLOR.brand, borderRadius: RADIUS.r1, paddingHorizontal: SPACE.s2, paddingVertical: 6, marginRight: SPACE.s1 },
   adjustBtnText:      { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
   actionIcon:         { margin: 0 },
@@ -1038,7 +1080,7 @@ const styles = StyleSheet.create({
 
   // Modales
   overlay:            { flex: 1, backgroundColor: COLOR.overlay, justifyContent: 'center', alignItems: 'center' },
-  modal:              { backgroundColor: COLOR.surface, borderRadius: RADIUS.r4, padding: SPACE.s5, width: '92%', maxWidth: 460 },
+  modal:              { backgroundColor: COLOR.surface, borderRadius: RADIUS.r4, padding: SPACE.s5, width: '92%', maxWidth: 1100 },
   modalTitle:         { fontSize: FONT_SIZE.h1, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink, marginBottom: SPACE.s1 },
   modalSub:           { fontSize: FONT_SIZE.label, color: COLOR.ink2, fontWeight: FONT_WEIGHT.semibold as any, marginBottom: SPACE.s1 },
   modalStock:         { fontSize: FONT_SIZE.label, color: COLOR.inkMute, marginBottom: SPACE.s4 },

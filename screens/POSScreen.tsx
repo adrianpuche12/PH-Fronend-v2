@@ -660,6 +660,20 @@ function Ticket({ cart, subtotal, isv, total, itemCount, onRemove, onClear, onSu
   submitting: boolean;
   full: boolean;
 }) {
+  const isEmpty = cart.length === 0;
+
+  /* Mobile + carrito vacío → ticket mínimo para no tapar los productos */
+  if (!full && isEmpty) {
+    return (
+      <View style={tkStyles.rootCompact}>
+        <Button mode="contained" disabled buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand}
+          style={{ borderRadius: RADIUS.r2, opacity: 0.5 }} labelStyle={{ fontWeight: FONT_WEIGHT.black as any }}>
+          Confirmar venta
+        </Button>
+      </View>
+    );
+  }
+
   return (
     <View style={tkStyles.root}>
       <View style={tkStyles.head}>
@@ -697,18 +711,18 @@ function Ticket({ cart, subtotal, isv, total, itemCount, onRemove, onClear, onSu
 
       {/* Acciones */}
       <View style={tkStyles.actions}>
-        <Button mode="contained" onPress={onSubmit} loading={submitting} disabled={cart.length === 0 || submitting}
+        <Button mode="contained" onPress={onSubmit} loading={submitting} disabled={isEmpty || submitting}
           buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ borderRadius: RADIUS.r2 }} labelStyle={{ fontWeight: FONT_WEIGHT.black as any }}>
           Confirmar venta
         </Button>
-        {cart.length > 0 && (
+        {!isEmpty && (
           <Button mode="outlined" onPress={onClear} style={{ borderRadius: RADIUS.r2, marginTop: 6 }} textColor={COLOR.ink2}>
             Cancelar venta
           </Button>
         )}
       </View>
 
-      {full && cart.length > 0 && (
+      {full && !isEmpty && (
         <View style={tkStyles.audit}>
           <Text style={tkStyles.auditText}>El sistema calcula precios, impuestos y totales automáticamente. Al confirmar se descuenta el stock.</Text>
         </View>
@@ -847,6 +861,7 @@ const styles = StyleSheet.create({
 
 const tkStyles = StyleSheet.create({
   root:           { flex: 1, padding: SPACE.s3, flexDirection: 'column' },
+  rootCompact:    { padding: SPACE.s3, borderTopWidth: 1, borderTopColor: COLOR.border, backgroundColor: COLOR.surface },
   head:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: SPACE.s2 },
   title:          { fontSize: FONT_SIZE.h3, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
   badge:          { backgroundColor: COLOR.brandTint, borderRadius: RADIUS.r2, paddingHorizontal: SPACE.s2, paddingVertical: SPACE.s1 },

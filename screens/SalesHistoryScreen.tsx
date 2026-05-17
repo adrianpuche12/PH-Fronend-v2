@@ -129,7 +129,12 @@ export default function SalesHistoryScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Historial de ventas</Text>
         {/* Selector de local */}
-        <View style={styles.storeChips}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.storeChips}
+          contentContainerStyle={{ flexDirection: 'row', gap: SPACE.s2 }}
+        >
           {stores.map(s => (
             <TouchableOpacity
               key={s.id}
@@ -141,7 +146,7 @@ export default function SalesHistoryScreen() {
               </Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
       </View>
 
       {/* ── Contenido ── */}
@@ -259,7 +264,7 @@ const styles = StyleSheet.create({
 
   header:         { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: SPACE.s3, padding: SPACE.s4, backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border },
   headerTitle:    { fontSize: FONT_SIZE.h1, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink, flex: 1 },
-  storeChips:     { flexDirection: 'row', gap: SPACE.s2 },
+  storeChips:     { flexShrink: 1 },
   chip:           { paddingHorizontal: SPACE.s4, paddingVertical: 7, borderRadius: RADIUS.full, backgroundColor: COLOR.bg, borderWidth: 1, borderColor: COLOR.border },
   chipActive:     { backgroundColor: COLOR.brand, borderColor: COLOR.brandDark },
   chipText:       { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink2 },

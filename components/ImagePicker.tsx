@@ -77,11 +77,12 @@ const ImagePicker: React.FC<ImagePickerProps> = ({
           </View>
         ) : (
           <View style={styles.noImageContainer}>
-            <Button 
-              mode="contained" 
+            <Button
+              mode="contained"
               onPress={handleSelectImage}
               icon="camera"
               style={styles.selectButton}
+              contentStyle={styles.selectButtonContent}
               disabled={disabled}
               buttonColor="#D4A72B"
             >
@@ -124,11 +125,13 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
   },
   noImageContainer: {
-    alignItems: 'center',
-    paddingVertical: 20,
+    paddingVertical: 10,
   },
   selectButton: {
-    paddingHorizontal: 20,
+    borderRadius: 999,
+  },
+  selectButtonContent: {
+    height: 52,
   },
   uploadingContainer: {
     alignItems: 'center',

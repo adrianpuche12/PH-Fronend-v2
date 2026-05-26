@@ -1,48 +1,14 @@
-let currentHost = 'localhost';
-let currentPort = '';
+// Configuración de ambiente via variables de entorno (Vercel/local)
+// EXPO_PUBLIC_* se expone al cliente en builds de Expo web
 
-if (typeof window !== 'undefined' && window.location) {
-    currentHost = window.location.hostname;
-    currentPort = window.location.port;
-}
-
-let keycloakUrl: string;
-let keycloakRealm: string;
-let apiUrl: string;
-let imageUrl: string;
-
-if (currentHost === '62.171.160.238') {
-    keycloakUrl = 'http://62.171.160.238:8095';
-    imageUrl    = 'http://62.171.160.238:3030';
-
-    if (currentPort === '8103') {
-        // Frontend DEV en servidor
-        keycloakRealm = 'proyecto-h-dev';
-        apiUrl        = 'http://62.171.160.238:8101';
-    } else {
-        // Frontend PROD en servidor (:8102)
-        keycloakRealm = 'proyecto-h-prod';
-        apiUrl        = 'http://62.171.160.238:8100';
-    }
-} else {
-    // Desarrollo local → Keycloak remoto, backend local
-    keycloakUrl   = 'http://62.171.160.238:8095';
-    keycloakRealm = 'proyecto-h-dev';
-    apiUrl        = 'http://localhost:8080';
-    imageUrl      = 'http://62.171.160.238:3030';
-}
-
-export const KEYCLOAK_URL      = keycloakUrl;
-export const KEYCLOAK_REALM    = keycloakRealm;
-export const REACT_APP_API_URL = apiUrl;
-export const IMAGE_SERVER_URL  = imageUrl;
+export const KEYCLOAK_URL      = process.env.EXPO_PUBLIC_KEYCLOAK_URL      || "http://62.171.160.238:8095";
+export const KEYCLOAK_REALM    = process.env.EXPO_PUBLIC_KEYCLOAK_REALM    || "proyecto-h-dev";
+export const REACT_APP_API_URL = process.env.EXPO_PUBLIC_API_URL           || "http://localhost:8080";
+export const IMAGE_SERVER_URL  = process.env.EXPO_PUBLIC_IMAGE_URL         || "http://62.171.160.238:3030";
 
 // Cloudflare R2 — URL pública para ver comprobantes
-export const R2_PUBLIC_URL = 'https://pub-7e31005d201d4d34894758b2b1d00d9a.r2.dev';
+export const R2_PUBLIC_URL = process.env.EXPO_PUBLIC_R2_PUBLIC_URL || "https://pub-7e31005d201d4d34894758b2b1d00d9a.r2.dev";
 
 // Endpoint de token Keycloak (OpenID Connect directo)
-export const API_KEYCLOAK_ADAPTER_URL = `${keycloakUrl}/realms/${keycloakRealm}/protocol/openid-connect`;
+export const API_KEYCLOAK_ADAPTER_URL = `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect`;
 
-if (typeof window !== 'undefined') {
-    console.log('Config:', { keycloakUrl, keycloakRealm, apiUrl });
-}

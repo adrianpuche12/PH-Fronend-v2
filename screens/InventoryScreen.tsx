@@ -600,7 +600,7 @@ const InventoryScreen = () => {
                   onPress={() => handleToggleProduct(item)}
                   style={styles.actionIcon}
                 />
-                <IconButton icon="delete-outline" size={18} iconColor={COLOR.expense} onPress={() => askConfirm('Eliminar producto', `¿Eliminar "${item.productName}"?`, () => handleDeleteProduct(item.productId))} style={styles.actionIcon} />
+                <IconButton icon="delete-outline" size={18} iconColor={COLOR.expense} onPress={() => askConfirm('Eliminar producto', `¿Eliminar "${item.productName}"?`, () => handleDeleteProduct(item))} style={styles.actionIcon} />
               </View>
             )}
           </View>

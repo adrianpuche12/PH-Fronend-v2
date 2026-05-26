@@ -47,8 +47,8 @@ const tooltipStyles = StyleSheet.create({
     color: COLOR.white,
     fontSize: FONT_SIZE.label,
     fontWeight: FONT_WEIGHT.medium as any,
-    whiteSpace: 'nowrap' as any,
-  },
+    whiteSpace: 'nowrap',
+  } as any,
 });
 
 const SIDEBAR_W_EXPANDED  = 260;

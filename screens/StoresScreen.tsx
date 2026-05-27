@@ -6,8 +6,11 @@ import {
   ScrollView,
   ActivityIndicator,
   Modal,
+  Switch,
+  TouchableOpacity,
 } from 'react-native';
 import { Button, TextInput, Snackbar, IconButton } from 'react-native-paper';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import axios from 'axios';
 import { REACT_APP_API_URL } from '../config';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -40,6 +43,8 @@ const StoresScreen = () => {
   const [saving, setSaving]             = useState(false);
   const [snackbar, setSnackbar]         = useState('');
   const [confirmDlg, setConfirmDlg]     = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
+  const [copyEnabled, setCopyEnabled]   = useState(false);
+  const [copyFromId, setCopyFromId]     = useState<number | null>(null);
   const askConfirm = (title: string, message: string, onConfirm: () => void) =>
     setConfirmDlg({ title, message, onConfirm });
 
@@ -62,6 +67,8 @@ const StoresScreen = () => {
   const openCreate = () => {
     setEditingStore(null);
     setForm(EMPTY_FORM);
+    setCopyEnabled(false);
+    setCopyFromId(null);
     setModalVisible(true);
   };
 
@@ -79,8 +86,10 @@ const StoresScreen = () => {
         await axios.put(`${API}/${editingStore.id}`, form);
         setSnackbar('Local actualizado');
       } else {
-        await axios.post(API, form);
-        setSnackbar('Local creado');
+        const payload: any = { ...form };
+        if (copyEnabled && copyFromId != null) payload.sourceStoreId = copyFromId;
+        await axios.post(API, payload);
+        setSnackbar(copyEnabled && copyFromId != null ? 'Local creado con catálogo copiado' : 'Local creado');
       }
       setModalVisible(false);
       loadStores();
@@ -198,6 +207,43 @@ const StoresScreen = () => {
             <TextInput label="Dirección" value={form.address} onChangeText={v => setForm({ ...form, address: v })} style={styles.input} mode="outlined" />
             <TextInput label="Teléfono" value={form.phone} onChangeText={v => setForm({ ...form, phone: v })} style={styles.input} mode="outlined" keyboardType="phone-pad" />
 
+            {/* ── Copiar catálogo (solo al crear) ── */}
+            {!editingStore && stores.length > 0 && (
+              <View style={styles.copySection}>
+                <View style={styles.copyToggleRow}>
+                  <MaterialCommunityIcons name="content-copy" size={18} color={COLOR.ink2} />
+                  <Text style={styles.copyToggleLabel}>Copiar catálogo de otro local</Text>
+                  <Switch
+                    value={copyEnabled}
+                    onValueChange={v => { setCopyEnabled(v); if (!v) setCopyFromId(null); }}
+                    trackColor={{ false: COLOR.border2, true: COLOR.brandTint2 }}
+                    thumbColor={copyEnabled ? COLOR.brand : COLOR.inkMute}
+                  />
+                </View>
+                {copyEnabled && (
+                  <View style={styles.storePickerList}>
+                    {stores.map(s => (
+                      <TouchableOpacity
+                        key={s.id}
+                        style={[styles.storePickerItem, copyFromId === s.id && styles.storePickerItemActive]}
+                        onPress={() => setCopyFromId(s.id)}
+                        activeOpacity={0.7}
+                      >
+                        <MaterialCommunityIcons
+                          name={copyFromId === s.id ? 'radiobox-marked' : 'radiobox-blank'}
+                          size={18}
+                          color={copyFromId === s.id ? COLOR.brand : COLOR.inkMute}
+                        />
+                        <Text style={[styles.storePickerLabel, copyFromId === s.id && styles.storePickerLabelActive]}>
+                          {s.name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
+
             <View style={styles.modalActions}>
               <Button mode="outlined" onPress={() => setModalVisible(false)} style={{ flex: 1 }}>Cancelar</Button>
               <Button mode="contained" onPress={handleSave} loading={saving} buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ flex: 1 }}>Guardar</Button>
@@ -241,6 +287,15 @@ const styles = StyleSheet.create({
   modalTitle:   { fontSize: FONT_SIZE.h1, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink, marginBottom: SPACE.s4 },
   input:        { marginBottom: SPACE.s3 },
   modalActions: { flexDirection: 'row', gap: SPACE.s3, marginTop: SPACE.s2 },
+
+  copySection:          { marginBottom: SPACE.s3, borderWidth: 1, borderColor: COLOR.border, borderRadius: RADIUS.r2, overflow: 'hidden' },
+  copyToggleRow:        { flexDirection: 'row', alignItems: 'center', gap: SPACE.s2, paddingHorizontal: SPACE.s3, paddingVertical: SPACE.s3, backgroundColor: COLOR.bg },
+  copyToggleLabel:      { flex: 1, fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.medium as any, color: COLOR.ink2 },
+  storePickerList:      { borderTopWidth: 1, borderTopColor: COLOR.border },
+  storePickerItem:      { flexDirection: 'row', alignItems: 'center', gap: SPACE.s2, paddingHorizontal: SPACE.s3, paddingVertical: SPACE.s2 },
+  storePickerItemActive:{ backgroundColor: COLOR.brandTint },
+  storePickerLabel:     { fontSize: FONT_SIZE.body, color: COLOR.ink2 },
+  storePickerLabelActive: { color: COLOR.ink, fontWeight: FONT_WEIGHT.semibold as any },
 });
 
 export default StoresScreen;

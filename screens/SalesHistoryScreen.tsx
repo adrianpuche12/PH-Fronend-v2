@@ -9,6 +9,7 @@ import { formatHnl, formatDate, formatTime } from '../utils/format';
 import axios from 'axios';
 import { REACT_APP_API_URL } from '../config';
 import { useStore } from '../context/StoreContext';
+import DateRangePicker from '../components/DateRangePicker';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -61,6 +62,8 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore]         = useState(true);
   const [page, setPage]               = useState(0);
+  const [dateFrom, setDateFrom]       = useState('');
+  const [dateTo, setDateTo]           = useState('');
   const [expanded, setExpanded]       = useState<Record<number, boolean>>({});
   const [summaries, setSummaries]     = useState<Record<number, ShiftSummary>>({});
   const [loadingSum, setLoadingSum]   = useState<Record<number, boolean>>({});
@@ -71,6 +74,8 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
   const buildShiftsUrl = (storeId: number, pageNum: number) => {
     let url = `${API}/api/v2/stores/${storeId}/shifts?page=${pageNum}&size=${PAGE_SIZE}`;
     if (usernameFilter) url += `&username=${encodeURIComponent(usernameFilter)}`;
+    if (dateFrom) url += `&from=${dateFrom}`;
+    if (dateTo)   url += `&to=${dateTo}`;
     return url;
   };
 
@@ -88,7 +93,7 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
     } catch {
       setError('No se pudo cargar el historial de turnos.');
     } finally { setLoading(false); }
-  }, [selectedStore, usernameFilter]);
+  }, [selectedStore, usernameFilter, dateFrom, dateTo]);
 
   // ── Cargar más turnos ─────────────────────────────────────────────────────
 
@@ -159,6 +164,18 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
           </ScrollView>
         )}
       </View>
+
+      {/* Filtro de fechas — solo admin */}
+      {!usernameFilter && (
+        <View style={styles.dateFilterRow}>
+          <DateRangePicker
+            from={dateFrom}
+            to={dateTo}
+            onChange={(f, t) => { setDateFrom(f); setDateTo(t); }}
+            label="Filtrar por fechas"
+          />
+        </View>
+      )}
 
       {/* ── Contenido ── */}
       {loading ? (
@@ -282,6 +299,8 @@ const styles = StyleSheet.create({
   chipActive:     { backgroundColor: COLOR.brand, borderColor: COLOR.brandDark },
   chipText:       { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink2 },
   chipTextActive: { color: COLOR.ink, fontWeight: FONT_WEIGHT.bold as any },
+
+  dateFilterRow:  { paddingHorizontal: SPACE.s4, paddingVertical: SPACE.s2, backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border },
 
   empty:          { flex: 1, justifyContent: 'center', alignItems: 'center', gap: SPACE.s2, padding: SPACE.s8 },
   emptyText:      { fontSize: FONT_SIZE.body, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.semibold as any, textAlign: 'center' },

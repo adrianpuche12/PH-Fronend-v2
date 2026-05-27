@@ -158,7 +158,7 @@ const UserContent = () => {
 
         {active === 'sales'        && <POSScreen hideStoreSelector />}
         {active === 'inventory'    && <InventoryScreen />}
-        {active === 'salesHistory' && <SalesHistoryScreen />}
+        {active === 'salesHistory' && <SalesHistoryScreen usernameFilter={userName ?? undefined} />}
         {active === 'operaciones'  && <DynamicFormScreen />}
       </View>
 

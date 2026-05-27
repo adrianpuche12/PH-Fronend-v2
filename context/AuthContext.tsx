@@ -245,7 +245,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         error: 'Error durante el inicio de sesión',
         loading: false,
       }));
-      return false;
+      throw error;  // re-throw so LoginScreen puede inspeccionar error_description
     }
   };
 

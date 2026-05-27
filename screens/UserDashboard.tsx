@@ -50,9 +50,13 @@ const UserSidebar = ({ active, onSelect, onClose, isDesktop }: {
   return (
     <Animated.View style={[styles.sidebar, isDesktop && { width: animW }]}>
       <View style={styles.sidebarHeader}>
+        <Image
+          source={require('../assets/images/logo_proyecto_Humberto.jpg')}
+          style={[styles.sidebarLogo, collapsed && styles.sidebarLogoCollapsed]}
+        />
         {!collapsed && (
           <View style={{ flex: 1 }}>
-            <Text style={styles.brandText}>PH</Text>
+            <Text style={styles.brandName}>Pollos Hermanos</Text>
             <Text style={styles.brandSub}>{userName}</Text>
           </View>
         )}
@@ -242,8 +246,10 @@ const styles = StyleSheet.create({
   },
 
   menuItemCollapsed: { alignItems: 'center', justifyContent: 'center', paddingVertical: SPACE.s3, marginHorizontal: SPACE.s2, borderRadius: RADIUS.r2, marginBottom: 2, position: 'relative' },
-  brandText:       { fontSize: FONT_SIZE.h3, fontWeight: FONT_WEIGHT.black as any, color: COLOR.ink },
-  brandSub:        { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.semibold as any, marginTop: 2 },
+  sidebarLogo:          { width: 36, height: 36, borderRadius: RADIUS.full, borderWidth: 2, borderColor: COLOR.brandDeep, marginRight: SPACE.s2 },
+  sidebarLogoCollapsed: { width: 32, height: 32, borderRadius: RADIUS.full, marginRight: 0 },
+  brandName:            { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
+  brandSub:             { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.semibold as any, marginTop: 2 },
 
   menuScroll:      { flex: 1, paddingTop: SPACE.s2 },
   menuItem:        { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACE.s4, paddingVertical: SPACE.s3, marginHorizontal: SPACE.s2, borderRadius: RADIUS.r2, marginBottom: 2, position: 'relative', gap: SPACE.s3 },

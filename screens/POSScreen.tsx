@@ -648,14 +648,14 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                         <MaterialCommunityIcons name="cash" size={16} color={COLOR.income} />
                         <Text style={[styles.sumLabel, { color: COLOR.income }]}>Efectivo</Text>
                       </View>
-                      <Text style={[styles.sumValue, { color: COLOR.income }]}>{formatHnl(summary.totalCashSales)}</Text>
+                      <Text style={[styles.sumValue, { color: COLOR.income }]}>{formatHnl(summary.totalCashSales ?? 0)}</Text>
                     </View>
                     <View style={styles.sumTotalRow}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACE.s2 }}>
                         <MaterialCommunityIcons name="credit-card-outline" size={16} color={COLOR.info} />
                         <Text style={[styles.sumLabel, { color: COLOR.info }]}>Tarjeta</Text>
                       </View>
-                      <Text style={[styles.sumValue, { color: COLOR.info }]}>{formatHnl(summary.totalCardSales)}</Text>
+                      <Text style={[styles.sumValue, { color: COLOR.info }]}>{formatHnl(summary.totalCardSales ?? 0)}</Text>
                     </View>
                   </View>
 

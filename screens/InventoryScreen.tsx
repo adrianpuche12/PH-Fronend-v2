@@ -13,6 +13,7 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import { useAuth } from '../context/AuthContext';
 import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW, CONTROL, BREAKPOINT } from '../theme';
 import { formatHnl } from '../utils/format';
+import StoreDropdown from '../components/StoreDropdown';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -668,21 +669,13 @@ const InventoryScreen = () => {
           </View>
         </View>
 
-        {/* Fila 2: chips de locales (scrolleable) */}
+        {/* Fila 2: selector de local */}
         {isAdmin ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.storeSelector}>
-            {stores.map(s => (
-              <TouchableOpacity
-                key={s.id}
-                style={[styles.storeChip, selectedStore?.id === s.id && styles.storeChipActive]}
-                onPress={() => setSelectedStore(s)}
-              >
-                <Text style={[styles.storeChipText, selectedStore?.id === s.id && styles.storeChipTextActive]}>
-                  {s.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          <StoreDropdown
+            stores={stores}
+            selectedId={selectedStore?.id ?? null}
+            onSelect={(id) => { const s = stores.find(s => s.id === id); if (s) setSelectedStore(s); }}
+          />
         ) : (
           <Text style={{ fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink2 }}>
             {selectedStore?.name}
@@ -959,8 +952,8 @@ const styles = StyleSheet.create({
   // Header
   header:             { flexDirection: 'column', gap: SPACE.s2, paddingHorizontal: SPACE.s4, paddingTop: SPACE.s3, paddingBottom: SPACE.s2, backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border },
   headerRow1:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  headerTitle:        { fontSize: FONT_SIZE.h1, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
-  headerRight:        { flexDirection: 'row', alignItems: 'center', gap: SPACE.s2 },
+  headerTitle:        { fontSize: FONT_SIZE.h2, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink, flex: 1, marginRight: SPACE.s2 },
+  headerRight:        { flexDirection: 'row', alignItems: 'center', gap: SPACE.s2, flexShrink: 0 },
   storeSelector:      { flexDirection: 'row', gap: SPACE.s2, paddingBottom: SPACE.s1 },
   storeChip:          { paddingHorizontal: SPACE.s4, paddingVertical: 7, borderRadius: RADIUS.full, backgroundColor: COLOR.bg, borderWidth: 1, borderColor: COLOR.border },
   storeChipActive:    { backgroundColor: COLOR.brand, borderColor: COLOR.brandDark },
@@ -1063,9 +1056,9 @@ const styles = StyleSheet.create({
 
   // View tabs (Stock / Historial)
   viewTabs:           { flexDirection: 'row', backgroundColor: COLOR.bg, borderRadius: RADIUS.r2, padding: 3, gap: 2 },
-  viewTab:            { paddingHorizontal: SPACE.s4, paddingVertical: 6, borderRadius: RADIUS.r1 },
+  viewTab:            { paddingHorizontal: SPACE.s3, paddingVertical: 5, borderRadius: RADIUS.r1 },
   viewTabActive:      { backgroundColor: COLOR.surface, ...SHADOW.sm },
-  viewTabText:        { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.inkMute },
+  viewTabText:        { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.inkMute },
   viewTabTextActive:  { color: COLOR.ink, fontWeight: FONT_WEIGHT.bold as any },
 
   // Filas de movimiento

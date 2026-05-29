@@ -10,6 +10,7 @@ import axios from 'axios';
 import { REACT_APP_API_URL } from '../config';
 import { useStore } from '../context/StoreContext';
 import DateRangePicker from '../components/DateRangePicker';
+import StoreDropdown from '../components/StoreDropdown';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -144,24 +145,14 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
         </Text>
         {/* Selector de local — solo visible para admin (sin filtro de usuario) */}
         {!usernameFilter && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.storeChips}
-            contentContainerStyle={{ flexDirection: 'row', gap: SPACE.s2 }}
-          >
-            {stores.map(s => (
-              <TouchableOpacity
-                key={s.id}
-                style={[styles.chip, selectedStore?.id === s.id && styles.chipActive]}
-                onPress={() => setSelectedStore(s)}
-              >
-                <Text style={[styles.chipText, selectedStore?.id === s.id && styles.chipTextActive]}>
-                  {s.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          <StoreDropdown
+            stores={stores}
+            selectedId={selectedStore?.id ?? null}
+            onSelect={(id) => {
+              const s = stores.find(s => s.id === id);
+              if (s) setSelectedStore(s);
+            }}
+          />
         )}
       </View>
 

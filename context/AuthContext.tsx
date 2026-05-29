@@ -216,21 +216,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const userName = decodedToken.preferred_username;
       const userId = decodedToken.sub;
 
-      // ── Verificar que la cuenta no esté suspendida en nuestro sistema ──────
-      // Los administradores no están en app_users (404) → se permite el login.
-      // Si el backend devuelve 403 ACCOUNT_SUSPENDED → bloqueamos el acceso.
-      try {
-        await axios.get(
-          `${REACT_APP_API_URL}/api/v2/users/by-username/${encodeURIComponent(userName.toLowerCase())}`
-        );
-      } catch (profileErr: any) {
-        if (profileErr.response?.status === 403 &&
-            profileErr.response?.data?.error === 'ACCOUNT_SUSPENDED') {
-          const suspendedError: any = new Error('Cuenta suspendida');
-          suspendedError.response = { status: 403, data: { error: 'ACCOUNT_SUSPENDED' } };
-          throw suspendedError;
+      // ── Verificar estado de cuenta (fail-CLOSED) ─────────────────────────
+      // Reglas:
+      //   admin (role=admin) → 404 en DB es normal, se permite el login
+      //   user  (role=user)  → DEBE estar en DB; si no está (404) → bloqueado
+      //   cualquiera         → 403 ACCOUNT_SUSPENDED → bloqueado
+      //   cualquiera         → 5xx / error de red → bloqueado
+      if (!isAdmin) {
+        try {
+          await axios.get(
+            `${REACT_APP_API_URL}/api/v2/users/by-username/${encodeURIComponent(userName.toLowerCase())}`
+          );
+        } catch (profileErr: any) {
+          const profileStatus: number = profileErr.response?.status ?? 0;
+          if (profileStatus === 403 &&
+              profileErr.response?.data?.error === 'ACCOUNT_SUSPENDED') {
+            const err: any = new Error('ACCOUNT_SUSPENDED');
+            err.suspended = true;
+            throw err;
+          }
+          // 404 → usuario no registrado en el sistema → bloquear
+          // 5xx / timeout → no se puede verificar → bloquear
+          const err: any = new Error('ACCESS_DENIED');
+          err.suspended = true;   // reutilizamos el mensaje de suspensión
+          throw err;
         }
-        // 404 u otro error → usuario admin o backend no disponible → continuar
       }
 
       await Storage.multiSet([
@@ -255,14 +265,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
-      setAuthState(prev => ({
-        ...prev,
-        error: 'Error durante el inicio de sesión',
-        loading: false,
-      }));
-      throw error;  // re-throw so LoginScreen puede inspeccionar error_description
+      setAuthState(prev => ({ ...prev, loading: false, error: null }));
+      // Errores con mensaje específico para el usuario → re-throw
+      if (error.suspended || error.serverError) throw error;
+      // Keycloak 401/403 u otros → login() retorna false, LoginScreen muestra genérico
+      return false;
     }
   };
 

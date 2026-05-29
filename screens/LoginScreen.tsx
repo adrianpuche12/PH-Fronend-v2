@@ -25,20 +25,15 @@ const LoginScreen = () => {
     setIsLoading(true);
     setError('');
     try {
-      await login(username.trim(), password.trim());
+      const success = await login(username.trim(), password.trim());
+      if (!success) setError('Usuario o contrasena incorrectos');
     } catch (err: any) {
-      const errorDesc: string = err?.response?.data?.error_description ?? '';
-      const errorCode: string = err?.response?.data?.error ?? '';
-      const status: number   = err?.response?.status ?? 0;
-      if (errorDesc.toLowerCase().includes('account disabled') ||
-          errorCode === 'ACCOUNT_SUSPENDED') {
-        setError('Tu cuenta fue suspendida. Contactá al encargado.');
-      } else if (status === 401 || status === 403) {
-        setError('Usuario o contraseña incorrectos');
-      } else if (status >= 500) {
-        setError('El servidor no responde, intentá más tarde');
+      if (err?.suspended) {
+        setError('Tu cuenta fue suspendida. Contacta al encargado.');
+      } else if (err?.serverError) {
+        setError('No se pudo verificar tu cuenta. Intenta mas tarde.');
       } else {
-        setError('Error al iniciar sesión');
+        setError('Error al iniciar sesion');
       }
     } finally {
       setIsLoading(false);

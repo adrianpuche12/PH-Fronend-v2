@@ -37,6 +37,7 @@ interface ProductSummaryItem { productId: number; productName: string; quantity:
 interface DailySummary {
   date: string; storeId: number; storeName: string; totalSales: number;
   totalSubtotal: number; totalIsv: number; totalAmount: number;
+  totalCashSales: number; totalCardSales: number;
   productSummary: ProductSummaryItem[];
 }
 
@@ -82,6 +83,12 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
   const [cart, setCart]               = useState<CartItem[]>([]);
   const [snackbar, setSnackbar]       = useState('');
   const [submitting, setSubmitting]   = useState(false);
+
+  // Modal de método de pago
+  const [paymentModal, setPaymentModal]       = useState(false);
+  const [paymentMethod, setPaymentMethod]     = useState<'CASH'|'CARD'|'MIXED'>('CASH');
+  const [mixedCash, setMixedCash]             = useState('');
+  const [mixedCard, setMixedCard]             = useState('');
 
   // Tab del POS
   const [posTab, setPosTab]               = useState<'nueva' | 'ventas'>('nueva');
@@ -243,15 +250,31 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
 
   // ── Confirmar venta ───────────────────────────────────────────────────────
 
-  const handleSubmitSale = async () => {
+  // Abre el modal de método de pago
+  const handleSubmitSale = () => {
     if (!shift || cart.length === 0) return;
+    setPaymentMethod('CASH');
+    setMixedCash('');
+    setMixedCard('');
+    setPaymentModal(true);
+  };
+
+  // Envía la venta con el método de pago elegido
+  const confirmWithPayment = async () => {
+    if (!shift) return;
     setSubmitting(true);
+    setPaymentModal(false);
     try {
-      await axios.post(`${API}/api/v2/shifts/${shift.id}/sales`, {
+      const body: any = {
         username: userName ?? 'empleada',
         items: cart.map(i => ({ productId: i.productId, quantity: i.qty })),
-      });
-      // Actualiza KPIs localmente (optimista, sin esperar al servidor)
+        paymentMethod,
+      };
+      if (paymentMethod === 'MIXED') {
+        body.cashAmount = parseFloat(mixedCash) || 0;
+        body.cardAmount = parseFloat(mixedCard) || 0;
+      }
+      await axios.post(`${API}/api/v2/shifts/${shift.id}/sales`, body);
       const saleTotal = cartTotal;
       setKpiCount(prev => prev + 1);
       setKpiTotal(prev => prev + saleTotal);
@@ -617,6 +640,25 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                     <Text style={{ fontSize: FONT_SIZE.h3, fontWeight: FONT_WEIGHT.black as any, color: COLOR.ink }}>Total del día</Text>
                     <Text style={{ fontSize: FONT_SIZE.h2, fontWeight: FONT_WEIGHT.black as any, color: COLOR.ink }}>{formatHnl(summary.totalAmount)}</Text>
                   </View>
+
+                  {/* Desglose efectivo / tarjeta */}
+                  <View style={{ backgroundColor: COLOR.bg, borderRadius: RADIUS.r2, padding: SPACE.s3, marginTop: SPACE.s3, gap: SPACE.s1 }}>
+                    <View style={styles.sumTotalRow}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACE.s2 }}>
+                        <MaterialCommunityIcons name="cash" size={16} color={COLOR.income} />
+                        <Text style={[styles.sumLabel, { color: COLOR.income }]}>Efectivo</Text>
+                      </View>
+                      <Text style={[styles.sumValue, { color: COLOR.income }]}>{formatHnl(summary.totalCashSales)}</Text>
+                    </View>
+                    <View style={styles.sumTotalRow}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACE.s2 }}>
+                        <MaterialCommunityIcons name="credit-card-outline" size={16} color={COLOR.info} />
+                        <Text style={[styles.sumLabel, { color: COLOR.info }]}>Tarjeta</Text>
+                      </View>
+                      <Text style={[styles.sumValue, { color: COLOR.info }]}>{formatHnl(summary.totalCardSales)}</Text>
+                    </View>
+                  </View>
+
                   <Text style={{ fontSize: FONT_SIZE.caption, color: COLOR.ink2, marginTop: 4 }}>{summary.totalSales} venta{summary.totalSales !== 1 ? 's' : ''} registrada{summary.totalSales !== 1 ? 's' : ''}</Text>
                 </View>
 
@@ -642,6 +684,83 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
         onCancel={() => setConfirmDlg(null)}
       />
       <Snackbar visible={!!snackbar} onDismiss={() => setSnackbar('')} duration={2500}>{snackbar}</Snackbar>
+
+      {/* ══ MODAL MÉTODO DE PAGO ══ */}
+      <Modal visible={paymentModal} transparent animationType="fade" onRequestClose={() => setPaymentModal(false)}>
+        <View style={styles.payModalOverlay}>
+          <View style={styles.payModalBox}>
+
+            <Text style={styles.payModalTitle}>Método de pago</Text>
+            <Text style={styles.payModalTotal}>Total: <Text style={{ color: COLOR.income, fontWeight: FONT_WEIGHT.bold as any }}>{formatHnl(cartTotal)}</Text></Text>
+
+            {/* Botones de selección */}
+            <View style={styles.payMethodRow}>
+              {(['CASH','CARD','MIXED'] as const).map(m => {
+                const label = m === 'CASH' ? 'Efectivo' : m === 'CARD' ? 'Tarjeta' : 'Mixto';
+                const icon  = m === 'CASH' ? 'cash' : m === 'CARD' ? 'credit-card-outline' : 'swap-horizontal';
+                const active = paymentMethod === m;
+                return (
+                  <TouchableOpacity
+                    key={m}
+                    style={[styles.payMethodBtn, active && styles.payMethodBtnActive]}
+                    onPress={() => setPaymentMethod(m)}
+                    activeOpacity={0.8}
+                  >
+                    <MaterialCommunityIcons name={icon} size={22} color={active ? COLOR.inkOnBrand : COLOR.ink2} />
+                    <Text style={[styles.payMethodLabel, active && styles.payMethodLabelActive]}>{label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Campos mixto */}
+            {paymentMethod === 'MIXED' && (
+              <View style={styles.payMixedRow}>
+                <View style={styles.payMixedField}>
+                  <Text style={styles.payMixedLabel}>Efectivo (L)</Text>
+                  <RNTextInput
+                    style={styles.payMixedInput}
+                    keyboardType="decimal-pad"
+                    placeholder="0.00"
+                    placeholderTextColor={COLOR.inkDisabled}
+                    value={mixedCash}
+                    onChangeText={setMixedCash}
+                  />
+                </View>
+                <View style={styles.payMixedField}>
+                  <Text style={styles.payMixedLabel}>Tarjeta (L)</Text>
+                  <RNTextInput
+                    style={styles.payMixedInput}
+                    keyboardType="decimal-pad"
+                    placeholder="0.00"
+                    placeholderTextColor={COLOR.inkDisabled}
+                    value={mixedCard}
+                    onChangeText={setMixedCard}
+                  />
+                </View>
+              </View>
+            )}
+
+            {/* Acciones */}
+            <View style={styles.payModalActions}>
+              <Button mode="outlined" onPress={() => setPaymentModal(false)} textColor={COLOR.ink2} style={{ flex: 1, borderRadius: RADIUS.r2 }}>
+                Cancelar
+              </Button>
+              <Button
+                mode="contained"
+                onPress={confirmWithPayment}
+                buttonColor={COLOR.brand}
+                textColor={COLOR.inkOnBrand}
+                style={{ flex: 1, borderRadius: RADIUS.r2 }}
+                loading={submitting}
+                disabled={submitting}
+              >
+                Confirmar
+              </Button>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -835,6 +954,22 @@ const styles = StyleSheet.create({
   // Ticket
   ticketDesktop:  { width: 340, backgroundColor: COLOR.surface, borderLeftWidth: 1, borderLeftColor: COLOR.border },
   ticketMobile:   { backgroundColor: COLOR.surface, borderTopWidth: 1, borderTopColor: COLOR.border },
+
+  // Modal método de pago
+  payModalOverlay:    { flex: 1, backgroundColor: COLOR.overlay, justifyContent: 'center', alignItems: 'center', padding: SPACE.s4 },
+  payModalBox:        { backgroundColor: COLOR.surface, borderRadius: RADIUS.r4, padding: SPACE.s5, width: '100%', maxWidth: 420, ...SHADOW.lg },
+  payModalTitle:      { fontSize: FONT_SIZE.h2, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink, marginBottom: SPACE.s1 },
+  payModalTotal:      { fontSize: FONT_SIZE.body, color: COLOR.ink2, marginBottom: SPACE.s4 },
+  payMethodRow:       { flexDirection: 'row', gap: SPACE.s2, marginBottom: SPACE.s4 },
+  payMethodBtn:       { flex: 1, alignItems: 'center', justifyContent: 'center', gap: SPACE.s1, paddingVertical: SPACE.s3, borderRadius: RADIUS.r2, borderWidth: 1.5, borderColor: COLOR.border, backgroundColor: COLOR.bg },
+  payMethodBtnActive: { backgroundColor: COLOR.brand, borderColor: COLOR.brandDark },
+  payMethodLabel:     { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink2 },
+  payMethodLabelActive: { color: COLOR.inkOnBrand, fontWeight: FONT_WEIGHT.bold as any },
+  payMixedRow:        { flexDirection: 'row', gap: SPACE.s3, marginBottom: SPACE.s4 },
+  payMixedField:      { flex: 1 },
+  payMixedLabel:      { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink2, marginBottom: SPACE.s1 },
+  payMixedInput:      { borderWidth: 1, borderColor: COLOR.border, borderRadius: RADIUS.r2, paddingHorizontal: SPACE.s3, paddingVertical: SPACE.s2, fontSize: FONT_SIZE.body, color: COLOR.ink, backgroundColor: COLOR.surface },
+  payModalActions:    { flexDirection: 'row', gap: SPACE.s3, marginTop: SPACE.s2 },
 
   // Modal cierre
   sumRow:         { flexDirection: 'row', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: COLOR.border },

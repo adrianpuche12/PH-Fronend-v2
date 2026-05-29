@@ -2,7 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
-import { API_KEYCLOAK_ADAPTER_URL } from '../config';
+import { API_KEYCLOAK_ADAPTER_URL, REACT_APP_API_URL } from '../config';
 import { Platform } from 'react-native';
 
 
@@ -216,6 +216,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const userName = decodedToken.preferred_username;
       const userId = decodedToken.sub;
 
+      // ── Verificar que la cuenta no esté suspendida en nuestro sistema ──────
+      // Los administradores no están en app_users (404) → se permite el login.
+      // Si el backend devuelve 403 ACCOUNT_SUSPENDED → bloqueamos el acceso.
+      try {
+        await axios.get(
+          `${REACT_APP_API_URL}/api/v2/users/by-username/${encodeURIComponent(userName.toLowerCase())}`
+        );
+      } catch (profileErr: any) {
+        if (profileErr.response?.status === 403 &&
+            profileErr.response?.data?.error === 'ACCOUNT_SUSPENDED') {
+          const suspendedError: any = new Error('Cuenta suspendida');
+          suspendedError.response = { status: 403, data: { error: 'ACCOUNT_SUSPENDED' } };
+          throw suspendedError;
+        }
+        // 404 u otro error → usuario admin o backend no disponible → continuar
+      }
+
       await Storage.multiSet([
         ['accessToken', access_token],
         ['refreshToken', refresh_token],
@@ -245,7 +262,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         error: 'Error durante el inicio de sesión',
         loading: false,
       }));
-      return false;
+      throw error;  // re-throw so LoginScreen puede inspeccionar error_description
     }
   };
 

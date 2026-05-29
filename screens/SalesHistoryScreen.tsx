@@ -9,6 +9,7 @@ import { formatHnl, formatDate, formatTime } from '../utils/format';
 import axios from 'axios';
 import { REACT_APP_API_URL } from '../config';
 import { useStore } from '../context/StoreContext';
+import DateRangePicker from '../components/DateRangePicker';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -44,7 +45,12 @@ interface ShiftSummary {
 
 // ─── SalesHistoryScreen ───────────────────────────────────────────────────────
 
-export default function SalesHistoryScreen() {
+interface Props {
+  /** Si se pasa, filtra los turnos por ese username y oculta el selector de local. */
+  usernameFilter?: string;
+}
+
+export default function SalesHistoryScreen({ usernameFilter }: Props) {
   const API = REACT_APP_API_URL;
   const { stores, selectedStore, setSelectedStore } = useStore();
 
@@ -56,6 +62,8 @@ export default function SalesHistoryScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore]         = useState(true);
   const [page, setPage]               = useState(0);
+  const [dateFrom, setDateFrom]       = useState('');
+  const [dateTo, setDateTo]           = useState('');
   const [expanded, setExpanded]       = useState<Record<number, boolean>>({});
   const [summaries, setSummaries]     = useState<Record<number, ShiftSummary>>({});
   const [loadingSum, setLoadingSum]   = useState<Record<number, boolean>>({});
@@ -63,14 +71,20 @@ export default function SalesHistoryScreen() {
 
   // ── Cargar turnos del local (primera página) ─────────────────────────────
 
+  const buildShiftsUrl = (storeId: number, pageNum: number) => {
+    let url = `${API}/api/v2/stores/${storeId}/shifts?page=${pageNum}&size=${PAGE_SIZE}`;
+    if (usernameFilter) url += `&username=${encodeURIComponent(usernameFilter)}`;
+    if (dateFrom) url += `&from=${dateFrom}`;
+    if (dateTo)   url += `&to=${dateTo}`;
+    return url;
+  };
+
   const loadShifts = useCallback(async () => {
     if (!selectedStore) return;
     setLoading(true);
     setError('');
     try {
-      const res = await axios.get<ShiftRecord[]>(
-        `${API}/api/v2/stores/${selectedStore.id}/shifts?page=0&size=${PAGE_SIZE}`
-      );
+      const res = await axios.get<ShiftRecord[]>(buildShiftsUrl(selectedStore.id, 0));
       setShifts(res.data);
       setPage(0);
       setHasMore(res.data.length === PAGE_SIZE);
@@ -79,7 +93,7 @@ export default function SalesHistoryScreen() {
     } catch {
       setError('No se pudo cargar el historial de turnos.');
     } finally { setLoading(false); }
-  }, [selectedStore]);
+  }, [selectedStore, usernameFilter, dateFrom, dateTo]);
 
   // ── Cargar más turnos ─────────────────────────────────────────────────────
 
@@ -88,9 +102,7 @@ export default function SalesHistoryScreen() {
     setLoadingMore(true);
     try {
       const nextPage = page + 1;
-      const res = await axios.get<ShiftRecord[]>(
-        `${API}/api/v2/stores/${selectedStore.id}/shifts?page=${nextPage}&size=${PAGE_SIZE}`
-      );
+      const res = await axios.get<ShiftRecord[]>(buildShiftsUrl(selectedStore.id, nextPage));
       setShifts(prev => [...prev, ...res.data]);
       setPage(nextPage);
       setHasMore(res.data.length === PAGE_SIZE);
@@ -127,27 +139,43 @@ export default function SalesHistoryScreen() {
 
       {/* ── Header ── */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Historial de ventas</Text>
-        {/* Selector de local */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.storeChips}
-          contentContainerStyle={{ flexDirection: 'row', gap: SPACE.s2 }}
-        >
-          {stores.map(s => (
-            <TouchableOpacity
-              key={s.id}
-              style={[styles.chip, selectedStore?.id === s.id && styles.chipActive]}
-              onPress={() => setSelectedStore(s)}
-            >
-              <Text style={[styles.chipText, selectedStore?.id === s.id && styles.chipTextActive]}>
-                {s.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        <Text style={styles.headerTitle}>
+          {usernameFilter ? 'Mis ventas' : 'Historial de ventas'}
+        </Text>
+        {/* Selector de local — solo visible para admin (sin filtro de usuario) */}
+        {!usernameFilter && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.storeChips}
+            contentContainerStyle={{ flexDirection: 'row', gap: SPACE.s2 }}
+          >
+            {stores.map(s => (
+              <TouchableOpacity
+                key={s.id}
+                style={[styles.chip, selectedStore?.id === s.id && styles.chipActive]}
+                onPress={() => setSelectedStore(s)}
+              >
+                <Text style={[styles.chipText, selectedStore?.id === s.id && styles.chipTextActive]}>
+                  {s.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
       </View>
+
+      {/* Filtro de fechas — solo admin */}
+      {!usernameFilter && (
+        <View style={styles.dateFilterRow}>
+          <DateRangePicker
+            from={dateFrom}
+            to={dateTo}
+            onChange={(f, t) => { setDateFrom(f); setDateTo(t); }}
+            label="Filtrar por fechas"
+          />
+        </View>
+      )}
 
       {/* ── Contenido ── */}
       {loading ? (
@@ -157,7 +185,9 @@ export default function SalesHistoryScreen() {
       ) : shifts.length === 0 ? (
         <View style={styles.empty}>
           <MaterialCommunityIcons name="receipt-text-outline" size={40} color={COLOR.inkDisabled} />
-          <Text style={styles.emptyText}>No hay turnos registrados para este local.</Text>
+          <Text style={styles.emptyText}>
+            {usernameFilter ? 'No tenés ventas registradas todavía.' : 'No hay turnos registrados para este local.'}
+          </Text>
         </View>
       ) : (
         <ScrollView
@@ -269,6 +299,8 @@ const styles = StyleSheet.create({
   chipActive:     { backgroundColor: COLOR.brand, borderColor: COLOR.brandDark },
   chipText:       { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink2 },
   chipTextActive: { color: COLOR.ink, fontWeight: FONT_WEIGHT.bold as any },
+
+  dateFilterRow:  { paddingHorizontal: SPACE.s4, paddingVertical: SPACE.s2, backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border },
 
   empty:          { flex: 1, justifyContent: 'center', alignItems: 'center', gap: SPACE.s2, padding: SPACE.s8 },
   emptyText:      { fontSize: FONT_SIZE.body, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.semibold as any, textAlign: 'center' },

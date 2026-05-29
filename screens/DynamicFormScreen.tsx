@@ -345,8 +345,9 @@ const DynamicFormScreen = () => {
         to: formData.periodEnd,
       });
       const res = await fetch(`${REACT_APP_API_URL}/api/v2/deposits/pending-closings?${params}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      setPendingClosings(data);
+      setPendingClosings(Array.isArray(data) ? data : []);
       setClosingsLoaded(true);
     } catch {
       showMessage('error', 'Error al buscar cierres pendientes');

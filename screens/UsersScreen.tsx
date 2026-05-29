@@ -283,13 +283,14 @@ export default function UsersScreen() {
             <View style={[styles.modal, { width: '100%', maxWidth: 440 }]}>
               <Text style={styles.modalTitle}>Nuevo usuario</Text>
 
-              <TextInput label="Nombre completo *" value={form.fullName} onChangeText={v => setForm({ ...form, fullName: v })} mode="outlined" style={styles.input} />
-              <TextInput label="Username *" value={form.username} onChangeText={v => setForm({ ...form, username: v.toLowerCase().replace(/\s+/g, '.') })} mode="outlined" style={styles.input} autoCapitalize="none" />
+              <TextInput label="Nombre completo *" value={form.fullName} onChangeText={v => setForm({ ...form, fullName: v })} mode="outlined" style={styles.input} autoComplete="off" />
+              <TextInput label="Username *" value={form.username} onChangeText={v => setForm({ ...form, username: v.toLowerCase().replace(/\s+/g, '.') })} mode="outlined" style={styles.input} autoCapitalize="none" autoComplete="off" />
               <TextInput
                 label="Contraseña *" value={form.password}
                 onChangeText={v => setForm({ ...form, password: v })}
                 mode="outlined" style={styles.input}
                 secureTextEntry={!showPassword}
+                autoComplete="new-password"
                 right={<TextInput.Icon icon={showPassword ? 'eye-off' : 'eye'} onPress={() => setShowPassword(v => !v)} />}
               />
 

@@ -13,6 +13,7 @@ import { REACT_APP_API_URL } from '../config';
 import { useStore } from '../context/StoreContext';
 import { useAuth } from '../context/AuthContext';
 import { formatHnl } from '../utils/format';
+import StoreDropdown from '../components/StoreDropdown';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -306,13 +307,11 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
 
       {/* Selector de local — solo para admin */}
       {!hideStoreSelector && (
-        <View style={styles.localChips}>
-          {stores.map(s => (
-            <TouchableOpacity key={s.id} style={[styles.localChip, selectedStore?.id === s.id && styles.localChipActive]} onPress={() => setSelectedStore(s)}>
-              <Text style={[styles.localChipText, selectedStore?.id === s.id && styles.localChipTextActive]}>{s.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <StoreDropdown
+          stores={stores}
+          selectedId={selectedStore?.id ?? null}
+          onSelect={(id) => { const s = stores.find(s => s.id === id); if (s) setSelectedStore(s); }}
+        />
       )}
 
       <Button mode="contained" onPress={() => setOpenShiftModal(true)} buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ borderRadius: RADIUS.r2 }} labelStyle={{ fontSize: FONT_SIZE.h3, fontWeight: FONT_WEIGHT.black as any }}>
@@ -353,13 +352,11 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
 
         {/* Selector de local — oculto para empleados (hideStoreSelector=true) */}
         {!hideStoreSelector && (
-          <View style={styles.localChips}>
-            {stores.map(s => (
-              <TouchableOpacity key={s.id} style={[styles.localChip, selectedStore?.id === s.id && styles.localChipActive]} onPress={() => setSelectedStore(s)}>
-                <Text style={[styles.localChipText, selectedStore?.id === s.id && styles.localChipTextActive]}>{s.name}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <StoreDropdown
+            stores={stores}
+            selectedId={selectedStore?.id ?? null}
+            onSelect={(id) => { const s = stores.find(s => s.id === id); if (s) setSelectedStore(s); }}
+          />
         )}
 
         <Button mode="outlined" onPress={openClosing} textColor={COLOR.expense} style={{ borderColor: COLOR.expense, borderRadius: RADIUS.r1 }} labelStyle={{ fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.black as any }}>

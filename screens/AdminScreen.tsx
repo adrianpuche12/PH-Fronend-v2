@@ -27,6 +27,8 @@ import { format, parseISO } from 'date-fns';
 import ExcelManager from '../components/ExcelManager';
 import { formatCurrency, formatNumber, formatAmountInput, parseFormattedNumber } from '../utils/numberFormat';
 import ImageViewer from '../components/ImageViewer';
+import StoreDropdown from '../components/StoreDropdown';
+import DateRangePicker from '../components/DateRangePicker';
 import ImageButton from '../components/ImageButton';
 import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW } from '../theme';
 
@@ -256,58 +258,30 @@ const CompactDateFilters = ({
     <View style={styles.compactFiltersContainer}>
       <View style={isLargeScreen ? styles.filtersRowWeb : undefined}>
         <View style={isLargeScreen ? styles.inputGroupWeb : styles.compactDateInputs}>
-          {/* Fechas */}
-          <TextInput
-            label="Desde"
-            value={formatDate(startDate)}
-            mode="outlined"
-            dense
-            style={styles.compactDateInput}
-            onFocus={() => {
-              setSelectedDateInput('start');
-              setDatePickerOpen(true);
+          <DateRangePicker
+            from={formatDate(startDate)}
+            to={formatDate(endDate)}
+            label="Filtrar por fechas"
+            onChange={(from, to) => {
+              setStartDate(from ? new Date(from + 'T12:00:00') : undefined);
+              setEndDate(to   ? new Date(to   + 'T12:00:00') : undefined);
+              fetchData(
+                from ? new Date(from + 'T12:00:00') : undefined,
+                to   ? new Date(to   + 'T12:00:00') : undefined,
+                selectedStore
+              );
             }}
-            left={<TextInput.Icon icon="calendar" color={COLOR.brandDark} size={20} />}
-            outlineColor={COLOR.border2}
-            activeOutlineColor={COLOR.brand}
-            theme={{ colors: { primary: COLOR.brand } }}
-          />
-          <TextInput
-            label="Hasta"
-            value={formatDate(endDate)}
-            mode="outlined"
-            dense
-            style={styles.compactDateInput}
-            onFocus={() => {
-              setSelectedDateInput('end');
-              setDatePickerOpen(true);
-            }}
-            left={<TextInput.Icon icon="calendar" color={COLOR.brandDark} size={20} />}
-            outlineColor={COLOR.border2}
-            activeOutlineColor={COLOR.brand}
-            theme={{ colors: { primary: COLOR.brand } }}
           />
         </View>
 
-        {/* Selector de tienda — dinámico desde /api/v2/stores/active */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ flexDirection: 'row', gap: 8, paddingHorizontal: 4, paddingVertical: 4 }}>
-          <TouchableOpacity
-            style={[storeChipStyle.chip, selectedStore === null && storeChipStyle.active]}
-            onPress={() => setSelectedStore(null)}
-          >
-            <Text style={[storeChipStyle.text, selectedStore === null && storeChipStyle.activeText]}>Todos</Text>
-          </TouchableOpacity>
-          {activeStores.map(s => (
-            <TouchableOpacity
-              key={s.id}
-              style={[storeChipStyle.chip, selectedStore === s.id && storeChipStyle.active]}
-              onPress={() => setSelectedStore(s.id)}
-            >
-              <Text style={[storeChipStyle.text, selectedStore === s.id && storeChipStyle.activeText]}>{s.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        {/* Selector de tienda — dropdown */}
+        <StoreDropdown
+          stores={activeStores}
+          selectedId={selectedStore}
+          onSelect={(id) => setSelectedStore(id)}
+          includeAll
+          allLabel="Todos los locales"
+        />
 
         {/* Botones — grid 2 columnas para que no se corten en mobile */}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 4, marginTop: 4 }}>

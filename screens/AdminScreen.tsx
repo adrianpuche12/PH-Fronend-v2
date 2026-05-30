@@ -1193,7 +1193,8 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
     ].filter(Boolean);
 
     const amtStr = `L ${item.amount.toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    const imageUri = item.imageUri || (item as any).image_uri;
+    const rawUri = item.imageUri || (item as any).image_uri;
+    const imageUri = rawUri && rawUri !== 'null' && rawUri !== 'undefined' && rawUri.startsWith('http') ? rawUri : null;
 
     return (
       <View key={`tx-${item.id}-${index}`} style={styles.txRow}>

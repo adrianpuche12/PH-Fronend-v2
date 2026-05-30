@@ -262,6 +262,18 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
   // Envía la venta con el método de pago elegido
   const confirmWithPayment = async () => {
     if (!shift) return;
+
+    // Validar pago mixto antes de enviar
+    if (paymentMethod === 'MIXED') {
+      const cash = parseFloat(mixedCash) || 0;
+      const card = parseFloat(mixedCard) || 0;
+      const diff = Math.abs(cash + card - cartTotal);
+      if (diff > 0.01) {
+        setSnackbar(`Efectivo + Tarjeta (L ${(cash + card).toFixed(2)}) no coincide con el total (L ${cartTotal.toFixed(2)})`);
+        return;
+      }
+    }
+
     setSubmitting(true);
     setPaymentModal(false);
     try {
@@ -740,6 +752,23 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                 </View>
               </View>
             )}
+
+            {/* Indicador de diferencia en pago mixto */}
+            {paymentMethod === 'MIXED' && (() => {
+              const cash = parseFloat(mixedCash) || 0;
+              const card = parseFloat(mixedCard) || 0;
+              const diff = cartTotal - cash - card;
+              if (Math.abs(diff) < 0.01) return (
+                <Text style={{ color: COLOR.income, fontSize: FONT_SIZE.caption, textAlign: 'center', marginTop: 4 }}>
+                  ✓ Monto completo
+                </Text>
+              );
+              return (
+                <Text style={{ color: COLOR.expense, fontSize: FONT_SIZE.caption, textAlign: 'center', marginTop: 4 }}>
+                  {diff > 0 ? `Falta: L ${diff.toFixed(2)}` : `Excede: L ${Math.abs(diff).toFixed(2)}`}
+                </Text>
+              );
+            })()}
 
             {/* Acciones */}
             <View style={styles.payModalActions}>

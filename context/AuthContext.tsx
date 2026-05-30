@@ -268,9 +268,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error: any) {
       console.error('Login error:', error);
       setAuthState(prev => ({ ...prev, loading: false, error: null }));
-      // Errores con mensaje específico para el usuario → re-throw
+      // Re-throw para mensajes específicos ya marcados
       if (error.suspended || error.serverError) throw error;
-      // Keycloak 401/403 u otros → login() retorna false, LoginScreen muestra genérico
+      // Keycloak bloquea login de cuenta deshabilitada con "Account disabled"
+      const errorDesc: string = error?.response?.data?.error_description ?? '';
+      if (errorDesc.toLowerCase().includes('account disabled')) {
+        const err: any = new Error('ACCOUNT_SUSPENDED');
+        err.suspended = true;
+        throw err;
+      }
+      // Otros errores (credenciales incorrectas, etc.) → retorna false
       return false;
     }
   };

@@ -23,6 +23,12 @@ interface ShiftRecord {
   storeName: string;
   openedAt: string;
   closedAt: string | null;
+  openingCashAmount: number | null;
+  totalCashSales: number | null;
+  totalCardSales: number | null;
+  totalShiftExpenses: number | null;
+  declaredCashAmount: number | null;
+  cashDifference: number | null;
 }
 
 interface ProductSummaryItem {
@@ -202,6 +208,21 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
                       <View style={[styles.statusBadge, isClosed ? styles.statusClosed : styles.statusOpen]}>
                         <Text style={styles.statusText}>{isClosed ? 'Cerrado' : 'Abierto'}</Text>
                       </View>
+                      {/* Badge de diferencia de caja — solo en turnos cerrados con reconciliación */}
+                      {isClosed && shift.cashDifference != null && (() => {
+                        const diff = shift.cashDifference;
+                        const isOk = Math.abs(diff) < 0.01;
+                        const isSurplus = diff > 0;
+                        const badgeColor = isOk ? COLOR.income : isSurplus ? COLOR.info : COLOR.expense;
+                        const badgeIcon  = isOk ? 'check-circle' : isSurplus ? 'arrow-up-circle' : 'alert-circle';
+                        const badgeText  = isOk ? 'Cuadrada' : isSurplus ? `+${formatHnl(diff)}` : formatHnl(diff);
+                        return (
+                          <View style={[styles.diffBadge, { backgroundColor: badgeColor + '20', borderColor: badgeColor }]}>
+                            <MaterialCommunityIcons name={badgeIcon} size={12} color={badgeColor} />
+                            <Text style={[styles.diffBadgeText, { color: badgeColor }]}>{badgeText}</Text>
+                          </View>
+                        );
+                      })()}
                     </View>
                     <Text style={styles.shiftMeta}>
                       {formatDate(shift.openedAt)}  ·  {formatTime(shift.openedAt)}
@@ -244,6 +265,58 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
                             <Text style={styles.totalFinalAmount}>{formatHnl(summary.totalAmount)}</Text>
                           </View>
                         </View>
+
+                        {/* Reconciliación de caja — solo si hay datos */}
+                        {isClosed && shift.declaredCashAmount != null && (
+                          <View style={styles.recBox}>
+                            <Text style={styles.recTitle}>Reconciliación de caja</Text>
+                            <View style={styles.recLine}>
+                              <Text style={styles.recLabelHist}>Fondo inicial</Text>
+                              <Text style={styles.recValueHist}>{formatHnl(shift.openingCashAmount ?? 0)}</Text>
+                            </View>
+                            <View style={styles.recLine}>
+                              <Text style={styles.recLabelHist}>Ventas efectivo</Text>
+                              <Text style={styles.recValueHist}>{formatHnl(shift.totalCashSales ?? 0)}</Text>
+                            </View>
+                            {(shift.totalShiftExpenses ?? 0) > 0 && (
+                              <View style={styles.recLine}>
+                                <Text style={[styles.recLabelHist, { color: COLOR.expense }]}>Egresos del turno</Text>
+                                <Text style={[styles.recValueHist, { color: COLOR.expense }]}>− {formatHnl(shift.totalShiftExpenses ?? 0)}</Text>
+                              </View>
+                            )}
+                            <View style={[styles.recLine, { borderTopWidth: 1, borderTopColor: COLOR.border, paddingTop: SPACE.s1 }]}>
+                              <Text style={[styles.recLabelHist, { fontWeight: FONT_WEIGHT.bold as any }]}>Total esperado</Text>
+                              <Text style={[styles.recValueHist, { fontWeight: FONT_WEIGHT.bold as any }]}>
+                                {formatHnl((shift.openingCashAmount ?? 0) + (shift.totalCashSales ?? 0) - (shift.totalShiftExpenses ?? 0))}
+                              </Text>
+                            </View>
+                            <View style={styles.recLine}>
+                              <Text style={styles.recLabelHist}>Efectivo contado</Text>
+                              <Text style={styles.recValueHist}>{formatHnl(shift.declaredCashAmount)}</Text>
+                            </View>
+                            {(shift.totalCardSales ?? 0) > 0 && (
+                              <View style={styles.recLine}>
+                                <Text style={[styles.recLabelHist, { color: COLOR.info }]}>Tarjeta</Text>
+                                <Text style={[styles.recValueHist, { color: COLOR.info }]}>{formatHnl(shift.totalCardSales ?? 0)}</Text>
+                              </View>
+                            )}
+                            {(() => {
+                              const diff = shift.cashDifference ?? 0;
+                              const isOk = Math.abs(diff) < 0.01;
+                              const c = isOk ? COLOR.income : diff > 0 ? COLOR.info : COLOR.expense;
+                              return (
+                                <View style={[styles.recLine, { borderTopWidth: 1, borderTopColor: COLOR.border, marginTop: SPACE.s1, paddingTop: SPACE.s1 }]}>
+                                  <Text style={[styles.recLabelHist, { color: c, fontWeight: FONT_WEIGHT.bold as any }]}>
+                                    {isOk ? 'Caja cuadrada' : diff > 0 ? 'Sobrante' : 'Faltante'}
+                                  </Text>
+                                  <Text style={[styles.recValueHist, { color: c, fontWeight: FONT_WEIGHT.bold as any }]}>
+                                    {isOk ? '—' : `${diff > 0 ? '+' : ''}${formatHnl(diff)}`}
+                                  </Text>
+                                </View>
+                              );
+                            })()}
+                          </View>
+                        )}
                       </>
                     ) : (
                       <Text style={styles.noSalesText}>
@@ -330,4 +403,15 @@ const styles = StyleSheet.create({
   totalFinalAmount:{ fontSize: FONT_SIZE.h2, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
 
   noSalesText:    { fontSize: FONT_SIZE.label, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.semibold as any, textAlign: 'center', padding: SPACE.s2 },
+
+  // Badge diferencia en fila del turno
+  diffBadge:      { flexDirection: 'row', alignItems: 'center', gap: 3, borderWidth: 1, borderRadius: RADIUS.r1, paddingHorizontal: 6, paddingVertical: 2 },
+  diffBadgeText:  { fontSize: FONT_SIZE.caption - 1, fontWeight: FONT_WEIGHT.bold as any },
+
+  // Reconciliación en detalle expandido
+  recBox:         { marginTop: SPACE.s3, backgroundColor: COLOR.surface, borderRadius: RADIUS.r2, borderWidth: 1, borderColor: COLOR.border, padding: SPACE.s3, gap: SPACE.s1 },
+  recTitle:       { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.inkMute, marginBottom: SPACE.s1 },
+  recLine:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  recLabelHist:   { fontSize: FONT_SIZE.label, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.medium as any },
+  recValueHist:   { fontSize: FONT_SIZE.label, color: COLOR.ink, fontWeight: FONT_WEIGHT.semibold as any },
 });

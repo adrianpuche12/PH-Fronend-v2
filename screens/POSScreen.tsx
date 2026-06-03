@@ -34,10 +34,12 @@ interface SaleRecord {
   items: { id: number; productId: number; productName: string; unitPrice: number; quantity: number; subtotal: number; }[];
 }
 interface ProductSummaryItem { productId: number; productName: string; quantity: number; subtotal: number; }
+interface ShiftExpense { id: number; description: string; amount: number; username: string; createdAt: string; }
 interface DailySummary {
   date: string; storeId: number; storeName: string; totalSales: number;
   totalSubtotal: number; totalIsv: number; totalAmount: number;
-  totalCashSales: number; totalCardSales: number;
+  openingCashAmount: number; totalCashSales: number; totalCardSales: number;
+  totalShiftExpenses: number;
   productSummary: ProductSummaryItem[];
 }
 
@@ -91,10 +93,17 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
   const [mixedCard, setMixedCard]             = useState('');
 
   // Tab del POS
-  const [posTab, setPosTab]               = useState<'nueva' | 'ventas'>('nueva');
+  const [posTab, setPosTab]               = useState<'nueva' | 'ventas' | 'egresos'>('nueva');
   const [shiftSales, setShiftSales]       = useState<SaleRecord[]>([]);
   const [loadingSales, setLoadingSales]   = useState(false);
   const [cancellingId, setCancellingId]   = useState<number | null>(null);
+
+  // Egresos del turno
+  const [shiftExpenses, setShiftExpenses]       = useState<ShiftExpense[]>([]);
+  const [loadingExpenses, setLoadingExpenses]   = useState(false);
+  const [expenseDesc, setExpenseDesc]           = useState('');
+  const [expenseAmount, setExpenseAmount]       = useState('');
+  const [savingExpense, setSavingExpense]        = useState(false);
   const [confirmDlg, setConfirmDlg]       = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
   const askConfirm = (title: string, message: string, onConfirm: () => void) =>
     setConfirmDlg({ title, message, onConfirm });
@@ -105,6 +114,18 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
   const [summary, setSummary]               = useState<DailySummary | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [closingDone, setClosingDone]       = useState(false);
+
+  // Apertura — fondo inicial
+  const [openingCash, setOpeningCash]           = useState('');
+
+  // Reconciliación de caja al cierre
+  const [declaredCash, setDeclaredCash]         = useState('');
+  interface ClosingResult {
+    openingCashAmount: number; totalCashSales: number;
+    totalShiftExpenses: number; expectedCashAmount: number;
+    totalCardSales: number; declaredCashAmount: number; cashDifference: number;
+  }
+  const [closingResult, setClosingResult]       = useState<ClosingResult | null>(null);
 
   // ── Cargar turno y catálogo ───────────────────────────────────────────────
 
@@ -154,9 +175,10 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
     else { setKpiCount(0); setKpiTotal(0); }
   }, [shift]);
 
-  const handleSwitchTab = (tab: 'nueva' | 'ventas') => {
+  const handleSwitchTab = (tab: 'nueva' | 'ventas' | 'egresos') => {
     setPosTab(tab);
     if (tab === 'ventas') loadShiftSales();
+    if (tab === 'egresos') loadExpenses();
   };
 
   const handleCancelSale = (saleId: number) => {
@@ -178,6 +200,36 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
         finally { setCancellingId(null); }
       }
     );
+  };
+
+  // ── Egresos del turno ────────────────────────────────────────────────────
+
+  const loadExpenses = useCallback(async () => {
+    if (!shift) return;
+    setLoadingExpenses(true);
+    try {
+      const res = await axios.get<ShiftExpense[]>(`${API}/api/v2/shifts/${shift.id}/expenses`);
+      setShiftExpenses(res.data);
+    } catch { /* silencioso */ }
+    finally { setLoadingExpenses(false); }
+  }, [shift]);
+
+  const handleAddExpense = async () => {
+    if (!shift || !expenseDesc.trim() || !expenseAmount) return;
+    const amount = parseFloat(expenseAmount);
+    if (isNaN(amount) || amount <= 0) { setSnackbar('Ingresá un monto válido'); return; }
+    setSavingExpense(true);
+    try {
+      await axios.post(`${API}/api/v2/shifts/${shift.id}/expenses`, {
+        description: expenseDesc.trim(),
+        amount,
+        username: userName ?? 'empleada',
+      });
+      setExpenseDesc('');
+      setExpenseAmount('');
+      loadExpenses();
+    } catch (e: any) { setSnackbar(e.response?.data?.error || 'Error al registrar egreso'); }
+    finally { setSavingExpense(false); }
   };
 
   // ── Filtrado ──────────────────────────────────────────────────────────────
@@ -241,9 +293,13 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
   const handleOpenShift = async () => {
     if (!storeId) return;
     try {
-      const res = await axios.post<Shift>(`${API}/api/v2/stores/${storeId}/shifts`, { username: userName ?? 'empleada' });
+      const res = await axios.post<Shift>(`${API}/api/v2/stores/${storeId}/shifts`, {
+        username: userName ?? 'empleada',
+        openingCashAmount: parseFloat(openingCash) || 0,
+      });
       setShift(res.data);
       setOpenShiftModal(false);
+      setOpeningCash('');
       setSnackbar(`Turno ${res.data.code} abierto`);
     } catch (e: any) { setSnackbar(e.response?.data?.error || 'Error al abrir turno'); }
   };
@@ -304,6 +360,8 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
     setLoadingSummary(true);
     setClosingModal(true);
     setClosingDone(false);
+    setDeclaredCash('');
+    setClosingResult(null);
     try {
       const res = await axios.get<DailySummary>(`${API}/api/v2/shifts/${shift.id}/summary`);
       setSummary(res.data);
@@ -313,8 +371,21 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
 
   const handleConfirmClosing = async () => {
     if (!shift) return;
+    if (declaredCash.trim() === '') {
+      setSnackbar('Ingresá el efectivo que tenés en mano para continuar');
+      return;
+    }
+    const declared = parseFloat(declaredCash);
+    if (isNaN(declared) || declared < 0) {
+      setSnackbar('El monto de efectivo debe ser un número válido');
+      return;
+    }
     try {
-      await axios.post(`${API}/api/v2/shifts/${shift.id}/closing`, { username: userName ?? 'empleada' });
+      const res = await axios.post(`${API}/api/v2/shifts/${shift.id}/closing`, {
+        username: userName ?? 'empleada',
+        declaredCashAmount: declared,
+      });
+      setClosingResult(res.data);
       setClosingDone(true);
       setShift(null);
       clearCart();
@@ -359,6 +430,29 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
             <Text style={styles.modalTitle}>Abrir turno</Text>
             <Text style={styles.modalSub}>Local: <Text style={{ fontWeight: '900' }}>{selectedStore?.name ?? '—'}</Text></Text>
             <Text style={styles.modalSub}>Empleada: <Text style={{ fontWeight: '900' }}>{userName ?? '—'}</Text></Text>
+
+            {/* Fondo inicial */}
+            <View style={[styles.cashInputBox, { marginTop: SPACE.s3 }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACE.s2, marginBottom: SPACE.s2 }}>
+                <MaterialCommunityIcons name="cash-register" size={18} color={COLOR.income} />
+                <Text style={styles.cashInputLabel}>Fondo inicial en caja</Text>
+              </View>
+              <View style={styles.cashInputRow}>
+                <Text style={styles.cashInputPrefix}>L</Text>
+                <RNTextInput
+                  style={styles.cashInput}
+                  keyboardType="decimal-pad"
+                  placeholder="0.00"
+                  placeholderTextColor={COLOR.inkDisabled}
+                  value={openingCash}
+                  onChangeText={setOpeningCash}
+                />
+              </View>
+              <Text style={{ fontSize: FONT_SIZE.caption, color: COLOR.inkMute, marginTop: SPACE.s1 }}>
+                Ingresá el efectivo que ya hay en la caja al iniciar el turno.
+              </Text>
+            </View>
+
             <View style={styles.modalActions}>
               <Button mode="outlined" onPress={() => setOpenShiftModal(false)} style={{ flex: 1 }}>Cancelar</Button>
               <Button mode="contained" onPress={handleOpenShift} buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ flex: 1 }}>Confirmar</Button>
@@ -424,7 +518,12 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
         </TouchableOpacity>
         <TouchableOpacity style={[styles.posTab, posTab === 'ventas' && styles.posTabActive]} onPress={() => handleSwitchTab('ventas')}>
           <Text style={[styles.posTabText, posTab === 'ventas' && styles.posTabTextActive]}>
-            Ventas del turno{shiftSales.length > 0 ? ` (${shiftSales.length})` : ''}
+            Ventas{shiftSales.length > 0 ? ` (${shiftSales.length})` : ''}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.posTab, posTab === 'egresos' && styles.posTabActive]} onPress={() => handleSwitchTab('egresos')}>
+          <Text style={[styles.posTabText, posTab === 'egresos' && styles.posTabTextActive]}>
+            Egresos{shiftExpenses.length > 0 ? ` (${shiftExpenses.length})` : ''}
           </Text>
         </TouchableOpacity>
       </View>
@@ -612,15 +711,169 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
         </View>
       )}
 
+      {/* ══ TAB EGRESOS DEL TURNO ══ */}
+      {posTab === 'egresos' && (
+        <View style={{ flex: 1 }}>
+          {/* Formulario de nuevo egreso */}
+          <View style={styles.expenseForm}>
+            <Text style={styles.expenseFormTitle}>Registrar egreso en efectivo</Text>
+            <RNTextInput
+              style={styles.expenseInput}
+              placeholder="Descripción (ej: Tortillas maíz)"
+              placeholderTextColor={COLOR.inkDisabled}
+              value={expenseDesc}
+              onChangeText={setExpenseDesc}
+            />
+            <View style={{ flexDirection: 'row', gap: SPACE.s2, alignItems: 'center' }}>
+              <View style={[styles.cashInputRow, { flex: 1 }]}>
+                <Text style={styles.cashInputPrefix}>L</Text>
+                <RNTextInput
+                  style={styles.cashInput}
+                  keyboardType="decimal-pad"
+                  placeholder="0.00"
+                  placeholderTextColor={COLOR.inkDisabled}
+                  value={expenseAmount}
+                  onChangeText={setExpenseAmount}
+                />
+              </View>
+              <Button
+                mode="contained"
+                onPress={handleAddExpense}
+                loading={savingExpense}
+                disabled={savingExpense || !expenseDesc.trim() || !expenseAmount}
+                buttonColor={COLOR.expense}
+                textColor={COLOR.white}
+                style={{ borderRadius: RADIUS.r2 }}
+              >
+                Registrar
+              </Button>
+            </View>
+          </View>
+
+          {/* Lista de egresos */}
+          {loadingExpenses ? (
+            <ActivityIndicator color={COLOR.brand} style={{ marginTop: 24 }} />
+          ) : (
+            <ScrollView contentContainerStyle={{ padding: SPACE.s3, gap: SPACE.s2 }}>
+              {shiftExpenses.length === 0 ? (
+                <View style={styles.salesEmpty}>
+                  <MaterialCommunityIcons name="cash-minus" size={40} color={COLOR.inkDisabled} />
+                  <Text style={styles.salesEmptyText}>Sin egresos registrados</Text>
+                  <Text style={styles.salesEmptySub}>Los gastos en efectivo del turno se registran aquí.</Text>
+                </View>
+              ) : (
+                <>
+                  {/* Total de egresos */}
+                  <View style={[styles.salesSummary, { borderColor: COLOR.expenseBorder }]}>
+                    <Text style={styles.salesSummaryText}>
+                      {shiftExpenses.length} egreso{shiftExpenses.length !== 1 ? 's' : ''}
+                    </Text>
+                    <Text style={[styles.salesSummaryTotal, { color: COLOR.expense }]}>
+                      − {formatHnl(shiftExpenses.reduce((s, e) => s + e.amount, 0))}
+                    </Text>
+                  </View>
+
+                  {shiftExpenses.map(exp => (
+                    <View key={exp.id} style={styles.expenseCard}>
+                      <View style={styles.expenseCardIcon}>
+                        <MaterialCommunityIcons name="cash-minus" size={18} color={COLOR.expense} />
+                      </View>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={styles.expenseCardDesc} numberOfLines={1}>{exp.description}</Text>
+                        <Text style={styles.expenseCardMeta}>
+                          {new Date(exp.createdAt).toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit' })}
+                          {' · '}{exp.username}
+                        </Text>
+                      </View>
+                      <Text style={styles.expenseCardAmount}>− {formatHnl(exp.amount)}</Text>
+                    </View>
+                  ))}
+                </>
+              )}
+            </ScrollView>
+          )}
+        </View>
+      )}
+
       {/* ══ MODAL CIERRE DE TURNO ══ */}
       <Modal visible={closingModal} transparent animationType="slide" onRequestClose={() => !closingDone && setClosingModal(false)}>
         <View style={styles.overlay}>
           <View style={[styles.modal, { maxWidth: 520, maxHeight: '92%' }]}>
             {closingDone ? (
-              <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+              <View style={{ alignItems: 'center', paddingVertical: 16 }}>
                 <MaterialCommunityIcons name="check-circle-outline" size={52} color={COLOR.income} />
                 <Text style={[styles.modalTitle, { textAlign: 'center', marginTop: 12 }]}>Turno cerrado</Text>
-                <Text style={{ color: COLOR.ink2, textAlign: 'center', marginTop: 8 }}>El cierre fue registrado en el sistema financiero.</Text>
+
+                {closingResult && (() => {
+                  const diff     = closingResult.cashDifference ?? 0;
+                  const isOk     = Math.abs(diff) < 0.01;
+                  const isSurplus = diff > 0;
+                  const diffColor = isOk ? COLOR.income : isSurplus ? COLOR.info : COLOR.expense;
+                  const diffLabel = isOk ? 'Caja cuadrada' : isSurplus ? 'Sobrante' : 'Faltante';
+                  const diffIcon  = isOk ? 'check-circle' : isSurplus ? 'arrow-up-circle' : 'alert-circle';
+                  return (
+                    <View style={{ width: '100%', marginTop: SPACE.s4, gap: SPACE.s2 }}>
+                      {/* Fondo inicial */}
+                      <View style={styles.recRow}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACE.s2 }}>
+                          <MaterialCommunityIcons name="cash-register" size={16} color={COLOR.inkMute} />
+                          <Text style={styles.recLabel}>Fondo inicial</Text>
+                        </View>
+                        <Text style={styles.recValue}>{formatHnl(closingResult.openingCashAmount)}</Text>
+                      </View>
+                      {/* Ventas efectivo */}
+                      <View style={styles.recRow}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACE.s2 }}>
+                          <MaterialCommunityIcons name="cash" size={16} color={COLOR.income} />
+                          <Text style={[styles.recLabel, { color: COLOR.income }]}>Ventas efectivo</Text>
+                        </View>
+                        <Text style={[styles.recValue, { color: COLOR.income }]}>{formatHnl(closingResult.totalCashSales)}</Text>
+                      </View>
+                      {/* Egresos del turno */}
+                      {closingResult.totalShiftExpenses > 0 && (
+                        <View style={styles.recRow}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACE.s2 }}>
+                            <MaterialCommunityIcons name="cash-minus" size={16} color={COLOR.expense} />
+                            <Text style={[styles.recLabel, { color: COLOR.expense }]}>Egresos del turno</Text>
+                          </View>
+                          <Text style={[styles.recValue, { color: COLOR.expense }]}>− {formatHnl(closingResult.totalShiftExpenses)}</Text>
+                        </View>
+                      )}
+                      {/* Total esperado */}
+                      <View style={[styles.recRow, { borderTopWidth: 1, borderTopColor: COLOR.border, paddingTop: SPACE.s1 }]}>
+                        <Text style={[styles.recLabel, { fontWeight: FONT_WEIGHT.bold as any }]}>Total esperado</Text>
+                        <Text style={[styles.recValue, { fontWeight: FONT_WEIGHT.bold as any }]}>{formatHnl(closingResult.expectedCashAmount)}</Text>
+                      </View>
+                      {/* Efectivo contado */}
+                      <View style={styles.recRow}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACE.s2 }}>
+                          <MaterialCommunityIcons name="hand-coin-outline" size={16} color={COLOR.inkMute} />
+                          <Text style={styles.recLabel}>Efectivo contado</Text>
+                        </View>
+                        <Text style={styles.recValue}>{formatHnl(closingResult.declaredCashAmount)}</Text>
+                      </View>
+                      {/* Tarjeta */}
+                      {closingResult.totalCardSales > 0 && (
+                        <View style={styles.recRow}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACE.s2 }}>
+                            <MaterialCommunityIcons name="credit-card-outline" size={16} color={COLOR.info} />
+                            <Text style={[styles.recLabel, { color: COLOR.info }]}>Tarjeta</Text>
+                          </View>
+                          <Text style={[styles.recValue, { color: COLOR.info }]}>{formatHnl(closingResult.totalCardSales)}</Text>
+                        </View>
+                      )}
+                      {/* Diferencia — destacada */}
+                      <View style={[styles.recDiffBox, { borderColor: diffColor, backgroundColor: diffColor + '18' }]}>
+                        <MaterialCommunityIcons name={diffIcon} size={20} color={diffColor} />
+                        <Text style={[styles.recDiffLabel, { color: diffColor }]}>{diffLabel}</Text>
+                        <Text style={[styles.recDiffAmount, { color: diffColor }]}>
+                          {isOk ? '—' : `${isSurplus ? '+' : ''}${formatHnl(diff)}`}
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                })()}
+
                 <Button mode="contained" buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ marginTop: 20, borderRadius: RADIUS.r2 }} onPress={() => setClosingModal(false)}>Aceptar</Button>
               </View>
             ) : loadingSummary ? (
@@ -653,32 +906,100 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                     <Text style={{ fontSize: FONT_SIZE.h2, fontWeight: FONT_WEIGHT.black as any, color: COLOR.ink }}>{formatHnl(summary.totalAmount)}</Text>
                   </View>
 
-                  {/* Desglose efectivo / tarjeta */}
+                  {/* Desglose de caja */}
                   <View style={{ backgroundColor: COLOR.bg, borderRadius: RADIUS.r2, padding: SPACE.s3, marginTop: SPACE.s3, gap: SPACE.s1 }}>
                     <View style={styles.sumTotalRow}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACE.s2 }}>
-                        <MaterialCommunityIcons name="cash" size={16} color={COLOR.income} />
-                        <Text style={[styles.sumLabel, { color: COLOR.income }]}>Efectivo</Text>
+                        <MaterialCommunityIcons name="cash-register" size={16} color={COLOR.inkMute} />
+                        <Text style={styles.sumLabel}>Fondo inicial</Text>
                       </View>
-                      <Text style={[styles.sumValue, { color: COLOR.income }]}>{formatHnl(summary.totalCashSales ?? 0)}</Text>
+                      <Text style={styles.sumValue}>{formatHnl(summary.openingCashAmount ?? 0)}</Text>
                     </View>
                     <View style={styles.sumTotalRow}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACE.s2 }}>
-                        <MaterialCommunityIcons name="credit-card-outline" size={16} color={COLOR.info} />
-                        <Text style={[styles.sumLabel, { color: COLOR.info }]}>Tarjeta</Text>
+                        <MaterialCommunityIcons name="cash" size={16} color={COLOR.income} />
+                        <Text style={[styles.sumLabel, { color: COLOR.income }]}>Ventas efectivo</Text>
                       </View>
-                      <Text style={[styles.sumValue, { color: COLOR.info }]}>{formatHnl(summary.totalCardSales ?? 0)}</Text>
+                      <Text style={[styles.sumValue, { color: COLOR.income }]}>{formatHnl(summary.totalCashSales ?? 0)}</Text>
                     </View>
+                    {(summary.totalShiftExpenses ?? 0) > 0 && (
+                      <View style={styles.sumTotalRow}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACE.s2 }}>
+                          <MaterialCommunityIcons name="cash-minus" size={16} color={COLOR.expense} />
+                          <Text style={[styles.sumLabel, { color: COLOR.expense }]}>Egresos del turno</Text>
+                        </View>
+                        <Text style={[styles.sumValue, { color: COLOR.expense }]}>− {formatHnl(summary.totalShiftExpenses ?? 0)}</Text>
+                      </View>
+                    )}
+                    <View style={[styles.sumTotalRow, { borderTopWidth: 1, borderTopColor: COLOR.border, paddingTop: SPACE.s1, marginTop: SPACE.s1 }]}>
+                      <Text style={[styles.sumLabel, { fontWeight: FONT_WEIGHT.bold as any }]}>Total esperado en caja</Text>
+                      <Text style={[styles.sumValue, { fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink }]}>
+                        {formatHnl((summary.openingCashAmount ?? 0) + (summary.totalCashSales ?? 0) - (summary.totalShiftExpenses ?? 0))}
+                      </Text>
+                    </View>
+                    {(summary.totalCardSales ?? 0) > 0 && (
+                      <View style={styles.sumTotalRow}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACE.s2 }}>
+                          <MaterialCommunityIcons name="credit-card-outline" size={16} color={COLOR.info} />
+                          <Text style={[styles.sumLabel, { color: COLOR.info }]}>Tarjeta</Text>
+                        </View>
+                        <Text style={[styles.sumValue, { color: COLOR.info }]}>{formatHnl(summary.totalCardSales ?? 0)}</Text>
+                      </View>
+                    )}
                   </View>
 
                   <Text style={{ fontSize: FONT_SIZE.caption, color: COLOR.ink2, marginTop: 4 }}>{summary.totalSales} venta{summary.totalSales !== 1 ? 's' : ''} registrada{summary.totalSales !== 1 ? 's' : ''}</Text>
                 </View>
 
+                {/* Input: efectivo real en mano */}
+                <View style={styles.cashInputBox}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACE.s2, marginBottom: SPACE.s2 }}>
+                    <MaterialCommunityIcons name="hand-coin-outline" size={18} color={COLOR.income} />
+                    <Text style={styles.cashInputLabel}>¿Cuánto efectivo tenés en mano?</Text>
+                  </View>
+                  <View style={styles.cashInputRow}>
+                    <Text style={styles.cashInputPrefix}>L</Text>
+                    <RNTextInput
+                      style={styles.cashInput}
+                      keyboardType="decimal-pad"
+                      placeholder="0.00"
+                      placeholderTextColor={COLOR.inkDisabled}
+                      value={declaredCash}
+                      onChangeText={setDeclaredCash}
+                    />
+                  </View>
+                  {/* Diferencia en tiempo real */}
+                  {declaredCash !== '' && summary && (() => {
+                    const declared  = parseFloat(declaredCash) || 0;
+                    const expected  = (summary.openingCashAmount ?? 0) + (summary.totalCashSales ?? 0) - (summary.totalShiftExpenses ?? 0);
+                    const diff      = declared - expected;
+                    if (Math.abs(diff) < 0.01) return (
+                      <Text style={{ color: COLOR.income, fontSize: FONT_SIZE.caption, marginTop: SPACE.s1 }}>
+                        Caja cuadrada
+                      </Text>
+                    );
+                    return (
+                      <Text style={{ color: diff > 0 ? COLOR.info : COLOR.expense, fontSize: FONT_SIZE.caption, marginTop: SPACE.s1 }}>
+                        {diff > 0 ? `Sobrante: +${formatHnl(diff)}` : `Faltante: ${formatHnl(diff)}`}
+                      </Text>
+                    );
+                  })()}
+                </View>
+
                 <Text style={styles.closingWarn}>Esta acción no se puede deshacer</Text>
 
                 <View style={styles.modalActions}>
-                  <Button mode="outlined" onPress={() => setClosingModal(false)} style={{ flex: 1 }}>Cancelar</Button>
-                  <Button mode="contained" buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ flex: 1 }} onPress={handleConfirmClosing}>Confirmar cierre</Button>
+                  <Button mode="outlined" onPress={() => { setClosingModal(false); setDeclaredCash(''); }} style={{ flex: 1 }}>Cancelar</Button>
+                  <Button
+                    mode="contained"
+                    buttonColor={declaredCash.trim() === '' ? COLOR.inkDisabled : COLOR.brand}
+                    textColor={COLOR.inkOnBrand}
+                    style={{ flex: 1 }}
+                    disabled={declaredCash.trim() === ''}
+                    onPress={handleConfirmClosing}
+                  >
+                    Confirmar cierre
+                  </Button>
                 </View>
               </>
             ) : null}
@@ -1016,6 +1337,31 @@ const styles = StyleSheet.create({
   modalTitle:     { fontSize: FONT_SIZE.h1, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink, marginBottom: SPACE.s1 },
   modalSub:       { fontSize: FONT_SIZE.label, color: COLOR.ink2, fontWeight: FONT_WEIGHT.medium as any, marginBottom: SPACE.s1 },
   modalActions:   { flexDirection: 'row', gap: SPACE.s2, marginTop: SPACE.s4 },
+
+  // Tab Egresos del turno
+  expenseForm:    { backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border, padding: SPACE.s3, gap: SPACE.s2 },
+  expenseFormTitle: { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink, marginBottom: SPACE.s1 },
+  expenseInput:   { borderWidth: 1, borderColor: COLOR.border, borderRadius: RADIUS.r2, paddingHorizontal: SPACE.s3, paddingVertical: SPACE.s2, fontSize: FONT_SIZE.body, color: COLOR.ink, backgroundColor: COLOR.bg },
+  expenseCard:    { flexDirection: 'row', alignItems: 'center', backgroundColor: COLOR.surface, borderRadius: RADIUS.r3, borderWidth: 1, borderColor: COLOR.expenseBorder, padding: SPACE.s3, gap: SPACE.s2 },
+  expenseCardIcon:{ width: 36, height: 36, borderRadius: 18, backgroundColor: COLOR.expenseTint, alignItems: 'center', justifyContent: 'center' },
+  expenseCardDesc:{ fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
+  expenseCardMeta:{ fontSize: FONT_SIZE.caption, color: COLOR.inkMute, marginTop: 2 },
+  expenseCardAmount: { fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.expense },
+
+  // Input efectivo real
+  cashInputBox:   { backgroundColor: COLOR.bg, borderRadius: RADIUS.r3, padding: SPACE.s3, marginTop: SPACE.s3, borderWidth: 1, borderColor: COLOR.border },
+  cashInputLabel: { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink },
+  cashInputRow:   { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: COLOR.income, borderRadius: RADIUS.r2, overflow: 'hidden' },
+  cashInputPrefix:{ paddingHorizontal: SPACE.s3, paddingVertical: SPACE.s2, fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.income, backgroundColor: COLOR.incomeTint },
+  cashInput:      { flex: 1, paddingHorizontal: SPACE.s3, paddingVertical: SPACE.s2, fontSize: FONT_SIZE.body, color: COLOR.ink, outlineStyle: 'none' } as any,
+
+  // Resultado reconciliación (pantalla post-cierre)
+  recRow:         { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 5 },
+  recLabel:       { fontSize: FONT_SIZE.label, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.medium as any },
+  recValue:       { fontSize: FONT_SIZE.label, color: COLOR.ink, fontWeight: FONT_WEIGHT.bold as any },
+  recDiffBox:     { flexDirection: 'row', alignItems: 'center', gap: SPACE.s2, borderWidth: 1.5, borderRadius: RADIUS.r3, padding: SPACE.s3, marginTop: SPACE.s2 },
+  recDiffLabel:   { flex: 1, fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold as any },
+  recDiffAmount:  { fontSize: FONT_SIZE.h3, fontWeight: FONT_WEIGHT.black as any },
 });
 
 // ─── Estilos Ticket ───────────────────────────────────────────────────────────

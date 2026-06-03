@@ -60,6 +60,7 @@ interface Transaction {
   storeName?: string;
   store?: { id: number; name: string; };
   imageUri?: string;
+  username?: string;
   // Datos del turno vinculado (solo en CLOSING generados por POS)
   shiftId?: number;
   shiftCode?: string;

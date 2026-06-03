@@ -387,8 +387,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
       });
       setClosingResult(res.data);
       setClosingDone(true);
-      setShift(null);
-      clearCart();
+      // setShift(null) se llama al cerrar el modal para que el resultado se muestre primero
     } catch (e: any) { setSnackbar(e.response?.data?.error || 'Error al confirmar cierre'); }
   };
 
@@ -874,7 +873,11 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                   );
                 })()}
 
-                <Button mode="contained" buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ marginTop: 20, borderRadius: RADIUS.r2 }} onPress={() => setClosingModal(false)}>Aceptar</Button>
+                <Button mode="contained" buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ marginTop: 20, borderRadius: RADIUS.r2 }} onPress={() => {
+                  setClosingModal(false);
+                  setShift(null);
+                  clearCart();
+                }}>Aceptar</Button>
               </View>
             ) : loadingSummary ? (
               <ActivityIndicator color={COLOR.brand} style={{ margin: 40 }} />

@@ -42,6 +42,8 @@ const StoresScreen = () => {
   const [form, setForm]                 = useState<StoreForm>(EMPTY_FORM);
   const [saving, setSaving]             = useState(false);
   const [snackbar, setSnackbar]         = useState('');
+  const [storeModalError, setStoreModalError] = useState('');
+  const [storeNameError, setStoreNameError]   = useState(false);
   const [confirmDlg, setConfirmDlg]     = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
   const [copyEnabled, setCopyEnabled]   = useState(false);
   const [copyFromId, setCopyFromId]     = useState<number | null>(null);
@@ -69,17 +71,27 @@ const StoresScreen = () => {
     setForm(EMPTY_FORM);
     setCopyEnabled(false);
     setCopyFromId(null);
+    setStoreModalError('');
+    setStoreNameError(false);
     setModalVisible(true);
   };
 
   const openEdit = (store: Store) => {
     setEditingStore(store);
     setForm({ name: store.name, address: store.address ?? '', phone: store.phone ?? '' });
+    setStoreModalError('');
+    setStoreNameError(false);
     setModalVisible(true);
   };
 
   const handleSave = async () => {
-    if (!form.name.trim()) { setSnackbar('El nombre es obligatorio'); return; }
+    if (!form.name.trim()) {
+      setStoreNameError(true);
+      setStoreModalError('El nombre del local es obligatorio.');
+      return;
+    }
+    setStoreNameError(false);
+    setStoreModalError('');
     setSaving(true);
     try {
       if (editingStore) {
@@ -94,8 +106,8 @@ const StoresScreen = () => {
       setModalVisible(false);
       loadStores();
       refreshContext();
-    } catch {
-      setSnackbar('Error al guardar');
+    } catch (e: any) {
+      setStoreModalError(e.response?.data?.error || 'No se pudo guardar el local. Intentá de nuevo.');
     } finally {
       setSaving(false);
     }
@@ -203,7 +215,15 @@ const StoresScreen = () => {
           <View style={styles.modal}>
             <Text style={styles.modalTitle}>{editingStore ? 'Editar Local' : 'Nuevo Local'}</Text>
 
-            <TextInput label="Nombre *" value={form.name} onChangeText={v => setForm({ ...form, name: v })} style={styles.input} mode="outlined" />
+            <TextInput
+              label="Nombre *" value={form.name}
+              onChangeText={v => { setForm({ ...form, name: v }); if (v.trim()) { setStoreNameError(false); setStoreModalError(''); } }}
+              style={styles.input} mode="outlined"
+              error={storeNameError}
+              outlineColor={storeNameError ? COLOR.expense : undefined}
+              activeOutlineColor={storeNameError ? COLOR.expense : COLOR.brand}
+            />
+            {storeNameError && <Text style={styles.fieldErrorText}>El nombre es obligatorio</Text>}
             <TextInput label="Dirección" value={form.address} onChangeText={v => setForm({ ...form, address: v })} style={styles.input} mode="outlined" />
             <TextInput label="Teléfono" value={form.phone} onChangeText={v => setForm({ ...form, phone: v })} style={styles.input} mode="outlined" keyboardType="phone-pad" />
 
@@ -244,6 +264,12 @@ const StoresScreen = () => {
               </View>
             )}
 
+            {!!storeModalError && (
+              <View style={styles.modalErrorBanner}>
+                <MaterialCommunityIcons name="alert-circle-outline" size={18} color={COLOR.expense} />
+                <Text style={styles.modalErrorText}>{storeModalError}</Text>
+              </View>
+            )}
             <View style={styles.modalActions}>
               <Button mode="outlined" onPress={() => setModalVisible(false)} style={{ flex: 1 }}>Cancelar</Button>
               <Button mode="contained" onPress={handleSave} loading={saving} buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ flex: 1 }}>Guardar</Button>
@@ -286,7 +312,10 @@ const styles = StyleSheet.create({
   modal:        { backgroundColor: COLOR.surface, borderRadius: RADIUS.r4, padding: SPACE.s5, width: '90%', maxWidth: 440 },
   modalTitle:   { fontSize: FONT_SIZE.h1, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink, marginBottom: SPACE.s4 },
   input:        { marginBottom: SPACE.s3 },
-  modalActions: { flexDirection: 'row', gap: SPACE.s3, marginTop: SPACE.s2 },
+  modalActions:     { flexDirection: 'row', gap: SPACE.s3, marginTop: SPACE.s2 },
+  modalErrorBanner: { flexDirection: 'row', alignItems: 'center', gap: SPACE.s2, backgroundColor: '#FEE2E2', borderRadius: RADIUS.r2, padding: SPACE.s3, marginTop: SPACE.s2, borderLeftWidth: 3, borderLeftColor: COLOR.expense },
+  modalErrorText:   { flex: 1, fontSize: FONT_SIZE.label, color: '#991B1B', fontWeight: FONT_WEIGHT.semibold as any },
+  fieldErrorText:   { fontSize: FONT_SIZE.caption, color: COLOR.expense, marginTop: -SPACE.s2, marginBottom: SPACE.s2, marginLeft: 4 },
 
   copySection:          { marginBottom: SPACE.s3, borderWidth: 1, borderColor: COLOR.border, borderRadius: RADIUS.r2, overflow: 'hidden' },
   copyToggleRow:        { flexDirection: 'row', alignItems: 'center', gap: SPACE.s2, paddingHorizontal: SPACE.s3, paddingVertical: SPACE.s3, backgroundColor: COLOR.bg },

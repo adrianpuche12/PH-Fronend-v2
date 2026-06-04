@@ -4,6 +4,7 @@ import {
   ActivityIndicator, Modal, useWindowDimensions,
 } from 'react-native';
 import { Button, TextInput, Snackbar, IconButton } from 'react-native-paper';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import axios from 'axios';
 import { REACT_APP_API_URL } from '../config';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -52,17 +53,23 @@ export default function UsersScreen() {
   const [form, setForm]               = useState<UserForm>(EMPTY_FORM);
   const [saving, setSaving]           = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [createModalError, setCreateModalError] = useState('');
+  const [createFieldErrors, setCreateFieldErrors] = useState<{fullName?:boolean; username?:boolean; password?:boolean; storeId?:boolean}>({});
 
   // Modal reasignar local
-  const [reassignModal, setReassignModal]   = useState<AppUser | null>(null);
+  const [reassignModal, setReassignModal]     = useState<AppUser | null>(null);
   const [reassignStoreId, setReassignStoreId] = useState('');
-  const [reassigning, setReassigning]       = useState(false);
+  const [reassigning, setReassigning]         = useState(false);
+  const [reassignError, setReassignError]     = useState('');
+  const [reassignStoreError, setReassignStoreError] = useState(false);
 
   // Modal reset password
-  const [resetModal, setResetModal]   = useState<AppUser | null>(null);
-  const [newPassword, setNewPassword] = useState('');
-  const [resetting, setResetting]     = useState(false);
-  const [showNewPwd, setShowNewPwd]   = useState(false);
+  const [resetModal, setResetModal]     = useState<AppUser | null>(null);
+  const [newPassword, setNewPassword]   = useState('');
+  const [resetting, setResetting]       = useState(false);
+  const [showNewPwd, setShowNewPwd]     = useState(false);
+  const [resetError, setResetError]     = useState('');
+  const [resetPwdError, setResetPwdError] = useState(false);
 
   // ConfirmDialog
   const [confirmDlg, setConfirmDlg] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
@@ -90,9 +97,24 @@ export default function UsersScreen() {
   // ── Crear usuario ──────────────────────────────────────────────────────────
 
   const handleCreate = async () => {
-    if (!form.fullName.trim() || !form.username.trim() || !form.password || !form.storeId) {
-      setSnackbar('Completá todos los campos'); return;
+    const errs: {fullName?:boolean; username?:boolean; password?:boolean; storeId?:boolean} = {};
+    if (!form.fullName.trim())  errs.fullName = true;
+    if (!form.username.trim())  errs.username = true;
+    if (!form.password)         errs.password = true;
+    if (!form.storeId)          errs.storeId  = true;
+    if (Object.keys(errs).length > 0) {
+      setCreateFieldErrors(errs);
+      const missing = [
+        errs.fullName && 'nombre completo',
+        errs.username && 'username',
+        errs.password && 'contraseña',
+        errs.storeId  && 'local',
+      ].filter(Boolean);
+      setCreateModalError(`Completá los siguientes campos: ${missing.join(', ')}.`);
+      return;
     }
+    setCreateFieldErrors({});
+    setCreateModalError('');
     setSaving(true);
     try {
       await axios.post(`${API}/api/v2/users`, {
@@ -106,7 +128,7 @@ export default function UsersScreen() {
       setForm(EMPTY_FORM);
       loadAll();
     } catch (e: any) {
-      setSnackbar(e.response?.data?.error || 'Error al crear usuario');
+      setCreateModalError(e.response?.data?.error || 'No se pudo crear el usuario. Intentá de nuevo.');
     } finally { setSaving(false); }
   };
 
@@ -145,29 +167,42 @@ export default function UsersScreen() {
   // ── Reasignar local ────────────────────────────────────────────────────────
 
   const handleReassign = async () => {
-    if (!reassignModal || !reassignStoreId) { setSnackbar('Seleccioná un local'); return; }
+    if (!reassignStoreId) {
+      setReassignStoreError(true);
+      setReassignError('Seleccioná un local para reasignar al usuario.');
+      return;
+    }
+    setReassignStoreError(false);
+    setReassignError('');
     setReassigning(true);
     try {
-      await axios.put(`${API}/api/v2/users/${reassignModal.id}/reassign`, { storeId: Number(reassignStoreId) });
+      await axios.put(`${API}/api/v2/users/${reassignModal!.id}/reassign`, { storeId: Number(reassignStoreId) });
       setSnackbar('Local reasignado correctamente');
       setReassignModal(null);
       setReassignStoreId('');
       loadAll();
-    } catch (e: any) { setSnackbar(e.response?.data?.error || 'Error'); }
+    } catch (e: any) { setReassignError(e.response?.data?.error || 'No se pudo reasignar el local. Intentá de nuevo.'); }
     finally { setReassigning(false); }
   };
 
   // ── Reset password ─────────────────────────────────────────────────────────
 
   const handleResetPassword = async () => {
-    if (!resetModal || !newPassword) { setSnackbar('Ingresá la nueva contraseña'); return; }
+    if (!newPassword.trim()) {
+      setResetPwdError(true);
+      setResetError('La nueva contraseña es obligatoria.');
+      return;
+    }
+    setResetPwdError(false);
+    setResetError('');
     setResetting(true);
     try {
-      await axios.put(`${API}/api/v2/users/${resetModal.id}/reset-password`, { password: newPassword });
+      await axios.put(`${API}/api/v2/users/${resetModal!.id}/reset-password`, { password: newPassword });
       setSnackbar('Contraseña actualizada correctamente');
       setResetModal(null);
       setNewPassword('');
-    } catch (e: any) { setSnackbar(e.response?.data?.error || 'Error'); }
+      loadAll();
+    } catch (e: any) { setResetError(e.response?.data?.error || 'No se pudo cambiar la contraseña. Intentá de nuevo.'); }
     finally { setResetting(false); }
   };
 
@@ -283,25 +318,47 @@ export default function UsersScreen() {
             <View style={[styles.modal, { width: '100%', maxWidth: 440 }]}>
               <Text style={styles.modalTitle}>Nuevo usuario</Text>
 
-              <TextInput label="Nombre completo *" value={form.fullName} onChangeText={v => setForm({ ...form, fullName: v })} mode="outlined" style={styles.input} autoComplete="off" />
-              <TextInput label="Username *" value={form.username} onChangeText={v => setForm({ ...form, username: v.toLowerCase().replace(/\s+/g, '.') })} mode="outlined" style={styles.input} autoCapitalize="none" autoComplete="off" />
+              <TextInput
+                label="Nombre completo *" value={form.fullName}
+                onChangeText={v => { setForm({ ...form, fullName: v }); if (v.trim()) setCreateFieldErrors(p => ({ ...p, fullName: false })); }}
+                mode="outlined" style={styles.input} autoComplete="off"
+                error={!!createFieldErrors.fullName}
+                outlineColor={createFieldErrors.fullName ? COLOR.expense : undefined}
+                activeOutlineColor={createFieldErrors.fullName ? COLOR.expense : COLOR.brand}
+              />
+              {createFieldErrors.fullName && <Text style={styles.fieldErrorText}>El nombre completo es obligatorio</Text>}
+
+              <TextInput
+                label="Username *" value={form.username}
+                onChangeText={v => { setForm({ ...form, username: v.toLowerCase().replace(/\s+/g, '.') }); if (v.trim()) setCreateFieldErrors(p => ({ ...p, username: false })); }}
+                mode="outlined" style={styles.input} autoCapitalize="none" autoComplete="off"
+                error={!!createFieldErrors.username}
+                outlineColor={createFieldErrors.username ? COLOR.expense : undefined}
+                activeOutlineColor={createFieldErrors.username ? COLOR.expense : COLOR.brand}
+              />
+              {createFieldErrors.username && <Text style={styles.fieldErrorText}>El username es obligatorio</Text>}
+
               <TextInput
                 label="Contraseña *" value={form.password}
-                onChangeText={v => setForm({ ...form, password: v })}
+                onChangeText={v => { setForm({ ...form, password: v }); if (v) setCreateFieldErrors(p => ({ ...p, password: false })); }}
                 mode="outlined" style={styles.input}
                 secureTextEntry={!showPassword}
                 autoComplete="new-password"
+                error={!!createFieldErrors.password}
+                outlineColor={createFieldErrors.password ? COLOR.expense : undefined}
+                activeOutlineColor={createFieldErrors.password ? COLOR.expense : COLOR.brand}
                 right={<TextInput.Icon icon={showPassword ? 'eye-off' : 'eye'} onPress={() => setShowPassword(v => !v)} />}
               />
+              {createFieldErrors.password && <Text style={styles.fieldErrorText}>La contraseña es obligatoria</Text>}
 
               {/* Selector de local */}
-              <Text style={styles.fieldLabel}>Local *</Text>
-              <View style={styles.storeSelector}>
+              <Text style={[styles.fieldLabel, createFieldErrors.storeId && { color: COLOR.expense }]}>Local *</Text>
+              <View style={[styles.storeSelector, createFieldErrors.storeId && { borderColor: COLOR.expense, borderWidth: 1, borderRadius: 8, padding: 4 }]}>
                 {stores.map(s => (
                   <TouchableOpacity
                     key={s.id}
                     style={[styles.storeChip, form.storeId === String(s.id) && styles.storeChipActive]}
-                    onPress={() => setForm({ ...form, storeId: String(s.id) })}
+                    onPress={() => { setForm({ ...form, storeId: String(s.id) }); setCreateFieldErrors(p => ({ ...p, storeId: false })); setCreateModalError(''); }}
                   >
                     <Text style={[styles.storeChipText, form.storeId === String(s.id) && styles.storeChipTextActive]}>
                       {s.name}
@@ -309,11 +366,19 @@ export default function UsersScreen() {
                   </TouchableOpacity>
                 ))}
               </View>
+              {createFieldErrors.storeId && <Text style={styles.fieldErrorText}>Seleccioná un local</Text>}
 
               <Text style={styles.roleNote}>El usuario recibirá el rol <Text style={{ fontWeight: '900' }}>user</Text> automáticamente.</Text>
 
+              {!!createModalError && (
+                <View style={styles.modalErrorBanner}>
+                  <MaterialCommunityIcons name="alert-circle-outline" size={18} color={COLOR.expense} />
+                  <Text style={styles.modalErrorText}>{createModalError}</Text>
+                </View>
+              )}
+
               <View style={styles.modalActions}>
-                <Button mode="outlined" onPress={() => { setCreateModal(false); setForm(EMPTY_FORM); }} style={{ flex: 1 }}>Cancelar</Button>
+                <Button mode="outlined" onPress={() => { setCreateModal(false); setForm(EMPTY_FORM); setCreateFieldErrors({}); setCreateModalError(''); }} style={{ flex: 1 }}>Cancelar</Button>
                 <Button mode="contained" onPress={handleCreate} loading={saving} buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ flex: 1 }}>Crear usuario</Button>
               </View>
             </View>
@@ -322,18 +387,18 @@ export default function UsersScreen() {
       </Modal>
 
       {/* ── Modal reasignar local ── */}
-      <Modal visible={!!reassignModal} transparent animationType="fade" onRequestClose={() => setReassignModal(null)}>
+      <Modal visible={!!reassignModal} transparent animationType="fade" onRequestClose={() => { setReassignModal(null); setReassignError(''); setReassignStoreError(false); }}>
         <View style={styles.overlay}>
           <View style={styles.modal}>
             <Text style={styles.modalTitle}>Reasignar local</Text>
             <Text style={styles.modalSub}>{reassignModal?.fullName}</Text>
-            <Text style={styles.fieldLabel}>Seleccioná el nuevo local:</Text>
-            <View style={styles.storeSelector}>
+            <Text style={[styles.fieldLabel, reassignStoreError && { color: COLOR.expense }]}>Seleccioná el nuevo local:</Text>
+            <View style={[styles.storeSelector, reassignStoreError && { borderColor: COLOR.expense, borderWidth: 1, borderRadius: 8, padding: 4 }]}>
               {stores.map(s => (
                 <TouchableOpacity
                   key={s.id}
                   style={[styles.storeChip, reassignStoreId === String(s.id) && styles.storeChipActive]}
-                  onPress={() => setReassignStoreId(String(s.id))}
+                  onPress={() => { setReassignStoreId(String(s.id)); setReassignStoreError(false); setReassignError(''); }}
                 >
                   <Text style={[styles.storeChipText, reassignStoreId === String(s.id) && styles.storeChipTextActive]}>
                     {s.name}
@@ -341,8 +406,15 @@ export default function UsersScreen() {
                 </TouchableOpacity>
               ))}
             </View>
+            {reassignStoreError && <Text style={styles.fieldErrorText}>Seleccioná un local</Text>}
+            {!!reassignError && (
+              <View style={styles.modalErrorBanner}>
+                <MaterialCommunityIcons name="alert-circle-outline" size={18} color={COLOR.expense} />
+                <Text style={styles.modalErrorText}>{reassignError}</Text>
+              </View>
+            )}
             <View style={styles.modalActions}>
-              <Button mode="outlined" onPress={() => setReassignModal(null)} style={{ flex: 1 }}>Cancelar</Button>
+              <Button mode="outlined" onPress={() => { setReassignModal(null); setReassignError(''); setReassignStoreError(false); }} style={{ flex: 1 }}>Cancelar</Button>
               <Button mode="contained" onPress={handleReassign} loading={reassigning} buttonColor={COLOR.info} textColor={COLOR.white} style={{ flex: 1 }}>Reasignar</Button>
             </View>
           </View>
@@ -350,20 +422,30 @@ export default function UsersScreen() {
       </Modal>
 
       {/* ── Modal reset password ── */}
-      <Modal visible={!!resetModal} transparent animationType="fade" onRequestClose={() => setResetModal(null)}>
+      <Modal visible={!!resetModal} transparent animationType="fade" onRequestClose={() => { setResetModal(null); setNewPassword(''); setResetError(''); setResetPwdError(false); }}>
         <View style={styles.overlay}>
           <View style={styles.modal}>
             <Text style={styles.modalTitle}>Cambiar contraseña</Text>
             <Text style={styles.modalSub}>{resetModal?.fullName} (@{resetModal?.username})</Text>
             <TextInput
               label="Nueva contraseña *" value={newPassword}
-              onChangeText={setNewPassword}
+              onChangeText={v => { setNewPassword(v); if (v.trim()) { setResetPwdError(false); setResetError(''); } }}
               mode="outlined" style={[styles.input, { marginTop: 12 }]}
               secureTextEntry={!showNewPwd}
+              error={resetPwdError}
+              outlineColor={resetPwdError ? COLOR.expense : undefined}
+              activeOutlineColor={resetPwdError ? COLOR.expense : COLOR.brand}
               right={<TextInput.Icon icon={showNewPwd ? 'eye-off' : 'eye'} onPress={() => setShowNewPwd(v => !v)} />}
             />
+            {resetPwdError && <Text style={styles.fieldErrorText}>La contraseña es obligatoria</Text>}
+            {!!resetError && (
+              <View style={styles.modalErrorBanner}>
+                <MaterialCommunityIcons name="alert-circle-outline" size={18} color={COLOR.expense} />
+                <Text style={styles.modalErrorText}>{resetError}</Text>
+              </View>
+            )}
             <View style={styles.modalActions}>
-              <Button mode="outlined" onPress={() => setResetModal(null)} style={{ flex: 1 }}>Cancelar</Button>
+              <Button mode="outlined" onPress={() => { setResetModal(null); setNewPassword(''); setResetError(''); setResetPwdError(false); }} style={{ flex: 1 }}>Cancelar</Button>
               <Button mode="contained" onPress={handleResetPassword} loading={resetting} buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ flex: 1 }}>Guardar</Button>
             </View>
           </View>
@@ -418,7 +500,10 @@ const styles = StyleSheet.create({
   modal:          { backgroundColor: COLOR.surface, borderRadius: RADIUS.r4, padding: SPACE.s5, width: '92%', maxWidth: 440, gap: SPACE.s1 },
   modalTitle:     { fontSize: FONT_SIZE.h1, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink, marginBottom: SPACE.s1 },
   modalSub:       { fontSize: FONT_SIZE.label, color: COLOR.ink2, fontWeight: FONT_WEIGHT.semibold as any, marginBottom: SPACE.s2 },
-  modalActions:   { flexDirection: 'row', gap: SPACE.s2, marginTop: SPACE.s3 },
+  modalActions:     { flexDirection: 'row', gap: SPACE.s2, marginTop: SPACE.s3 },
+  modalErrorBanner: { flexDirection: 'row', alignItems: 'center', gap: SPACE.s2, backgroundColor: '#FEE2E2', borderRadius: RADIUS.r2, padding: SPACE.s3, marginTop: SPACE.s2, borderLeftWidth: 3, borderLeftColor: COLOR.expense },
+  modalErrorText:   { flex: 1, fontSize: FONT_SIZE.label, color: '#991B1B', fontWeight: FONT_WEIGHT.semibold as any },
+  fieldErrorText:   { fontSize: FONT_SIZE.caption, color: COLOR.expense, marginTop: -SPACE.s2, marginBottom: SPACE.s2, marginLeft: 4 },
   input:          { marginBottom: SPACE.s2 },
   fieldLabel:     { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.inkMute, marginBottom: SPACE.s2, marginTop: SPACE.s1 },
 

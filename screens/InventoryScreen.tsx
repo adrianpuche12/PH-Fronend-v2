@@ -284,11 +284,15 @@ const InventoryScreen = () => {
   const [adjustQty, setAdjustQty]         = useState('');
   const [adjustReason, setAdjustReason]   = useState('');
   const [adjustSaving, setAdjustSaving]   = useState(false);
+  const [adjustModalError, setAdjustModalError] = useState('');
+  const [adjustQtyError, setAdjustQtyError]     = useState(false);
 
   const [productModal, setProductModal]     = useState(false);
   const [editProduct, setEditProduct]       = useState<StockItem | null>(null);
   const [productForm, setProductForm]       = useState<ProductForm>(EMPTY_PRODUCT);
   const [productSaving, setProductSaving]   = useState(false);
+  const [productModalError, setProductModalError] = useState('');
+  const [productFieldErrors, setProductFieldErrors] = useState<{name?:boolean; price?:boolean; category?:boolean}>({});
   const [catPickerOpen, setCatPickerOpen]   = useState(false);
   const [catPickerLabel, setCatPickerLabel] = useState('');
 
@@ -299,6 +303,8 @@ const InventoryScreen = () => {
   const [catName, setCatName]             = useState('');
   const [catDesc, setCatDesc]             = useState('');
   const [catSaving, setCatSaving]         = useState(false);
+  const [catModalError, setCatModalError] = useState('');
+  const [catNameError, setCatNameError]   = useState(false);
 
   const API = REACT_APP_API_URL;
 
@@ -379,18 +385,29 @@ const InventoryScreen = () => {
   // ── Ajuste de stock ──────────────────────────────────────────────────────────
 
   const handleAdjust = async () => {
-    if (!adjustItem || !adjustQty || Number(adjustQty) <= 0) { setSnackbar('Ingresá una cantidad válida'); return; }
+    if (!adjustQty || Number(adjustQty) <= 0 || !Number.isInteger(Number(adjustQty))) {
+      setAdjustQtyError(true);
+      setAdjustModalError('Ingresá una cantidad válida (número entero mayor a 0).');
+      return;
+    }
+    if (adjustType === 'SALIDA' && adjustItem && Number(adjustQty) > adjustItem.quantity) {
+      setAdjustQtyError(true);
+      setAdjustModalError(`Stock insuficiente. El stock actual es ${adjustItem.quantity} unidades.`);
+      return;
+    }
+    setAdjustQtyError(false);
+    setAdjustModalError('');
     setAdjustSaving(true);
     try {
       await axios.post(`${API}/api/v2/stores/${storeId}/stock/adjustment`, {
-        productId: adjustItem.productId, type: adjustType,
+        productId: adjustItem!.productId, type: adjustType,
         quantity: Number(adjustQty), reason: adjustReason, username: 'admin',
       });
       setSnackbar(`Stock ${adjustType === 'ENTRADA' ? 'agregado' : 'descontado'} correctamente`);
-      setAdjustItem(null); setAdjustQty(''); setAdjustReason('');
+      setAdjustItem(null); setAdjustQty(''); setAdjustReason(''); setAdjustModalError('');
       loadAll();
     } catch (e: any) {
-      setSnackbar(e.response?.data?.error || 'Error al ajustar stock');
+      setAdjustModalError(e.response?.data?.error || 'No se pudo ajustar el stock. Intentá de nuevo.');
     } finally { setAdjustSaving(false); }
   };
 
@@ -400,6 +417,8 @@ const InventoryScreen = () => {
     setEditProduct(null);
     setProductForm(EMPTY_PRODUCT);
     setCatPickerLabel('');
+    setProductModalError('');
+    setProductFieldErrors({});
     setProductModal(true);
   };
 
@@ -407,14 +426,31 @@ const InventoryScreen = () => {
     setEditProduct(item);
     setProductForm({ name: item.productName, sku: item.productSku || '', type: item.productType, price: String(item.price), minStock: String(item.minStock), description: '', categoryId: item.categoryId ? String(item.categoryId) : '' });
     setCatPickerLabel(item.categoryPath || '');
+    setProductModalError('');
+    setProductFieldErrors({});
     setProductModal(true);
   };
 
   const handleSaveProduct = async () => {
-    if (!productForm.name || !productForm.price) { setSnackbar('Nombre y precio son obligatorios'); return; }
+    // Validacion inline — marca campos vacios
+    const fieldErrs: {name?:boolean; price?:boolean; category?:boolean} = {};
+    if (!productForm.name.trim()) fieldErrs.name = true;
+    if (!productForm.price || Number(productForm.price) <= 0) fieldErrs.price = true;
+    if (!productForm.categoryId) fieldErrs.category = true;
+    if (Object.keys(fieldErrs).length > 0) {
+      setProductFieldErrors(fieldErrs);
+      const msgs = [];
+      if (fieldErrs.name)     msgs.push('el nombre');
+      if (fieldErrs.price)    msgs.push('el precio');
+      if (fieldErrs.category) msgs.push('la categoría');
+      setProductModalError(`Completá ${msgs.join(', ')} para continuar.`);
+      return;
+    }
+    setProductFieldErrors({});
+    setProductModalError('');
     setProductSaving(true);
     try {
-      const body = { name: productForm.name, sku: productForm.sku, type: productForm.type, price: Number(productForm.price), minStock: Number(productForm.minStock), description: productForm.description, categoryId: productForm.categoryId ? Number(productForm.categoryId) : null };
+      const body = { name: productForm.name.trim(), sku: productForm.sku, type: productForm.type, price: Number(productForm.price), minStock: Number(productForm.minStock) || 0, description: productForm.description, categoryId: productForm.categoryId ? Number(productForm.categoryId) : null };
       if (editProduct) {
         await axios.put(`${API}/api/v2/products/${editProduct.productId}`, body);
         setSnackbar('Producto actualizado');
@@ -423,7 +459,9 @@ const InventoryScreen = () => {
         setSnackbar('Producto creado');
       }
       setProductModal(false); loadAll();
-    } catch (e: any) { setSnackbar(e.response?.data?.error || 'Error al guardar'); }
+    } catch (e: any) {
+      setProductModalError(e.response?.data?.error || 'No se pudo guardar el producto. Intentá de nuevo.');
+    }
     finally { setProductSaving(false); }
   };
 
@@ -454,29 +492,36 @@ const InventoryScreen = () => {
   // ── CRUD Categorías ──────────────────────────────────────────────────────────
 
   const openNewCat = (parentId: number | null = null) => {
-    setEditCat(null); setCatParentId(parentId); setCatName(''); setCatDesc(''); setCatModal(true);
+    setEditCat(null); setCatParentId(parentId); setCatName(''); setCatDesc(''); setCatModalError(''); setCatNameError(false); setCatModal(true);
   };
 
   const openEditCat = (cat: Category) => {
-    setEditCat(cat); setCatParentId(cat.parentId); setCatName(cat.name); setCatDesc(''); setCatModal(true);
+    setEditCat(cat); setCatParentId(cat.parentId); setCatName(cat.name); setCatDesc(''); setCatModalError(''); setCatNameError(false); setCatModal(true);
   };
 
   const handleSaveCat = async () => {
-    if (!catName.trim()) { setSnackbar('El nombre es obligatorio'); return; }
-    if (!storeId) { setSnackbar('Seleccioná un local primero'); return; }
+    if (!catName.trim()) {
+      setCatNameError(true);
+      setCatModalError('El nombre de la categoría es obligatorio.');
+      return;
+    }
+    if (!storeId) { setCatModalError('Seleccioná un local primero.'); return; }
+    setCatNameError(false);
+    setCatModalError('');
     setCatSaving(true);
     try {
       if (editCat) {
-        await axios.put(`${API}/api/v2/categories/${editCat.id}`, { name: catName, description: catDesc });
+        await axios.put(`${API}/api/v2/categories/${editCat.id}`, { name: catName.trim(), description: catDesc });
       } else if (catParentId) {
-        await axios.post(`${API}/api/v2/stores/${storeId}/categories/${catParentId}/children`, { name: catName, description: catDesc });
+        await axios.post(`${API}/api/v2/stores/${storeId}/categories/${catParentId}/children`, { name: catName.trim(), description: catDesc });
       } else {
-        await axios.post(`${API}/api/v2/stores/${storeId}/categories`, { name: catName, description: catDesc });
+        await axios.post(`${API}/api/v2/stores/${storeId}/categories`, { name: catName.trim(), description: catDesc });
       }
       setCatModal(false); loadAll();
+      setSnackbar(editCat ? 'Categoría actualizada' : 'Categoría creada');
     } catch (err: any) {
-      const msg = err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Error al guardar categoría';
-      setSnackbar(msg);
+      const msg = err?.response?.data?.error || err?.response?.data?.message || 'No se pudo guardar la categoría. Intentá de nuevo.';
+      setCatModalError(msg);
     }
     finally { setCatSaving(false); }
   };
@@ -800,7 +845,7 @@ const InventoryScreen = () => {
       )}
 
       {/* ── Modal ajuste de stock ── */}
-      <Modal visible={!!adjustItem} transparent animationType="fade" onRequestClose={() => setAdjustItem(null)}>
+      <Modal visible={!!adjustItem} transparent animationType="fade" onRequestClose={() => { setAdjustItem(null); setAdjustQty(''); setAdjustReason(''); setAdjustModalError(''); setAdjustQtyError(false); }}>
         <View style={styles.overlay}>
           <View style={styles.modal}>
             <Text style={styles.modalTitle}>
@@ -820,8 +865,22 @@ const InventoryScreen = () => {
               ))}
             </View>
 
-            <TextInput label="Cantidad *" value={adjustQty} onChangeText={setAdjustQty} keyboardType="numeric" mode="outlined" style={styles.input} />
+            <TextInput
+              label="Cantidad *" value={adjustQty}
+              onChangeText={v => { setAdjustQty(v); if (v && Number(v) > 0) { setAdjustQtyError(false); setAdjustModalError(''); } }}
+              keyboardType="numeric" mode="outlined" style={styles.input}
+              error={adjustQtyError}
+              outlineColor={adjustQtyError ? COLOR.expense : undefined}
+              activeOutlineColor={adjustQtyError ? COLOR.expense : (adjustType === 'ENTRADA' ? COLOR.income : COLOR.expense)}
+            />
+            {adjustQtyError && <Text style={styles.fieldErrorText}>La cantidad debe ser un número entero mayor a 0</Text>}
             <TextInput label="Motivo" value={adjustReason} onChangeText={setAdjustReason} mode="outlined" style={styles.input} />
+            {!!adjustModalError && (
+              <View style={styles.modalErrorBanner}>
+                <MaterialCommunityIcons name="alert-circle-outline" size={18} color={COLOR.expense} />
+                <Text style={styles.modalErrorText}>{adjustModalError}</Text>
+              </View>
+            )}
 
             <View style={styles.modalActions}>
               <Button mode="outlined" onPress={() => setAdjustItem(null)} style={{ flex: 1 }}>Cancelar</Button>
@@ -841,9 +900,28 @@ const InventoryScreen = () => {
             <View style={[styles.modal, { alignSelf: 'center', width: '100%', maxWidth: 900 }]}>
               <Text style={styles.modalTitle}>{editProduct ? 'Editar Producto' : 'Nuevo Producto'}</Text>
 
-              <TextInput label="Nombre *" value={productForm.name} onChangeText={v => setProductForm({ ...productForm, name: v })} mode="outlined" style={styles.input} />
+              <TextInput
+                label="Nombre *" value={productForm.name}
+                onChangeText={v => { setProductForm({ ...productForm, name: v }); if (v.trim()) setProductFieldErrors(prev => ({ ...prev, name: false })); }}
+                mode="outlined" style={styles.input}
+                error={!!productFieldErrors.name}
+                outlineColor={productFieldErrors.name ? COLOR.expense : undefined}
+                activeOutlineColor={productFieldErrors.name ? COLOR.expense : COLOR.brand}
+              />
+              {productFieldErrors.name && <Text style={styles.fieldErrorText}>El nombre es obligatorio</Text>}
+
               <TextInput label="SKU (código)" value={productForm.sku} onChangeText={v => setProductForm({ ...productForm, sku: v })} mode="outlined" style={styles.input} />
-              <TextInput label="Precio *" value={productForm.price} onChangeText={v => setProductForm({ ...productForm, price: v })} keyboardType="numeric" mode="outlined" style={styles.input} />
+
+              <TextInput
+                label="Precio *" value={productForm.price}
+                onChangeText={v => { setProductForm({ ...productForm, price: v }); if (v && Number(v) > 0) setProductFieldErrors(prev => ({ ...prev, price: false })); }}
+                keyboardType="decimal-pad" mode="outlined" style={styles.input}
+                error={!!productFieldErrors.price}
+                outlineColor={productFieldErrors.price ? COLOR.expense : undefined}
+                activeOutlineColor={productFieldErrors.price ? COLOR.expense : COLOR.brand}
+              />
+              {productFieldErrors.price && <Text style={styles.fieldErrorText}>El precio es obligatorio y debe ser mayor a 0</Text>}
+
               <TextInput label="Stock mínimo (alerta)" value={productForm.minStock} onChangeText={v => setProductForm({ ...productForm, minStock: v })} keyboardType="numeric" mode="outlined" style={styles.input} />
 
               {/* Tipo */}
@@ -859,18 +937,27 @@ const InventoryScreen = () => {
               </View>
 
               {/* Selector de categoría */}
-              <Text style={styles.fieldLabel}>Categoría</Text>
+              <Text style={[styles.fieldLabel, productFieldErrors.category && { color: COLOR.expense }]}>Categoría *</Text>
               <TouchableOpacity
-                style={styles.catPickerBtn}
-                onPress={() => setCatPickerOpen(true)}
+                style={[styles.catPickerBtn, productFieldErrors.category && { borderColor: COLOR.expense, borderWidth: 1.5 }]}
+                onPress={() => { setCatPickerOpen(true); setProductFieldErrors(prev => ({ ...prev, category: false })); }}
               >
                 <Text style={catPickerLabel ? styles.catPickerValue : styles.catPickerPlaceholder} numberOfLines={1}>
                   {catPickerLabel || 'Seleccionar categoría...'}
                 </Text>
-                <MaterialCommunityIcons name="chevron-down" size={18} color={COLOR.ink2} />
+                <MaterialCommunityIcons name="chevron-down" size={18} color={productFieldErrors.category ? COLOR.expense : COLOR.ink2} />
               </TouchableOpacity>
+              {productFieldErrors.category && <Text style={styles.fieldErrorText}>Seleccioná una categoría</Text>}
 
               <TextInput label="Descripción" value={productForm.description} onChangeText={v => setProductForm({ ...productForm, description: v })} mode="outlined" style={styles.input} multiline numberOfLines={2} />
+
+              {/* Banner de error inline */}
+              {!!productModalError && (
+                <View style={styles.modalErrorBanner}>
+                  <MaterialCommunityIcons name="alert-circle-outline" size={18} color={COLOR.expense} />
+                  <Text style={styles.modalErrorText}>{productModalError}</Text>
+                </View>
+              )}
 
               <View style={styles.modalActions}>
                 <Button mode="outlined" onPress={() => setProductModal(false)} style={{ flex: 1 }}>Cancelar</Button>
@@ -899,7 +986,7 @@ const InventoryScreen = () => {
                 <TouchableOpacity
                   key={cat.id}
                   style={[styles.catPickerItem, productForm.categoryId === String(cat.id) && styles.catPickerItemActive, { paddingLeft: 16 + cat.depth * 16 }]}
-                  onPress={() => { setProductForm({ ...productForm, categoryId: String(cat.id) }); setCatPickerLabel(cat.label); setCatPickerOpen(false); }}
+                  onPress={() => { setProductForm({ ...productForm, categoryId: String(cat.id) }); setCatPickerLabel(cat.label); setCatPickerOpen(false); setProductFieldErrors(prev => ({ ...prev, category: false })); }}
                 >
                   <Text style={styles.catPickerItemText} numberOfLines={1}>{cat.label}</Text>
                   {productForm.categoryId === String(cat.id) && <MaterialCommunityIcons name="check" size={16} color={COLOR.brand} />}
@@ -921,8 +1008,22 @@ const InventoryScreen = () => {
             {catParentId && !editCat && (
               <Text style={styles.modalSub}>Subcategoría de: {findCat(categories, catParentId)?.name}</Text>
             )}
-            <TextInput label="Nombre *" value={catName} onChangeText={setCatName} mode="outlined" style={styles.input} />
+            <TextInput
+              label="Nombre *" value={catName}
+              onChangeText={v => { setCatName(v); if (v.trim()) { setCatNameError(false); setCatModalError(''); } }}
+              mode="outlined" style={styles.input}
+              error={catNameError}
+              outlineColor={catNameError ? COLOR.expense : undefined}
+              activeOutlineColor={catNameError ? COLOR.expense : COLOR.brand}
+            />
+            {catNameError && <Text style={styles.fieldErrorText}>El nombre es obligatorio</Text>}
             <TextInput label="Descripción" value={catDesc} onChangeText={setCatDesc} mode="outlined" style={styles.input} />
+            {!!catModalError && (
+              <View style={styles.modalErrorBanner}>
+                <MaterialCommunityIcons name="alert-circle-outline" size={18} color={COLOR.expense} />
+                <Text style={styles.modalErrorText}>{catModalError}</Text>
+              </View>
+            )}
             <View style={styles.modalActions}>
               <Button mode="outlined" onPress={() => setCatModal(false)} style={{ flex: 1 }}>Cancelar</Button>
               <Button mode="contained" onPress={handleSaveCat} loading={catSaving} buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ flex: 1 }}>Guardar</Button>
@@ -1087,6 +1188,9 @@ const styles = StyleSheet.create({
   catPickerItemActive:{ backgroundColor: COLOR.brandTint },
   catPickerItemText:  { fontSize: FONT_SIZE.body, color: COLOR.ink, fontWeight: FONT_WEIGHT.medium as any, flex: 1 },
   modalActions:       { flexDirection: 'row', gap: SPACE.s2, marginTop: SPACE.s2 },
+  modalErrorBanner:   { flexDirection: 'row', alignItems: 'center', gap: SPACE.s2, backgroundColor: '#FEE2E2', borderRadius: RADIUS.r2, padding: SPACE.s3, marginTop: SPACE.s2, borderLeftWidth: 3, borderLeftColor: COLOR.expense },
+  modalErrorText:     { flex: 1, fontSize: FONT_SIZE.label, color: '#991B1B', fontWeight: FONT_WEIGHT.semibold as any },
+  fieldErrorText:     { fontSize: FONT_SIZE.caption, color: COLOR.expense, marginTop: -SPACE.s2, marginBottom: SPACE.s2, marginLeft: 4 },
 
   // Product card disabled / in-cart
   productCardDisabled: { opacity: 0.45, backgroundColor: COLOR.bgAlt },

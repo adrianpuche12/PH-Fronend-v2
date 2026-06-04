@@ -7,26 +7,46 @@ on:
     branches: [main, master, develop]
 
 jobs:
-  typecheck-and-build:
-    name: TypeScript + Build Web
+  build-dev:
+    name: Build DEV (develop)
+    if: github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-
       - name: Instalar dependencias
         run: npm ci
-
       - name: TypeScript check
         run: npx tsc --noEmit
-
-      - name: Verificar build web
+      - name: Build web DEV
         run: npx expo export --platform web
         env:
-          EXPO_PUBLIC_API_URL: https://ph-backend-dev-staging.up.railway.app
+          EXPO_PUBLIC_API_URL: ${{ secrets.DEV_API_URL }}
           EXPO_PUBLIC_KEYCLOAK_URL: https://keycloak.belopia.app
           EXPO_PUBLIC_KEYCLOAK_REALM: proyecto-h-dev
+          EXPO_PUBLIC_R2_PUBLIC_URL: https://pub-7e31005d201d4d34894758b2b1d00d9a.r2.dev
+
+  build-prod:
+    name: Build PROD (main)
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Instalar dependencias
+        run: npm ci
+      - name: TypeScript check
+        run: npx tsc --noEmit
+      - name: Build web PROD
+        run: npx expo export --platform web
+        env:
+          EXPO_PUBLIC_API_URL: ${{ secrets.PROD_API_URL }}
+          EXPO_PUBLIC_KEYCLOAK_URL: https://keycloak.belopia.app
+          EXPO_PUBLIC_KEYCLOAK_REALM: proyecto-h-prod
+          EXPO_PUBLIC_R2_PUBLIC_URL: https://pub-7e31005d201d4d34894758b2b1d00d9a.r2.dev

@@ -58,12 +58,21 @@ interface Transaction {
   salaryDate?: string;
   storeId?: number;
   storeName?: string;
-  store?: {
-    id: number;
-    name: string;
-  };
-  // Nuevo campo para la URL de la imagen
+  store?: { id: number; name: string; };
   imageUri?: string;
+  username?: string;
+  // Datos del turno vinculado (solo en CLOSING generados por POS)
+  shiftId?: number;
+  shiftCode?: string;
+  shiftOpenedAt?: string;
+  shiftClosedAt?: string;
+  salesCount?: number;
+  openingCashAmount?: number;
+  totalCashSales?: number;
+  totalCardSales?: number;
+  totalShiftExpenses?: number;
+  declaredCashAmount?: number;
+  cashDifference?: number;
 }
 
 
@@ -362,6 +371,9 @@ const AdminScreen = () => {
 
   // Estado para visor de comprobante
   const [viewingImage, setViewingImage] = useState<string | null>(null);
+  const [expandedClosings, setExpandedClosings] = useState<Record<number, boolean>>({});
+  const toggleClosingDetail = (id: number) =>
+    setExpandedClosings(prev => ({ ...prev, [id]: !prev[id] }));
 
   // Campos para editar
   const [newAmount, setNewAmount] = useState('');
@@ -1185,19 +1197,30 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
       activeStores.find(s => s.id === storeIdResolved)?.name ||
       '—';
 
-    const metaParts = [
-      item.closingsCount ? `${item.closingsCount} cierres` : null,
-      item.periodStart ? `Periodo ${fmtDate(item.periodStart)}` : null,
-      item.supplier || null,
-      item.description || null,
-    ].filter(Boolean);
+    // Para CLOSING con turno vinculado, construimos una descripción significativa
+    const metaParts = item.type === 'CLOSING' && item.shiftId != null
+      ? [
+          item.shiftCode ?? null,
+          item.salesCount != null ? `${item.salesCount} venta${item.salesCount !== 1 ? 's' : ''}` : null,
+          item.shiftOpenedAt && item.shiftClosedAt
+            ? `${fmtTime(item.shiftOpenedAt)} → ${fmtTime(item.shiftClosedAt)}`
+            : null,
+          item.username ?? null,
+        ].filter(Boolean)
+      : [
+          item.closingsCount ? `${item.closingsCount} cierres` : null,
+          item.periodStart ? `Periodo ${fmtDate(item.periodStart)}` : null,
+          item.supplier || null,
+          item.description || null,
+        ].filter(Boolean);
 
     const amtStr = `L ${item.amount.toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const rawUri = item.imageUri || (item as any).image_uri;
     const imageUri = rawUri && rawUri !== 'null' && rawUri !== 'undefined' && rawUri.startsWith('http') ? rawUri : null;
 
     return (
-      <View key={`tx-${item.id}-${index}`} style={styles.txRow}>
+      <View key={`tx-${item.id}-${index}`} style={{ backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border }}>
+      <View style={[styles.txRow, { borderBottomWidth: 0 }]}>
         {/* Icono */}
         <View style={[styles.txIconWrap, { backgroundColor: txBg }]}>
           <MaterialCommunityIcons name={txIcon} size={20} color={txColor} />
@@ -1250,6 +1273,99 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
             <IconButton icon="delete" size={16} onPress={() => handleDelete(item)} iconColor={COLOR.expense} style={{ margin: 0 }} />
           </View>
         </View>
+
+      </View>{/* fin txRow */}
+
+        {/* ── Panel de detalle del turno (solo CLOSING con shiftId) ── */}
+        {item.type === 'CLOSING' && item.shiftId != null && (() => {
+          const isOpen = expandedClosings[item.id];
+          const diff = item.cashDifference ?? 0;
+          const isOk = Math.abs(diff) < 0.01;
+          const diffColor = isOk ? COLOR.income : diff > 0 ? COLOR.info : COLOR.expense;
+          const diffIcon  = isOk ? 'check-circle' : diff > 0 ? 'arrow-up-circle' : 'alert-circle';
+          const diffLabel = isOk ? 'Caja cuadrada' : diff > 0 ? 'Sobrante' : 'Faltante';
+          return (
+            <View style={styles.closingDetailWrap}>
+              {/* Toggle */}
+              <TouchableOpacity style={styles.closingDetailToggle} onPress={() => toggleClosingDetail(item.id)}>
+                <MaterialCommunityIcons
+                  name={isOk ? 'check-circle-outline' : diff < 0 ? 'alert-circle-outline' : 'information-outline'}
+                  size={14} color={diffColor}
+                />
+                <Text style={[styles.closingDetailToggleText, { color: diffColor }]}>
+                  {diffLabel}{!isOk ? ` ${diff > 0 ? '+' : ''}L ${Math.abs(diff).toFixed(2)}` : ''}
+                </Text>
+                <MaterialCommunityIcons name={isOpen ? 'chevron-up' : 'chevron-down'} size={14} color={COLOR.inkMute} style={{ marginLeft: 'auto' }} />
+              </TouchableOpacity>
+
+              {/* Detalle expandido */}
+              {isOpen && (
+                <View style={styles.closingDetailBox}>
+                  {/* Turno */}
+                  <Text style={styles.closingDetailSection}>Turno</Text>
+                  <View style={styles.closingDetailRow}>
+                    <Text style={styles.closingDetailLabel}>Código</Text>
+                    <Text style={styles.closingDetailValue}>{item.shiftCode ?? '—'}</Text>
+                  </View>
+                  <View style={styles.closingDetailRow}>
+                    <Text style={styles.closingDetailLabel}>Horario</Text>
+                    <Text style={styles.closingDetailValue}>
+                      {item.shiftOpenedAt ? fmtTime(item.shiftOpenedAt) : '—'}
+                      {' → '}
+                      {item.shiftClosedAt ? fmtTime(item.shiftClosedAt) : '—'}
+                    </Text>
+                  </View>
+                  <View style={styles.closingDetailRow}>
+                    <Text style={styles.closingDetailLabel}>Ventas registradas</Text>
+                    <Text style={styles.closingDetailValue}>{item.salesCount ?? '—'}</Text>
+                  </View>
+
+                  {/* Reconciliación */}
+                  <Text style={[styles.closingDetailSection, { marginTop: 8 }]}>Reconciliación de caja</Text>
+                  <View style={styles.closingDetailRow}>
+                    <Text style={styles.closingDetailLabel}>Fondo inicial</Text>
+                    <Text style={styles.closingDetailValue}>L {(item.openingCashAmount ?? 0).toFixed(2)}</Text>
+                  </View>
+                  <View style={styles.closingDetailRow}>
+                    <Text style={[styles.closingDetailLabel, { color: COLOR.income }]}>Ventas efectivo</Text>
+                    <Text style={[styles.closingDetailValue, { color: COLOR.income }]}>L {(item.totalCashSales ?? 0).toFixed(2)}</Text>
+                  </View>
+                  {(item.totalCardSales ?? 0) > 0 && (
+                    <View style={styles.closingDetailRow}>
+                      <Text style={[styles.closingDetailLabel, { color: COLOR.info }]}>Ventas tarjeta</Text>
+                      <Text style={[styles.closingDetailValue, { color: COLOR.info }]}>L {(item.totalCardSales ?? 0).toFixed(2)}</Text>
+                    </View>
+                  )}
+                  {(item.totalShiftExpenses ?? 0) > 0 && (
+                    <View style={styles.closingDetailRow}>
+                      <Text style={[styles.closingDetailLabel, { color: COLOR.expense }]}>Egresos del turno</Text>
+                      <Text style={[styles.closingDetailValue, { color: COLOR.expense }]}>− L {(item.totalShiftExpenses ?? 0).toFixed(2)}</Text>
+                    </View>
+                  )}
+                  <View style={[styles.closingDetailRow, { borderTopWidth: 1, borderTopColor: COLOR.border, paddingTop: 4, marginTop: 4 }]}>
+                    <Text style={[styles.closingDetailLabel, { fontWeight: FONT_WEIGHT.bold as any }]}>Total esperado</Text>
+                    <Text style={[styles.closingDetailValue, { fontWeight: FONT_WEIGHT.bold as any }]}>
+                      L {((item.openingCashAmount ?? 0) + (item.totalCashSales ?? 0) - (item.totalShiftExpenses ?? 0)).toFixed(2)}
+                    </Text>
+                  </View>
+                  <View style={styles.closingDetailRow}>
+                    <Text style={styles.closingDetailLabel}>Efectivo contado</Text>
+                    <Text style={styles.closingDetailValue}>L {(item.declaredCashAmount ?? 0).toFixed(2)}</Text>
+                  </View>
+                  <View style={[styles.closingDetailRow, { marginTop: 4 }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <MaterialCommunityIcons name={diffIcon} size={14} color={diffColor} />
+                      <Text style={[styles.closingDetailLabel, { color: diffColor, fontWeight: FONT_WEIGHT.bold as any }]}>{diffLabel}</Text>
+                    </View>
+                    <Text style={[styles.closingDetailValue, { color: diffColor, fontWeight: FONT_WEIGHT.bold as any }]}>
+                      {isOk ? '—' : `${diff > 0 ? '+' : ''}L ${Math.abs(diff).toFixed(2)}`}
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </View>
+          );
+        })()}
       </View>
     );
   };
@@ -2094,6 +2210,16 @@ const styles = StyleSheet.create({
   txAmtWrap:   { alignItems: 'flex-end', minWidth: 80, flexShrink: 0 },
   txAmt:       { fontSize: FONT_SIZE.h3, fontWeight: FONT_WEIGHT.bold as any, letterSpacing: -0.3 },
   txAmtLabel:  { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.semibold as any },
+
+  // ── Detalle de cierre (reconciliación de turno) ───────────────────────────
+  closingDetailWrap:        { borderTopWidth: 1, borderTopColor: COLOR.border, backgroundColor: COLOR.bgAlt },
+  closingDetailToggle:      { flexDirection: 'row', alignItems: 'center', gap: SPACE.s1, paddingHorizontal: SPACE.s3, paddingVertical: SPACE.s2 },
+  closingDetailToggleText:  { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.semibold as any },
+  closingDetailBox:         { paddingHorizontal: SPACE.s4, paddingBottom: SPACE.s3, gap: 3 },
+  closingDetailSection:     { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.inkMute, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4 },
+  closingDetailRow:         { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 2 },
+  closingDetailLabel:       { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.medium as any },
+  closingDetailValue:       { fontSize: FONT_SIZE.caption, color: COLOR.ink, fontWeight: FONT_WEIGHT.semibold as any },
 });
 
 const storeChipStyle = StyleSheet.create({

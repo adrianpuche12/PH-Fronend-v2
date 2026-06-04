@@ -11,6 +11,7 @@ const LoginScreen = () => {
   const [username, setUsername]         = useState('');
   const [password, setPassword]         = useState('');
   const [isLoading, setIsLoading]       = useState(false);
+  const [slowStart, setSlowStart]       = useState(false);
   const [error, setError]               = useState('');
   const [secureTextEntry, setSecure]    = useState(true);
 
@@ -23,20 +24,27 @@ const LoginScreen = () => {
       return;
     }
     setIsLoading(true);
+    setSlowStart(false);
     setError('');
+
+    // Si tarda más de 4s mostrar aviso de inicio en frío
+    const slowTimer = setTimeout(() => setSlowStart(true), 4000);
+
     try {
       const success = await login(username.trim(), password.trim());
-      if (!success) setError('Usuario o contrasena incorrectos');
+      if (!success) setError('Usuario o contraseña incorrectos');
     } catch (err: any) {
       if (err?.suspended) {
-        setError('Tu cuenta fue suspendida. Contacta al encargado.');
+        setError('Tu cuenta fue suspendida. Contactá al encargado.');
       } else if (err?.serverError) {
-        setError('No se pudo verificar tu cuenta. Intenta mas tarde.');
+        setError('No se pudo verificar tu cuenta. Intentá más tarde.');
       } else {
-        setError('Error al iniciar sesion');
+        setError('Error al iniciar sesión');
       }
     } finally {
+      clearTimeout(slowTimer);
       setIsLoading(false);
+      setSlowStart(false);
     }
   };
 
@@ -127,8 +135,16 @@ const LoginScreen = () => {
                 buttonColor={COLOR.brand}
                 textColor={COLOR.inkOnBrand}
               >
-                {isLoading ? 'Iniciando…' : 'Iniciar sesión'}
+                {isLoading
+                  ? (slowStart ? 'Iniciando sistema…' : 'Verificando…')
+                  : 'Iniciar sesión'}
               </Button>
+
+              {slowStart && (
+                <Title style={styles.slowStartText}>
+                  El sistema está iniciando, por favor esperá unos segundos…
+                </Title>
+              )}
 
               <Title style={styles.helperText}>
                 ¿Olvidaste tu contraseña? Pedísela al encargado.
@@ -203,6 +219,14 @@ const styles = StyleSheet.create({
   },
   buttonContent: {
     paddingVertical: SPACE.s2,
+  },
+  slowStartText: {
+    fontSize: FONT_SIZE.caption,
+    color: COLOR.brandDeep,
+    textAlign: 'center',
+    fontWeight: FONT_WEIGHT.regular as any,
+    marginBottom: SPACE.s2,
+    fontStyle: 'italic',
   },
   buttonText: {
     fontSize: FONT_SIZE.body,

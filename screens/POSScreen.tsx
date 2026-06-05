@@ -113,6 +113,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
   // Modales
   const [openShiftModal, setOpenShiftModal] = useState(false);
   const [closingModal, setClosingModal]     = useState(false);
+  const [closingModalError, setClosingModalError] = useState('');
   const [summary, setSummary]               = useState<DailySummary | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [closingDone, setClosingDone]       = useState(false);
@@ -280,6 +281,10 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
   const addToCart = () => {
     const item = stock.find(s => s.productId === selectedId);
     if (!item || pendingQty < 1) return;
+    if (pendingQty > item.quantity) {
+      setSnackbar(`Stock insuficiente. Disponible: ${item.quantity} unidades.`);
+      return;
+    }
     setCart(prev => [...prev, { productId: item.productId, productName: item.productName, price: item.price, qty: pendingQty, subtotal: item.price * pendingQty }]);
     setSelectedId(null);
     setPendingQty(1);
@@ -374,14 +379,15 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
   const handleConfirmClosing = async () => {
     if (!shift) return;
     if (declaredCash.trim() === '') {
-      setSnackbar('Ingresá el efectivo que tenés en mano para continuar');
+      setClosingModalError('Ingresá el efectivo que tenés en mano para continuar.');
       return;
     }
     const declared = parseFloat(declaredCash);
     if (isNaN(declared) || declared < 0) {
-      setSnackbar('El monto de efectivo debe ser un número válido');
+      setClosingModalError('El monto de efectivo debe ser un número válido.');
       return;
     }
+    setClosingModalError('');
     try {
       const res = await axios.post(`${API}/api/v2/shifts/${shift.id}/closing`, {
         username: userName ?? 'empleada',
@@ -389,8 +395,9 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
       });
       setClosingResult(res.data);
       setClosingDone(true);
-      // setShift(null) se llama al cerrar el modal para que el resultado se muestre primero
-    } catch (e: any) { setSnackbar(e.response?.data?.error || 'Error al confirmar cierre'); }
+    } catch (e: any) {
+      setClosingModalError(e.response?.data?.error || 'No se pudo confirmar el cierre. Intentá de nuevo.');
+    }
   };
 
   // ── Stock color ───────────────────────────────────────────────────────────
@@ -632,11 +639,18 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                             <TouchableOpacity style={styles.qtyBtn} onPress={() => setPendingQty(q => Math.max(1, q - 1))}>
                               <Text style={styles.qtyBtnText}>−</Text>
                             </TouchableOpacity>
-                            <Text style={styles.qtyNum}>{pendingQty}</Text>
-                            <TouchableOpacity style={styles.qtyBtn} onPress={() => setPendingQty(q => q + 1)}>
+                            <Text style={[styles.qtyNum, pendingQty >= item.quantity && { color: COLOR.expense }]}>{pendingQty}</Text>
+                            <TouchableOpacity
+                              style={[styles.qtyBtn, pendingQty >= item.quantity && { opacity: 0.4 }]}
+                              onPress={() => setPendingQty(q => Math.min(q + 1, item.quantity))}
+                              disabled={pendingQty >= item.quantity}
+                            >
                               <Text style={styles.qtyBtnText}>+</Text>
                             </TouchableOpacity>
                           </View>
+                          {pendingQty >= item.quantity && item.quantity > 0 && (
+                            <Text style={{ fontSize: 10, color: COLOR.expense, marginBottom: 2 }}>Máx. {item.quantity}</Text>
+                          )}
                           <TouchableOpacity style={styles.addBtn} onPress={addToCart}>
                             <Text style={styles.addBtnText}>Agregar</Text>
                           </TouchableOpacity>
@@ -1066,14 +1080,20 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
 
                 <Text style={styles.closingWarn}>Esta acción no se puede deshacer</Text>
 
+                {!!closingModalError && (
+                  <View style={styles.modalErrorBanner}>
+                    <MaterialCommunityIcons name="alert-circle-outline" size={18} color={COLOR.expense} />
+                    <Text style={styles.modalErrorText}>{closingModalError}</Text>
+                  </View>
+                )}
+
                 <View style={styles.modalActions}>
-                  <Button mode="outlined" onPress={() => { setClosingModal(false); setDeclaredCash(''); }} style={{ flex: 1 }}>Cancelar</Button>
+                  <Button mode="outlined" onPress={() => { setClosingModal(false); setDeclaredCash(''); setClosingModalError(''); }} style={{ flex: 1 }}>Cancelar</Button>
                   <Button
                     mode="contained"
-                    buttonColor={declaredCash.trim() === '' ? COLOR.inkDisabled : COLOR.brand}
+                    buttonColor={COLOR.brand}
                     textColor={COLOR.inkOnBrand}
                     style={{ flex: 1 }}
-                    disabled={declaredCash.trim() === ''}
                     onPress={handleConfirmClosing}
                   >
                     Confirmar cierre

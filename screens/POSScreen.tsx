@@ -1422,6 +1422,8 @@ const styles = StyleSheet.create({
   cartModalTotals:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: SPACE.s2, borderTopWidth: 2, borderTopColor: COLOR.ink },
   cartModalTotalLabel:{ fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
   cartModalTotalAmount:{ fontSize: FONT_SIZE.h1, fontWeight: FONT_WEIGHT.black as any, color: COLOR.ink },
+  modalErrorBanner:   { flexDirection: 'row', alignItems: 'center', gap: SPACE.s2, backgroundColor: '#FEE2E2', borderRadius: RADIUS.r2, padding: SPACE.s3, marginTop: SPACE.s2, borderLeftWidth: 3, borderLeftColor: COLOR.expense },
+  modalErrorText:     { flex: 1, fontSize: FONT_SIZE.label, color: '#991B1B', fontWeight: FONT_WEIGHT.semibold as any },
 
   // Modal método de pago
   payModalOverlay:    { flex: 1, backgroundColor: COLOR.overlay, justifyContent: 'center', alignItems: 'center', padding: SPACE.s4 },

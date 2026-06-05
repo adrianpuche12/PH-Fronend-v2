@@ -73,6 +73,9 @@ interface Transaction {
   totalShiftExpenses?: number;
   declaredCashAmount?: number;
   cashDifference?: number;
+  depositStatus?: string;
+  bankDepositId?: number;
+  closingShiftId?: number;
 }
 
 

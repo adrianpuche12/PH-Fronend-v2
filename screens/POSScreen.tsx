@@ -118,7 +118,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
   const [closingDone, setClosingDone]       = useState(false);
 
   // Apertura — fondo inicial
-  const [openingCash, setOpeningCash]           = useState('');
+  const [openingCash, setOpeningCash]           = useState('1000');
 
   // Reconciliación de caja al cierre
   const [declaredCash, setDeclaredCash]         = useState('');
@@ -301,7 +301,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
       });
       setShift(res.data);
       setOpenShiftModal(false);
-      setOpeningCash('');
+      setOpeningCash('1000');   // restablecer fondo fijo para el próximo turno
       setSnackbar(`Turno ${res.data.code} abierto`);
     } catch (e: any) { setSnackbar(e.response?.data?.error || 'Error al abrir turno'); }
   };
@@ -443,7 +443,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                 <RNTextInput
                   style={styles.cashInput}
                   keyboardType="decimal-pad"
-                  placeholder="0.00"
+                  placeholder="1000.00"
                   placeholderTextColor={COLOR.inkDisabled}
                   value={openingCash}
                   onChangeText={setOpeningCash}

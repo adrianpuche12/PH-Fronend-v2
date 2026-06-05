@@ -94,6 +94,8 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
 
   // Tab del POS
   const [posTab, setPosTab]               = useState<'nueva' | 'ventas' | 'egresos'>('nueva');
+  const [cartModalOpen, setCartModalOpen] = useState(false); // mobile: modal del carrito
+  const [kpiCollapsed, setKpiCollapsed]   = useState(false); // mobile: colapsar barra de stats
   const [shiftSales, setShiftSales]       = useState<SaleRecord[]>([]);
   const [loadingSales, setLoadingSales]   = useState(false);
   const [cancellingId, setCancellingId]   = useState<number | null>(null);
@@ -471,43 +473,59 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
   return (
     <View style={styles.root}>
 
-      {/* ══ HEADER ══ */}
-      <View style={styles.header}>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={styles.headerBrand}>Pollos Hermanos</Text>
-          <Text style={styles.headerShift} numberOfLines={1}>● {shift.code} · {shift.username}</Text>
+      {/* ══ HEADER — oculto en mobile cuando kpiCollapsed ══ */}
+      {(!isDesktop && kpiCollapsed) ? null : (
+        <View style={styles.header}>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={styles.headerBrand}>Pollos Hermanos</Text>
+            <Text style={styles.headerShift} numberOfLines={1}>● {shift.code} · {shift.username}</Text>
+          </View>
+
+          {/* Selector de local — oculto para empleados (hideStoreSelector=true) */}
+          {!hideStoreSelector && (
+            <StoreDropdown
+              stores={stores}
+              selectedId={selectedStore?.id ?? null}
+              onSelect={(id) => { const s = stores.find(s => s.id === id); if (s) setSelectedStore(s); }}
+            />
+          )}
+
+          <Button mode="outlined" onPress={openClosing} textColor={COLOR.expense} style={{ borderColor: COLOR.expense, borderRadius: RADIUS.r1 }} labelStyle={{ fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.black as any }}>
+            Cerrar turno
+          </Button>
         </View>
-
-        {/* Selector de local — oculto para empleados (hideStoreSelector=true) */}
-        {!hideStoreSelector && (
-          <StoreDropdown
-            stores={stores}
-            selectedId={selectedStore?.id ?? null}
-            onSelect={(id) => { const s = stores.find(s => s.id === id); if (s) setSelectedStore(s); }}
-          />
-        )}
-
-        <Button mode="outlined" onPress={openClosing} textColor={COLOR.expense} style={{ borderColor: COLOR.expense, borderRadius: RADIUS.r1 }} labelStyle={{ fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.black as any }}>
-          Cerrar turno
-        </Button>
-      </View>
+      )}
 
       {/* ══ KPIs del turno ══ */}
       <View style={styles.kpiBar}>
-        <View style={styles.kpiItem}>
-          <Text style={styles.kpiLabel}>Ventas del turno</Text>
-          <Text style={styles.kpiValue}>{kpiCount}</Text>
-        </View>
-        <View style={styles.kpiDivider} />
-        <View style={styles.kpiItem}>
-          <Text style={styles.kpiLabel}>Total acumulado</Text>
-          <Text style={styles.kpiValue}>{formatHnl(kpiTotal)}</Text>
-        </View>
-        <View style={styles.kpiDivider} />
-        <View style={styles.kpiItem}>
-          <Text style={styles.kpiLabel}>Turno</Text>
-          <Text style={styles.kpiValue} numberOfLines={1}>{shift?.code ?? '—'}</Text>
-        </View>
+        {!isDesktop && kpiCollapsed ? (
+          <TouchableOpacity style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACE.s1 }} onPress={() => setKpiCollapsed(false)}>
+            <Text style={[styles.kpiValue, { fontSize: 10 }]}>{kpiCount} ventas · {formatHnl(kpiTotal)}</Text>
+            <MaterialCommunityIcons name="chevron-down" size={14} color={COLOR.brand} />
+          </TouchableOpacity>
+        ) : (
+          <>
+            <View style={styles.kpiItem}>
+              <Text style={styles.kpiLabel}>Ventas del turno</Text>
+              <Text style={styles.kpiValue}>{kpiCount}</Text>
+            </View>
+            <View style={styles.kpiDivider} />
+            <View style={styles.kpiItem}>
+              <Text style={styles.kpiLabel}>Total acumulado</Text>
+              <Text style={styles.kpiValue}>{formatHnl(kpiTotal)}</Text>
+            </View>
+            <View style={styles.kpiDivider} />
+            <View style={styles.kpiItem}>
+              <Text style={styles.kpiLabel}>Turno</Text>
+              <Text style={styles.kpiValue} numberOfLines={1}>{shift?.code ?? '—'}</Text>
+            </View>
+            {!isDesktop && (
+              <TouchableOpacity onPress={() => setKpiCollapsed(true)} style={{ paddingHorizontal: 6, justifyContent: 'center' }}>
+                <MaterialCommunityIcons name="chevron-up" size={16} color={COLOR.brand} />
+              </TouchableOpacity>
+            )}
+          </>
+        )}
       </View>
 
       {/* ══ TABS: Nueva venta / Ventas del turno ══ */}
@@ -551,15 +569,15 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
           />
           {search ? <TouchableOpacity onPress={() => setSearch('')}><MaterialCommunityIcons name="close-circle" size={18} color={COLOR.inkDisabled} /></TouchableOpacity> : null}
         </View>
-        {/* Conteo de productos + local */}
-        <Text style={styles.catalogMeta}>Productos activos · {selectedStore?.name}  <Text style={styles.catalogCount}>{filtered.length} productos</Text></Text>
+        {/* Conteo de productos + local — solo en desktop */}
+        {isDesktop && <Text style={styles.catalogMeta}>Productos activos · {selectedStore?.name}  <Text style={styles.catalogCount}>{filtered.length} productos</Text></Text>}
       </View>}
 
       {/* ══ LAYOUT PRINCIPAL ══ */}
       {posTab === 'nueva' && <View style={[styles.main, isDesktop && styles.mainDesktop]}>
 
-        {/* Grilla de productos */}
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.grid}>
+        {/* Grilla de productos — padding extra en mobile para no tapar con la barra flotante */}
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={[styles.grid, !isDesktop && cart.length > 0 && { paddingBottom: 80 }]}>
           {loading
             ? <ActivityIndicator color={COLOR.brand} style={{ marginTop: 40 }} />
             : filtered.length === 0
@@ -638,11 +656,68 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
         </ScrollView>
 
         {/* ══ TICKET ══ */}
-        {isDesktop
-          ? <View style={styles.ticketDesktop}><Ticket cart={cart} subtotal={cartSubtotal} isv={cartISV} total={cartTotal} itemCount={cartItemCount} onRemove={removeFromCart} onClear={clearCart} onSubmit={handleSubmitSale} submitting={submitting} full /></View>
-          : <View style={styles.ticketMobile}><Ticket cart={cart} subtotal={cartSubtotal} isv={cartISV} total={cartTotal} itemCount={cartItemCount} onRemove={removeFromCart} onClear={clearCart} onSubmit={handleSubmitSale} submitting={submitting} full={false} /></View>
-        }
+        {isDesktop && (
+          <View style={styles.ticketDesktop}>
+            <Ticket cart={cart} subtotal={cartSubtotal} isv={cartISV} total={cartTotal} itemCount={cartItemCount} onRemove={removeFromCart} onClear={clearCart} onSubmit={handleSubmitSale} submitting={submitting} full />
+          </View>
+        )}
       </View>}
+
+      {/* ══ BARRA FLOTANTE DEL CARRITO (mobile) ══ */}
+      {!isDesktop && posTab === 'nueva' && cart.length > 0 && (
+        <TouchableOpacity style={styles.cartFloatingBar} onPress={() => setCartModalOpen(true)} activeOpacity={0.9}>
+          <View style={styles.cartBarBadge}>
+            <Text style={styles.cartBarBadgeText}>{cartItemCount}</Text>
+          </View>
+          <Text style={styles.cartBarLabel}>Ver carrito</Text>
+          <Text style={styles.cartBarTotal}>{formatHnl(cartTotal)}</Text>
+          <MaterialCommunityIcons name="chevron-up" size={20} color={COLOR.inkOnBrand} />
+        </TouchableOpacity>
+      )}
+
+      {/* ══ MODAL CARRITO MOBILE ══ */}
+      <Modal visible={cartModalOpen} transparent animationType="slide" onRequestClose={() => setCartModalOpen(false)}>
+        <View style={styles.cartModalOverlay}>
+          <TouchableOpacity style={{ flex: 1 }} onPress={() => setCartModalOpen(false)} />
+          <View style={styles.cartModalSheet}>
+            <View style={styles.cartModalHandle} />
+            <View style={styles.cartModalHead}>
+              <Text style={styles.cartModalTitle}>Carrito</Text>
+              <View style={styles.cartBarBadge}><Text style={styles.cartBarBadgeText}>{cartItemCount}</Text></View>
+            </View>
+            <ScrollView style={{ maxHeight: 260 }}>
+              {cart.map(item => (
+                <View key={item.productId} style={styles.cartModalItem}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.cartModalItemName} numberOfLines={1}>{item.productName}</Text>
+                    <Text style={styles.cartModalItemSub}>{item.qty} × {formatHnl(item.price)}</Text>
+                  </View>
+                  <Text style={styles.cartModalItemTotal}>{formatHnl(item.subtotal)}</Text>
+                  <TouchableOpacity onPress={() => removeFromCart(item.productId)} style={{ padding: 4 }}>
+                    <MaterialCommunityIcons name="trash-can-outline" size={18} color={COLOR.expense} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+            <View style={styles.cartModalTotals}>
+              <Text style={styles.cartModalTotalLabel}>TOTAL</Text>
+              <Text style={styles.cartModalTotalAmount}>{formatHnl(cartTotal)}</Text>
+            </View>
+            <View style={{ gap: SPACE.s2 }}>
+              <Button mode="contained" onPress={() => { setCartModalOpen(false); handleSubmitSale(); }}
+                loading={submitting} disabled={submitting}
+                buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand}
+                style={{ borderRadius: RADIUS.r2 }} labelStyle={{ fontWeight: FONT_WEIGHT.black as any }}>
+                Confirmar venta
+              </Button>
+              <Button mode="outlined" onPress={() => { setCartModalOpen(false); clearCart(); }}
+                textColor={COLOR.expense} style={{ borderRadius: RADIUS.r2 }}>
+                Cancelar venta
+              </Button>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* ══ TAB VENTAS DEL TURNO ══ */}
       {posTab === 'ventas' && (
@@ -1211,9 +1286,9 @@ const styles = StyleSheet.create({
   noShiftSub:     { fontSize: FONT_SIZE.label, color: COLOR.inkMute, textAlign: 'center' },
 
   // Header
-  header:         { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: SPACE.s2, padding: SPACE.s3, backgroundColor: COLOR.brand, borderBottomWidth: 1, borderBottomColor: COLOR.brandDark },
-  headerBrand:    { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.extrabold as any, color: COLOR.ink, letterSpacing: -0.5 },
-  headerShift:    { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink2, marginTop: 2 },
+  header:         { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: SPACE.s1, paddingHorizontal: SPACE.s3, paddingVertical: SPACE.s2, backgroundColor: COLOR.brand, borderBottomWidth: 1, borderBottomColor: COLOR.brandDark },
+  headerBrand:    { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.extrabold as any, color: COLOR.ink, letterSpacing: -0.5 },
+  headerShift:    { fontSize: 10, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink2, marginTop: 1 },
 
   // Local chips
   localChips:     { flexDirection: 'row', gap: SPACE.s2 },
@@ -1223,15 +1298,15 @@ const styles = StyleSheet.create({
   localChipTextActive: { color: COLOR.brand, fontWeight: FONT_WEIGHT.bold as any },
 
   // KPIs bar del turno
-  kpiBar:         { flexDirection: 'row', backgroundColor: COLOR.ink, paddingHorizontal: SPACE.s4, paddingVertical: SPACE.s2 },
+  kpiBar:         { flexDirection: 'row', backgroundColor: COLOR.ink, paddingHorizontal: SPACE.s3, paddingVertical: 4 },
   kpiItem:        { flex: 1, alignItems: 'center' },
-  kpiLabel:       { fontSize: FONT_SIZE.caption - 1, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.inkDisabled, marginBottom: 2 },
-  kpiValue:       { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.brand },
+  kpiLabel:       { fontSize: 9, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.inkDisabled, marginBottom: 1 },
+  kpiValue:       { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.brand },
   kpiDivider:     { width: 1, backgroundColor: COLOR.ink2, marginVertical: 2 },
 
   // Tabs POS
   tabBar:         { flexDirection: 'row', backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border },
-  posTab:         { flex: 1, paddingVertical: 11, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: COLOR.transparent },
+  posTab:         { flex: 1, paddingVertical: 8, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: COLOR.transparent },
   posTabActive:   { borderBottomColor: COLOR.brand },
   posTabText:     { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.inkMute },
   posTabTextActive: { color: COLOR.ink, fontWeight: FONT_WEIGHT.bold as any },
@@ -1255,14 +1330,14 @@ const styles = StyleSheet.create({
   saleCardFooterText: { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.semibold as any },
 
   // Chips categoría
-  chipsBar:       { backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border, paddingVertical: SPACE.s2 },
+  chipsBar:       { backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border, paddingVertical: 5 },
   catChip:        { paddingHorizontal: SPACE.s3, paddingVertical: 5, borderRadius: RADIUS.r2, backgroundColor: COLOR.surface, borderWidth: 1, borderColor: COLOR.border },
   catChipActive:  { backgroundColor: COLOR.brand, borderColor: COLOR.brandDark },
   catChipText:    { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink2 },
   catChipTextActive: { color: COLOR.ink, fontWeight: FONT_WEIGHT.bold as any },
 
   // Buscador
-  searchWrap:     { backgroundColor: COLOR.surface, padding: SPACE.s2, borderBottomWidth: 1, borderBottomColor: COLOR.border, gap: SPACE.s2 },
+  searchWrap:     { backgroundColor: COLOR.surface, paddingHorizontal: SPACE.s2, paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: COLOR.border, gap: 4 },
   searchBox:      { flexDirection: 'row', alignItems: 'center', backgroundColor: COLOR.bg, borderRadius: RADIUS.r2, paddingHorizontal: SPACE.s3, height: 40 },
   searchInput:    { flex: 1, fontSize: FONT_SIZE.label, color: COLOR.ink, outlineStyle: 'none' } as any,
   catalogMeta:    { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
@@ -1306,7 +1381,27 @@ const styles = StyleSheet.create({
 
   // Ticket
   ticketDesktop:  { width: 340, backgroundColor: COLOR.surface, borderLeftWidth: 1, borderLeftColor: COLOR.border },
-  ticketMobile:   { backgroundColor: COLOR.surface, borderTopWidth: 1, borderTopColor: COLOR.border },
+
+  // Barra flotante carrito mobile
+  cartFloatingBar:    { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: COLOR.brandDark, flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACE.s4, paddingVertical: SPACE.s3, gap: SPACE.s3 },
+  cartBarBadge:       { backgroundColor: COLOR.inkOnBrand, borderRadius: RADIUS.full, minWidth: 24, height: 24, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6 },
+  cartBarBadgeText:   { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.black as any, color: COLOR.brandDark },
+  cartBarLabel:       { flex: 1, fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.inkOnBrand },
+  cartBarTotal:       { fontSize: FONT_SIZE.h2, fontWeight: FONT_WEIGHT.black as any, color: COLOR.inkOnBrand },
+
+  // Modal carrito mobile
+  cartModalOverlay:   { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
+  cartModalSheet:     { backgroundColor: COLOR.surface, borderTopLeftRadius: RADIUS.r4, borderTopRightRadius: RADIUS.r4, padding: SPACE.s4, gap: SPACE.s3 },
+  cartModalHandle:    { width: 40, height: 4, backgroundColor: COLOR.border2, borderRadius: RADIUS.full, alignSelf: 'center', marginBottom: SPACE.s2 },
+  cartModalHead:      { flexDirection: 'row', alignItems: 'center', gap: SPACE.s2 },
+  cartModalTitle:     { fontSize: FONT_SIZE.h2, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink, flex: 1 },
+  cartModalItem:      { flexDirection: 'row', alignItems: 'center', paddingVertical: SPACE.s2, borderBottomWidth: 1, borderBottomColor: COLOR.border, gap: SPACE.s2 },
+  cartModalItemName:  { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink },
+  cartModalItemSub:   { fontSize: FONT_SIZE.caption, color: COLOR.inkMute },
+  cartModalItemTotal: { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
+  cartModalTotals:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: SPACE.s2, borderTopWidth: 2, borderTopColor: COLOR.ink },
+  cartModalTotalLabel:{ fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
+  cartModalTotalAmount:{ fontSize: FONT_SIZE.h1, fontWeight: FONT_WEIGHT.black as any, color: COLOR.ink },
 
   // Modal método de pago
   payModalOverlay:    { flex: 1, backgroundColor: COLOR.overlay, justifyContent: 'center', alignItems: 'center', padding: SPACE.s4 },

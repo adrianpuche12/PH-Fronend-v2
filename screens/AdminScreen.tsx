@@ -1240,6 +1240,25 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
           {metaParts.length > 0 && (
             <Text style={styles.txMeta} numberOfLines={1}>{metaParts.join(' · ')}</Text>
           )}
+          {/* Flag de depósito — solo para CLOSING */}
+          {item.type === 'CLOSING' && (
+            <View style={[
+              styles.depositBadge,
+              item.depositStatus === 'DEPOSITED' ? styles.depositBadgeDone : styles.depositBadgePending
+            ]}>
+              <MaterialCommunityIcons
+                name={item.depositStatus === 'DEPOSITED' ? 'bank-check' : 'bank-outline'}
+                size={11}
+                color={item.depositStatus === 'DEPOSITED' ? '#166534' : '#92400E'}
+              />
+              <Text style={[
+                styles.depositBadgeText,
+                { color: item.depositStatus === 'DEPOSITED' ? '#166534' : '#92400E' }
+              ]}>
+                {item.depositStatus === 'DEPOSITED' ? 'Depositado' : 'Sin depositar'}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Local (solo desktop) */}
@@ -2202,7 +2221,11 @@ const styles = StyleSheet.create({
   txName:      { fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink },
   txBadge:     { paddingHorizontal: SPACE.s2, paddingVertical: 2, borderRadius: RADIUS.full },
   txBadgeText: { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.semibold as any },
-  txMeta:      { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, marginTop: 1 },
+  txMeta:           { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, marginTop: 1 },
+  depositBadge:     { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 2, borderRadius: RADIUS.full, alignSelf: 'flex-start', marginTop: 3 },
+  depositBadgeDone: { backgroundColor: '#DCFCE7' },
+  depositBadgePending: { backgroundColor: '#FEF3C7' },
+  depositBadgeText: { fontSize: 10, fontWeight: FONT_WEIGHT.bold as any },
   txStore:     { flex: 1, fontSize: FONT_SIZE.label, color: COLOR.ink2, fontWeight: FONT_WEIGHT.medium as any },
   txDateWrap:  { alignItems: 'flex-end', minWidth: 80 },
   txDate:      { fontSize: FONT_SIZE.label, color: COLOR.ink },

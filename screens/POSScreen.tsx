@@ -975,7 +975,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                 <Text style={styles.modalTitle}>Cierre de turno</Text>
                 <Text style={styles.modalSub}>{selectedStore?.name} · {shift.code}</Text>
 
-                <ScrollView style={{ maxHeight: 260, marginVertical: 12 }}>
+                <ScrollView style={{ flexShrink: 1, marginVertical: 12 }}>
                   <View style={styles.sumRow}>
                     <Text style={[styles.sumCell, styles.sumHeader, { flex: 1 }]}>Producto</Text>
                     <Text style={[styles.sumCell, styles.sumHeader, { width: 46, textAlign: 'center' }]}>Cant.</Text>
@@ -988,9 +988,8 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                       <Text style={[styles.sumCell, { width: 88, textAlign: 'right' }]}>{formatHnl(p.subtotal)}</Text>
                     </View>
                   ))}
-                </ScrollView>
 
-                <View style={styles.sumDivider} />
+                  <View style={styles.sumDivider} />
                 <View style={{ gap: 4 }}>
                   <View style={styles.sumTotalRow}><Text style={styles.sumLabel}>Subtotal</Text><Text style={styles.sumValue}>{formatHnl(summary.totalSubtotal)}</Text></View>
                   <View style={[styles.sumTotalRow, { borderTopWidth: 2, borderTopColor: COLOR.ink, marginTop: 6, paddingTop: 6 }]}>
@@ -1090,6 +1089,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                     );
                   })()}
                 </View>
+                </ScrollView>
 
                 <Text style={styles.closingWarn}>Esta acción no se puede deshacer</Text>
 

@@ -79,19 +79,21 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
   // ── Cargar turnos del local (primera página) ─────────────────────────────
 
   const buildShiftsUrl = (storeId: number, pageNum: number) => {
+    if (usernameFilter) {
+      return `${API}/api/v2/shifts?username=${encodeURIComponent(usernameFilter)}&page=${pageNum}&size=${PAGE_SIZE}`;
+    }
     let url = `${API}/api/v2/stores/${storeId}/shifts?page=${pageNum}&size=${PAGE_SIZE}`;
-    if (usernameFilter) url += `&username=${encodeURIComponent(usernameFilter)}`;
     if (dateFrom) url += `&from=${dateFrom}`;
     if (dateTo)   url += `&to=${dateTo}`;
     return url;
   };
 
   const loadShifts = useCallback(async () => {
-    if (!selectedStore) return;
+    if (!usernameFilter && !selectedStore) return;
     setLoading(true);
     setError('');
     try {
-      const res = await axios.get<ShiftRecord[]>(buildShiftsUrl(selectedStore.id, 0));
+      const res = await axios.get<ShiftRecord[]>(buildShiftsUrl(selectedStore?.id ?? 0, 0));
       setShifts(res.data);
       setPage(0);
       setHasMore(res.data.length === PAGE_SIZE);
@@ -105,11 +107,11 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
   // ── Cargar más turnos ─────────────────────────────────────────────────────
 
   const loadMore = async () => {
-    if (!selectedStore || loadingMore || !hasMore) return;
+    if ((!usernameFilter && !selectedStore) || loadingMore || !hasMore) return;
     setLoadingMore(true);
     try {
       const nextPage = page + 1;
-      const res = await axios.get<ShiftRecord[]>(buildShiftsUrl(selectedStore.id, nextPage));
+      const res = await axios.get<ShiftRecord[]>(buildShiftsUrl(selectedStore?.id ?? 0, nextPage));
       setShifts(prev => [...prev, ...res.data]);
       setPage(nextPage);
       setHasMore(res.data.length === PAGE_SIZE);

@@ -1041,6 +1041,12 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                   </View>
 
                   <Text style={{ fontSize: FONT_SIZE.caption, color: COLOR.ink2, marginTop: 4 }}>{summary.totalSales} venta{summary.totalSales !== 1 ? 's' : ''} registrada{summary.totalSales !== 1 ? 's' : ''}</Text>
+                  {summary.totalSales === 0 && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACE.s2, backgroundColor: '#FFF8E1', borderRadius: RADIUS.r2, padding: SPACE.s2, marginTop: SPACE.s2 }}>
+                      <MaterialCommunityIcons name="alert-outline" size={16} color="#F59E0B" />
+                      <Text style={{ fontSize: FONT_SIZE.caption, color: '#92400E', flex: 1 }}>Cerrás el turno sin ventas registradas.</Text>
+                    </View>
+                  )}
                 </View>
 
                 {/* Input: efectivo real en mano */}
@@ -1057,9 +1063,16 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                       placeholder="0.00"
                       placeholderTextColor={COLOR.inkDisabled}
                       value={declaredCash}
-                      onChangeText={setDeclaredCash}
+                      onChangeText={(v) => { setDeclaredCash(v); if (closingModalError) setClosingModalError(''); }}
                     />
                   </View>
+                  {/* Error inline — no desplaza los botones */}
+                  {!!closingModalError && (
+                    <View style={styles.modalErrorBanner}>
+                      <MaterialCommunityIcons name="alert-circle-outline" size={18} color={COLOR.expense} />
+                      <Text style={styles.modalErrorText}>{closingModalError}</Text>
+                    </View>
+                  )}
                   {/* Diferencia en tiempo real */}
                   {declaredCash !== '' && summary && (() => {
                     const declared  = parseFloat(declaredCash) || 0;
@@ -1079,13 +1092,6 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                 </View>
 
                 <Text style={styles.closingWarn}>Esta acción no se puede deshacer</Text>
-
-                {!!closingModalError && (
-                  <View style={styles.modalErrorBanner}>
-                    <MaterialCommunityIcons name="alert-circle-outline" size={18} color={COLOR.expense} />
-                    <Text style={styles.modalErrorText}>{closingModalError}</Text>
-                  </View>
-                )}
 
                 <View style={styles.modalActions}>
                   <Button mode="outlined" onPress={() => { setClosingModal(false); setDeclaredCash(''); setClosingModalError(''); }} style={{ flex: 1 }}>Cancelar</Button>

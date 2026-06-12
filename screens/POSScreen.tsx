@@ -39,6 +39,7 @@ interface DailySummary {
   date: string; storeId: number; storeName: string; totalSales: number;
   totalSubtotal: number; totalIsv: number; totalAmount: number;
   openingCashAmount: number; totalCashSales: number; totalCardSales: number;
+  totalCardSurcharge: number;
   totalShiftExpenses: number;
   productSummary: ProductSummaryItem[];
 }
@@ -127,7 +128,8 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
   interface ClosingResult {
     openingCashAmount: number; totalCashSales: number;
     totalShiftExpenses: number; expectedCashAmount: number;
-    totalCardSales: number; declaredCashAmount: number; cashDifference: number;
+    totalCardSales: number; totalCardSurcharge: number;
+    declaredCashAmount: number; cashDifference: number;
   }
   const [closingResult, setClosingResult]       = useState<ClosingResult | null>(null);
 
@@ -951,6 +953,16 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                           <Text style={[styles.recValue, { color: COLOR.info }]}>{formatHnl(closingResult.totalCardSales)}</Text>
                         </View>
                       )}
+                      {/* Recargo tarjeta cobrado */}
+                      {closingResult.totalCardSurcharge > 0 && (
+                        <View style={styles.recRow}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACE.s2 }}>
+                            <MaterialCommunityIcons name="cash-plus" size={16} color={COLOR.info} />
+                            <Text style={[styles.recLabel, { color: COLOR.info }]}>Recargo tarjeta cobrado</Text>
+                          </View>
+                          <Text style={[styles.recValue, { color: COLOR.info }]}>+ {formatHnl(closingResult.totalCardSurcharge)}</Text>
+                        </View>
+                      )}
                       {/* Diferencia — destacada */}
                       <View style={[styles.recDiffBox, { borderColor: diffColor, backgroundColor: diffColor + '18' }]}>
                         <MaterialCommunityIcons name={diffIcon} size={20} color={diffColor} />
@@ -1036,6 +1048,15 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                           <Text style={[styles.sumLabel, { color: COLOR.info }]}>Tarjeta</Text>
                         </View>
                         <Text style={[styles.sumValue, { color: COLOR.info }]}>{formatHnl(summary.totalCardSales ?? 0)}</Text>
+                      </View>
+                    )}
+                    {(summary.totalCardSurcharge ?? 0) > 0 && (
+                      <View style={styles.sumTotalRow}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACE.s2 }}>
+                          <MaterialCommunityIcons name="cash-plus" size={16} color={COLOR.info} />
+                          <Text style={[styles.sumLabel, { color: COLOR.info }]}>Recargo tarjeta cobrado</Text>
+                        </View>
+                        <Text style={[styles.sumValue, { color: COLOR.info }]}>+ {formatHnl(summary.totalCardSurcharge ?? 0)}</Text>
                       </View>
                     )}
                   </View>

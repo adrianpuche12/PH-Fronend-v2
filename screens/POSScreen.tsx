@@ -44,6 +44,7 @@ interface DailySummary {
 }
 
 const ISV = 0; // ISV deshabilitado por solicitud del cliente
+const CARD_SURCHARGE_RATE = 0.03; // Recargo por pago con tarjeta de crédito/débito
 
 // Aplana categorías para chips
 const flatCats = (cats: Category[]): Category[] => {
@@ -349,8 +350,8 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
         body.cashAmount = parseFloat(mixedCash) || 0;
         body.cardAmount = parseFloat(mixedCard) || 0;
       }
-      await axios.post(`${API}/api/v2/shifts/${shift.id}/sales`, body);
-      const saleTotal = cartTotal;
+      const res = await axios.post<SaleRecord>(`${API}/api/v2/shifts/${shift.id}/sales`, body);
+      const saleTotal = res.data.total;
       setKpiCount(prev => prev + 1);
       setKpiTotal(prev => prev + saleTotal);
       clearCart();
@@ -1150,6 +1151,20 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
               })}
             </View>
 
+            {/* Desglose recargo tarjeta (3%) */}
+            {paymentMethod === 'CARD' && (
+              <View style={styles.paySurchargeBox}>
+                <View style={styles.paySurchargeRow}>
+                  <Text style={styles.paySurchargeLabel}>Recargo tarjeta (3%)</Text>
+                  <Text style={styles.paySurchargeValue}>+{formatHnl(cartTotal * CARD_SURCHARGE_RATE)}</Text>
+                </View>
+                <View style={styles.paySurchargeRow}>
+                  <Text style={styles.paySurchargeTotalLabel}>Total a cobrar</Text>
+                  <Text style={styles.paySurchargeTotalValue}>{formatHnl(cartTotal * (1 + CARD_SURCHARGE_RATE))}</Text>
+                </View>
+              </View>
+            )}
+
             {/* Campos mixto */}
             {paymentMethod === 'MIXED' && (
               <View style={styles.payMixedRow}>
@@ -1192,6 +1207,26 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                 <Text style={{ color: COLOR.expense, fontSize: FONT_SIZE.caption, textAlign: 'center', marginTop: 4 }}>
                   {diff > 0 ? `Falta: L ${diff.toFixed(2)}` : `Excede: L ${Math.abs(diff).toFixed(2)}`}
                 </Text>
+              );
+            })()}
+
+            {/* Desglose recargo tarjeta (3%) sobre la porción tarjeta */}
+            {paymentMethod === 'MIXED' && (() => {
+              const cash = parseFloat(mixedCash) || 0;
+              const card = parseFloat(mixedCard) || 0;
+              if (card <= 0) return null;
+              const surcharge = card * CARD_SURCHARGE_RATE;
+              return (
+                <View style={styles.paySurchargeBox}>
+                  <View style={styles.paySurchargeRow}>
+                    <Text style={styles.paySurchargeLabel}>Recargo tarjeta (3% de L {card.toFixed(2)})</Text>
+                    <Text style={styles.paySurchargeValue}>+{formatHnl(surcharge)}</Text>
+                  </View>
+                  <View style={styles.paySurchargeRow}>
+                    <Text style={styles.paySurchargeTotalLabel}>Total a cobrar</Text>
+                    <Text style={styles.paySurchargeTotalValue}>{formatHnl(cash + card + surcharge)}</Text>
+                  </View>
+                </View>
               );
             })()}
 
@@ -1446,6 +1481,12 @@ const styles = StyleSheet.create({
   payMixedLabel:      { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink2, marginBottom: SPACE.s1 },
   payMixedInput:      { borderWidth: 1, borderColor: COLOR.border, borderRadius: RADIUS.r2, paddingHorizontal: SPACE.s3, paddingVertical: SPACE.s2, fontSize: FONT_SIZE.body, color: COLOR.ink, backgroundColor: COLOR.surface },
   payModalActions:    { flexDirection: 'row', gap: SPACE.s3, marginTop: SPACE.s2 },
+  paySurchargeBox:    { backgroundColor: COLOR.bg, borderRadius: RADIUS.r2, padding: SPACE.s3, marginBottom: SPACE.s4, gap: 4 },
+  paySurchargeRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  paySurchargeLabel:  { fontSize: FONT_SIZE.label, color: COLOR.ink2 },
+  paySurchargeValue:  { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink },
+  paySurchargeTotalLabel: { fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
+  paySurchargeTotalValue: { fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.income },
 
   // Modal cierre
   sumRow:         { flexDirection: 'row', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: COLOR.border },

@@ -1239,7 +1239,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
         message={confirmDlg?.message ?? ''}
         confirmLabel={confirmDlg?.confirmLabel ?? 'Confirmar'}
         confirmColor={COLOR.expense}
-        onConfirm={() => confirmDlg?.onConfirm()}
+        onConfirm={() => { confirmDlg?.onConfirm(); setConfirmDlg(null); }}
         onCancel={() => setConfirmDlg(null)}
       />
       <Snackbar visible={!!snackbar} onDismiss={() => setSnackbar('')} duration={2500}>{snackbar}</Snackbar>

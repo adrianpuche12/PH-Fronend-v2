@@ -266,6 +266,7 @@ const InventoryScreen = () => {
   const [loading, setLoading]             = useState(false);
   const [search, setSearch]               = useState('');
   const [selectedCat, setSelectedCat]     = useState<number | null>(null);
+  const [stockFilter, setStockFilter]     = useState<'all' | 'low' | 'normal'>('all');
   const [showCatPanel, setShowCatPanel]   = useState(isDesktop);
   const [topExpanded, setTopExpanded]     = useState(true);
   const [snackbar, setSnackbar]           = useState('');
@@ -381,6 +382,11 @@ const InventoryScreen = () => {
     for (const c of cats) { if (c.id === id) return c; const f = findCat(c.children, id); if (f) return f; }
     return null;
   }
+
+  // Filtro por nivel de stock (Todos / Stock bajo / Stock alto)
+  const filteredByStock = stockFilter === 'all'
+    ? filtered
+    : filtered.filter(item => stockFilter === 'low' ? item.lowStock : !item.lowStock);
 
   // ── Ajuste de stock ──────────────────────────────────────────────────────────
 
@@ -767,6 +773,32 @@ const InventoryScreen = () => {
         </View>
       )}
 
+      {/* ── Filtro por nivel de stock (solo en vista stock) ── */}
+      {activeView === 'stock' && (
+        <View style={styles.stockFilterRow}>
+          {([
+            { key: 'all',    label: 'Todos',      icon: 'view-grid-outline' as const },
+            { key: 'low',    label: 'Stock bajo', icon: 'alert-circle-outline' as const },
+            { key: 'normal', label: 'Stock alto',  icon: 'check-circle-outline' as const },
+          ] as const).map(({ key, label, icon }) => (
+            <TouchableOpacity
+              key={key}
+              onPress={() => setStockFilter(key)}
+              style={[styles.stockTabBtn, stockFilter === key && styles.stockTabBtnActive]}
+            >
+              <MaterialCommunityIcons
+                name={icon}
+                size={14}
+                color={stockFilter === key ? COLOR.ink : COLOR.inkMute}
+              />
+              <Text style={[styles.stockTabBtnText, stockFilter === key && styles.stockTabBtnTextActive]}>
+                {label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
       {/* ── Layout principal ── */}
       {activeView === 'stock' ? (
         <View style={[styles.main, isDesktop && styles.mainDesktop]}>
@@ -794,7 +826,7 @@ const InventoryScreen = () => {
           <View style={{ flex: 1 }}>
             {loading ? (
               <ActivityIndicator size="large" color={COLOR.brand} style={{ marginTop: 40 }} />
-            ) : filtered.length === 0 ? (
+            ) : filteredByStock.length === 0 ? (
               <Text style={styles.empty}>No hay productos para mostrar.</Text>
             ) : (
               <ScrollView>
@@ -815,7 +847,7 @@ const InventoryScreen = () => {
                     </View>
                   </View>
                 )}
-                {filtered.map(renderRow)}
+                {filteredByStock.map(renderRow)}
               </ScrollView>
             )}
           </View>
@@ -1081,6 +1113,13 @@ const styles = StyleSheet.create({
   searchRow:          { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACE.s3, paddingVertical: SPACE.s2, gap: SPACE.s2 },
   searchBox:          { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: COLOR.surface, borderRadius: RADIUS.r2, borderWidth: 1, borderColor: COLOR.border, paddingHorizontal: SPACE.s3, height: CONTROL.inputH - 8 },
   searchInput:        { flex: 1, fontSize: FONT_SIZE.body, color: COLOR.ink, outlineStyle: 'none' } as any,
+
+  // Filtro por nivel de stock
+  stockFilterRow:        { flexDirection: 'row', marginHorizontal: SPACE.s3, marginBottom: SPACE.s2, borderRadius: RADIUS.r2, overflow: 'hidden', borderWidth: 1, borderColor: COLOR.border },
+  stockTabBtn:           { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 8, backgroundColor: COLOR.surface },
+  stockTabBtnActive:     { backgroundColor: COLOR.brandTint },
+  stockTabBtnText:       { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.inkMute },
+  stockTabBtnTextActive: { color: COLOR.ink, fontWeight: FONT_WEIGHT.bold as any },
 
   // Layout principal
   main:               { flex: 1, flexDirection: 'column' },

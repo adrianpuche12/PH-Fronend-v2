@@ -12,13 +12,19 @@ import { formatHnl, formatTime } from '../utils/format';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
+interface ActiveShift {
+  code: string;
+  username: string;
+  openedAt: string;
+  salesCount: number;
+  salesTotal: number;
+}
+
 interface StoreDashboard {
   storeId: number;
   storeName: string;
   hasActiveShift: boolean;
-  shiftCode: string | null;
-  shiftUsername: string | null;
-  shiftOpenedAt: string | null;
+  activeShifts: ActiveShift[];
   shiftSalesCount: number;
   shiftSalesTotal: number;
   totalProducts: number;
@@ -114,20 +120,24 @@ export default function DashboardScreen() {
               <Text style={styles.storeName}>{store.storeName}</Text>
               <View style={[styles.shiftBadge, store.hasActiveShift ? styles.shiftOpen : styles.shiftClosed]}>
                 <Text style={styles.shiftBadgeText}>
-                  {store.hasActiveShift ? '● Turno abierto' : '○ Sin turno'}
+                  {store.hasActiveShift
+                    ? `● ${store.activeShifts.length} turno${store.activeShifts.length !== 1 ? 's' : ''} abierto${store.activeShifts.length !== 1 ? 's' : ''}`
+                    : '○ Sin turno'}
                 </Text>
               </View>
             </View>
 
-            {/* Info del turno — altura fija para que la fila de stats quede alineada */}
+            {/* Info de turnos activos — uno por cajero */}
             <View style={styles.shiftInfoBox}>
-              {store.hasActiveShift && store.shiftCode ? (
-                <View style={styles.shiftInfo}>
-                  <Text style={styles.shiftCode}>{store.shiftCode}</Text>
-                  <Text style={styles.shiftMeta}>
-                    {store.shiftUsername}  ·  desde {store.shiftOpenedAt ? formatTime(store.shiftOpenedAt) : '—'}
-                  </Text>
-                </View>
+              {store.activeShifts.length > 0 ? (
+                store.activeShifts.map(shift => (
+                  <View key={shift.code} style={styles.shiftInfo}>
+                    <Text style={styles.shiftCode}>{shift.code}</Text>
+                    <Text style={styles.shiftMeta}>
+                      {shift.username}  ·  desde {formatTime(shift.openedAt)}
+                    </Text>
+                  </View>
+                ))
               ) : (
                 <Text style={styles.noShiftText}>No hay turno activo para este local</Text>
               )}
@@ -224,7 +234,7 @@ const styles = StyleSheet.create({
   shiftClosed:      { backgroundColor: COLOR.surface2 },
   shiftBadgeText:   { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink2 },
 
-  shiftInfoBox:     { minHeight: 44, justifyContent: 'center' },
+  shiftInfoBox:     { minHeight: 44, justifyContent: 'center', gap: SPACE.s2 },
   shiftInfo:        { gap: 2 },
   shiftCode:        { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
   shiftMeta:        { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.medium as any },

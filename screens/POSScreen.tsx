@@ -139,11 +139,13 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
     if (!storeId) return;
     setLoadingShift(true);
     try {
-      const res = await axios.get<Shift>(`${API}/api/v2/shifts/active/${storeId}`);
+      const res = await axios.get<Shift>(`${API}/api/v2/shifts/active/${storeId}`, {
+        params: { username: userName ?? 'empleada' },
+      });
       setShift(res.data ?? null);
     } catch { setShift(null); }
     finally { setLoadingShift(false); }
-  }, [storeId]);
+  }, [storeId, userName]);
 
   const loadCatalog = useCallback(async () => {
     if (!storeId) return;

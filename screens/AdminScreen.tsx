@@ -236,6 +236,8 @@ const CompactDateFilters = ({
   showAdminExpenses,
   onToggleAdminExpenses,
   activeStores,
+  depositFilter,
+  setDepositFilter,
 }: {
   startDate?: Date;
   endDate?: Date;
@@ -250,6 +252,8 @@ const CompactDateFilters = ({
   showAdminExpenses: boolean;
   onToggleAdminExpenses: () => void;
   activeStores: {id: number; name: string}[];
+  depositFilter: 'all' | 'pending' | 'deposited';
+  setDepositFilter: (filter: 'all' | 'pending' | 'deposited') => void;
 }) => {
   const { width: screenWidth } = useWindowDimensions();
   const isLargeScreen = screenWidth >= 768;
@@ -346,6 +350,30 @@ const CompactDateFilters = ({
           )}
         </View>
       </View>
+
+      {/* Filtro por estado de depósito (solo aplica a Cierres) */}
+      <View style={{ flexDirection: 'row', marginHorizontal: 4, marginTop: 8, borderRadius: RADIUS.r2, overflow: 'hidden', borderWidth: 1, borderColor: COLOR.border }}>
+        {([
+          { key: 'all',       label: 'Todos',         icon: 'filter-variant' as const },
+          { key: 'pending',   label: 'Sin depositar',  icon: 'bank-outline' as const },
+          { key: 'deposited', label: 'Depositados',    icon: 'bank-check' as const },
+        ] as const).map(({ key, label, icon }) => (
+          <TouchableOpacity
+            key={key}
+            onPress={() => setDepositFilter(key)}
+            style={[styles.tabBtn, depositFilter === key && styles.tabBtnActive]}
+          >
+            <MaterialCommunityIcons
+              name={icon}
+              size={14}
+              color={depositFilter === key ? COLOR.ink : COLOR.inkMute}
+            />
+            <Text style={[styles.tabBtnText, depositFilter === key && styles.tabBtnTextActive]}>
+              {label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
     </View>
   );
 };
@@ -361,6 +389,7 @@ const AdminScreen = () => {
   const [selectedStore, setSelectedStore] = useState<number | null>(null);
   const [showAdminExpenses, setShowAdminExpenses] = useState(false);
   const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
+  const [depositFilter, setDepositFilter] = useState<'all' | 'pending' | 'deposited'>('all');
   const [filtersExpanded, setFiltersExpanded] = useState(false);
 
   // Estados para el modal de edición
@@ -631,9 +660,17 @@ const AdminScreen = () => {
   const expenseCount = transactions.filter(tx => EXPENSE_TYPES.includes(tx.type)).length;
   const allCount     = transactions.length;
 
+  // Filtro por estado de depósito (solo aplica a cierres - CLOSING)
+  const filteredByDeposit = depositFilter === 'all'
+    ? filteredByType
+    : filteredByType.filter(tx =>
+        tx.type === 'CLOSING' &&
+        tx.depositStatus === (depositFilter === 'pending' ? 'PENDING' : 'DEPOSITED')
+      );
+
   // Paginación
-  const totalPages = Math.ceil(filteredByType.length / ITEMS_PER_PAGE);
-  const paginatedTransactions = filteredByType.slice(
+  const totalPages = Math.ceil(filteredByDeposit.length / ITEMS_PER_PAGE);
+  const paginatedTransactions = filteredByDeposit.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
@@ -1512,8 +1549,10 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
                   showAdminExpenses={showAdminExpenses}
                   onToggleAdminExpenses={handleToggleAdminExpenses}
                   activeStores={activeStores}
+                  depositFilter={depositFilter}
+                  setDepositFilter={(f) => { setDepositFilter(f); setCurrentPage(1); }}
                 />
-                <BalanceCard transactions={filteredByType} />
+                <BalanceCard transactions={filteredByDeposit} />
               </View>
             </ScrollView>
           )}
@@ -1577,8 +1616,10 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
                 showAdminExpenses={showAdminExpenses}
                 onToggleAdminExpenses={handleToggleAdminExpenses}
                 activeStores={activeStores}
+                depositFilter={depositFilter}
+                setDepositFilter={(f) => { setDepositFilter(f); setCurrentPage(1); }}
               />
-              <BalanceCard transactions={filteredByType} />
+              <BalanceCard transactions={filteredByDeposit} />
             </View>
           )}
         </View>

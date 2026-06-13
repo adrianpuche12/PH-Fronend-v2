@@ -61,18 +61,20 @@ const ExcelManager: React.FC<ExcelManagerProps> = ({
   const [showDocumentation, setShowDocumentation] = useState(false);
   const [filteredCount, setFilteredCount] = useState(transactions.length);
   useEffect(() => {
-    let count = transactions.length;
-    
+    // Excluir cierres pendientes de depósito bancario (no entran a contabilidad aún)
+    let base = transactions.filter(tx => !(tx.type === 'CLOSING' && tx.depositStatus === 'PENDING'));
+    let count = base.length;
+
     if (dateRange.startDate && dateRange.endDate) {
       const startDateStr = format(dateRange.startDate, 'yyyy-MM-dd');
       const endDateStr = format(dateRange.endDate, 'yyyy-MM-dd');
-      
-      count = transactions.filter(tx => {
+
+      count = base.filter(tx => {
         const txDate = tx.date?.split('T')[0] || '';
         return txDate >= startDateStr && txDate <= endDateStr;
       }).length;
     }
-    
+
     setFilteredCount(count);
   }, [dateRange, transactions]);
 
@@ -80,13 +82,14 @@ const ExcelManager: React.FC<ExcelManagerProps> = ({
   const handleExport = async () => {
     setLoading(true);
     
-    let dataToExport = [...transactions];
-    
+    // Excluir cierres pendientes de depósito bancario (no entran a contabilidad aún)
+    let dataToExport = transactions.filter(tx => !(tx.type === 'CLOSING' && tx.depositStatus === 'PENDING'));
+
     if (dateRange.startDate && dateRange.endDate) {
       const startDateStr = format(dateRange.startDate, 'yyyy-MM-dd');
       const endDateStr = format(dateRange.endDate, 'yyyy-MM-dd');
-      
-      dataToExport = transactions.filter(tx => {
+
+      dataToExport = dataToExport.filter(tx => {
         const txDate = tx.date?.split('T')[0] || '';
         return txDate >= startDateStr && txDate <= endDateStr;
       });

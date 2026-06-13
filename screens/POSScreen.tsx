@@ -108,9 +108,16 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
   const [expenseDesc, setExpenseDesc]           = useState('');
   const [expenseAmount, setExpenseAmount]       = useState('');
   const [savingExpense, setSavingExpense]        = useState(false);
-  const [confirmDlg, setConfirmDlg]       = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
-  const askConfirm = (title: string, message: string, onConfirm: () => void) =>
-    setConfirmDlg({ title, message, onConfirm });
+  const [confirmDlg, setConfirmDlg]       = useState<{ title: string; message: string; confirmLabel: string; onConfirm: () => void } | null>(null);
+  const askConfirm = (title: string, message: string, onConfirm: () => void, confirmLabel = 'Sí, anular') =>
+    setConfirmDlg({ title, message, confirmLabel, onConfirm });
+
+  // Edición de egresos
+  const [editingExpense, setEditingExpense]     = useState<ShiftExpense | null>(null);
+  const [editExpenseDesc, setEditExpenseDesc]   = useState('');
+  const [editExpenseAmount, setEditExpenseAmount] = useState('');
+  const [savingEditExpense, setSavingEditExpense] = useState(false);
+  const [deletingExpenseId, setDeletingExpenseId] = useState<number | null>(null);
 
   // Modales
   const [openShiftModal, setOpenShiftModal] = useState(false);
@@ -238,6 +245,44 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
       loadExpenses();
     } catch (e: any) { setSnackbar(e.response?.data?.error || 'Error al registrar egreso'); }
     finally { setSavingExpense(false); }
+  };
+
+  const handleEditExpense = (exp: ShiftExpense) => {
+    setEditingExpense(exp);
+    setEditExpenseDesc(exp.description);
+    setEditExpenseAmount(String(exp.amount));
+  };
+
+  const handleSaveEditExpense = async () => {
+    if (!editingExpense || !editExpenseDesc.trim() || !editExpenseAmount) return;
+    const amount = parseFloat(editExpenseAmount);
+    if (isNaN(amount) || amount <= 0) { setSnackbar('Ingresá un monto válido'); return; }
+    setSavingEditExpense(true);
+    try {
+      await axios.put(`${API}/api/v2/expenses/${editingExpense.id}`, {
+        description: editExpenseDesc.trim(),
+        amount,
+      });
+      setEditingExpense(null);
+      loadExpenses();
+    } catch (e: any) { setSnackbar(e.response?.data?.error || 'Error al editar egreso'); }
+    finally { setSavingEditExpense(false); }
+  };
+
+  const handleDeleteExpense = (exp: ShiftExpense) => {
+    askConfirm(
+      'Eliminar egreso',
+      `¿Eliminar el egreso "${exp.description}" por ${formatHnl(exp.amount)}?`,
+      async () => {
+        setDeletingExpenseId(exp.id);
+        try {
+          await axios.delete(`${API}/api/v2/expenses/${exp.id}`);
+          setShiftExpenses(prev => prev.filter(e => e.id !== exp.id));
+        } catch (e: any) { setSnackbar(e.response?.data?.error || 'Error al eliminar egreso'); }
+        finally { setDeletingExpenseId(null); }
+      },
+      'Sí, eliminar'
+    );
   };
 
   // ── Filtrado ──────────────────────────────────────────────────────────────
@@ -879,6 +924,16 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                         </Text>
                       </View>
                       <Text style={styles.expenseCardAmount}>− {formatHnl(exp.amount)}</Text>
+                      <TouchableOpacity onPress={() => handleEditExpense(exp)} style={styles.expenseCardAction}>
+                        <MaterialCommunityIcons name="pencil-outline" size={18} color={COLOR.inkMute} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleDeleteExpense(exp)}
+                        disabled={deletingExpenseId === exp.id}
+                        style={[styles.expenseCardAction, deletingExpenseId === exp.id && { opacity: 0.5 }]}
+                      >
+                        <MaterialCommunityIcons name="trash-can-outline" size={18} color={COLOR.expense} />
+                      </TouchableOpacity>
                     </View>
                   ))}
                 </>
@@ -1135,11 +1190,54 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
         </View>
       </Modal>
 
+      {/* ══ MODAL EDITAR EGRESO ══ */}
+      <Modal visible={!!editingExpense} transparent animationType="fade" onRequestClose={() => setEditingExpense(null)}>
+        <View style={styles.overlay}>
+          <View style={styles.modal}>
+            <Text style={styles.modalTitle}>Editar egreso</Text>
+
+            <RNTextInput
+              style={[styles.expenseInput, { marginTop: SPACE.s2 }]}
+              placeholder="Descripción"
+              placeholderTextColor={COLOR.inkDisabled}
+              value={editExpenseDesc}
+              onChangeText={setEditExpenseDesc}
+            />
+            <View style={[styles.cashInputRow, { marginTop: SPACE.s2 }]}>
+              <Text style={styles.cashInputPrefix}>L</Text>
+              <RNTextInput
+                style={styles.cashInput}
+                keyboardType="decimal-pad"
+                placeholder="0.00"
+                placeholderTextColor={COLOR.inkDisabled}
+                value={editExpenseAmount}
+                onChangeText={setEditExpenseAmount}
+              />
+            </View>
+
+            <View style={styles.modalActions}>
+              <Button mode="outlined" onPress={() => setEditingExpense(null)} style={{ flex: 1 }}>Cancelar</Button>
+              <Button
+                mode="contained"
+                onPress={handleSaveEditExpense}
+                loading={savingEditExpense}
+                disabled={savingEditExpense || !editExpenseDesc.trim() || !editExpenseAmount}
+                buttonColor={COLOR.brand}
+                textColor={COLOR.inkOnBrand}
+                style={{ flex: 1 }}
+              >
+                Guardar
+              </Button>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <ConfirmDialog
         visible={!!confirmDlg}
         title={confirmDlg?.title ?? ''}
         message={confirmDlg?.message ?? ''}
-        confirmLabel="Sí, anular"
+        confirmLabel={confirmDlg?.confirmLabel ?? 'Confirmar'}
         confirmColor={COLOR.expense}
         onConfirm={() => confirmDlg?.onConfirm()}
         onCancel={() => setConfirmDlg(null)}
@@ -1537,6 +1635,7 @@ const styles = StyleSheet.create({
   expenseCardDesc:{ fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
   expenseCardMeta:{ fontSize: FONT_SIZE.caption, color: COLOR.inkMute, marginTop: 2 },
   expenseCardAmount: { fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.expense },
+  expenseCardAction: { padding: 4 },
 
   // Input efectivo real
   cashInputBox:   { backgroundColor: COLOR.bg, borderRadius: RADIUS.r3, padding: SPACE.s3, marginTop: SPACE.s3, borderWidth: 1, borderColor: COLOR.border },

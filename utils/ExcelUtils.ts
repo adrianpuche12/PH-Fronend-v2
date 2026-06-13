@@ -16,6 +16,7 @@ interface Transaction {
   periodStart?: string;
   periodEnd?: string;
   storeId?: number;
+  storeName?: string;
   store?: {
     id: number;
     name: string;
@@ -105,7 +106,7 @@ export const exportToExcel = async (transactions: Transaction[], fileName?: stri
   try {
     const workbook = XLSX.utils.book_new();
     const formattedData = transactions.map(tx => {
-      const storeName = tx.store?.name || 'No asignado';
+      const storeName = tx.store?.name || tx.storeName || 'No asignado';
 
       const typeLabel = tx.type in TRANSACTION_LABELS ? TRANSACTION_LABELS[tx.type] : tx.type;
       const formattedAmount = tx.amount.toLocaleString('en-US', {

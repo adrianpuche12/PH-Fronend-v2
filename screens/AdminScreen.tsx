@@ -1625,8 +1625,8 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
         </View>
       )}
 
-      {/* ── KPI stats row — solo desktop (mobile va dentro del scroll) ── */}
-      {!loading && isLargeScreen && <KpiRow transactions={transactions} />}
+      {/* ── KPI stats row — solo desktop, dentro del panel de Filtros (mobile va dentro del scroll) ── */}
+      {!loading && isLargeScreen && filtersExpanded && <KpiRow transactions={transactions} />}
 
       {/* ── Tabla header (solo desktop) ── */}
       {!loading && isLargeScreen && (

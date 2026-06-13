@@ -1649,8 +1649,8 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
         </View>
       ) : (
         <ScrollView style={styles.scrollView}>
-          {/* KPI cards en mobile dentro del scroll */}
-          {!isLargeScreen && <KpiRow transactions={transactions} />}
+          {/* KPI cards en mobile dentro del scroll — solo si el panel de Filtros está expandido */}
+          {!isLargeScreen && filtersExpanded && <KpiRow transactions={transactions} />}
           {paginatedTransactions.length === 0 ? (
             <ThemedText style={styles.noDataText}>No hay transacciones para mostrar</ThemedText>
           ) : (

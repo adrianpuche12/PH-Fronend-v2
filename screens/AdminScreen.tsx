@@ -1254,7 +1254,14 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
           item.description || null,
         ].filter(Boolean);
 
-    const amtStr = `L ${item.amount.toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    // Para CLOSING con turno vinculado, el monto mostrado es lo que hay que depositar
+    // (efectivo contado - fondo inicial), no la venta total (que incluye tarjeta/recargo).
+    const displayAmount = (item.type === 'CLOSING' && item.shiftId != null
+      && item.declaredCashAmount != null && item.openingCashAmount != null)
+      ? Math.max(0, item.declaredCashAmount - item.openingCashAmount)
+      : item.amount;
+
+    const amtStr = `L ${displayAmount.toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const rawUri = item.imageUri || (item as any).image_uri;
     const imageUri = rawUri && rawUri !== 'null' && rawUri !== 'undefined' && rawUri.startsWith('http') ? rawUri : null;
 

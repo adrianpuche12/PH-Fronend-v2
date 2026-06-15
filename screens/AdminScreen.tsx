@@ -1218,6 +1218,13 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
       : item.type === 'SALARY'   && item.depositDate ? item.depositDate
       : item.date;
 
+    // Hora real de la operación: solo disponible para cierres vinculados a un turno
+    // (shiftClosedAt es un LocalDateTime con hora de Honduras). El resto de los tipos
+    // solo tienen fecha (sin hora), así que no mostramos hora para ellos.
+    const timeToShow = item.type === 'CLOSING' && item.shiftClosedAt
+      ? item.shiftClosedAt
+      : dateToShow;
+
     const fmtDate = (d?: string) => {
       if (!d) return '—';
       try {
@@ -1226,7 +1233,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
       } catch { return String(d).split('T')[0]; }
     };
     const fmtTime = (d?: string) => {
-      if (!d) return '';
+      if (!d || !d.includes('T')) return '';
       try { return format(parseISO(d), 'HH:mm'); } catch { return ''; }
     };
 
@@ -1282,7 +1289,9 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
             </View>
           </View>
           {!isLargeScreen && (
-            <Text style={styles.txMeta}>{fmtDate(dateToShow)} · {fmtTime(dateToShow)}</Text>
+            <Text style={styles.txMeta}>
+              {fmtDate(dateToShow)}{fmtTime(timeToShow) ? ` · ${fmtTime(timeToShow)}` : ''}
+            </Text>
           )}
           {metaParts.length > 0 && (
             <Text style={styles.txMeta} numberOfLines={1}>{metaParts.join(' · ')}</Text>
@@ -1317,7 +1326,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
         {isLargeScreen && (
           <View style={styles.txDateWrap}>
             <Text style={styles.txDate}>{fmtDate(dateToShow)}</Text>
-            <Text style={styles.txTime}>{fmtTime(dateToShow)}</Text>
+            <Text style={styles.txTime}>{fmtTime(timeToShow)}</Text>
           </View>
         )}
 

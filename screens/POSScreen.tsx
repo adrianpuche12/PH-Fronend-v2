@@ -1093,9 +1093,9 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                       </View>
                     )}
                     <View style={[styles.sumTotalRow, { borderTopWidth: 1, borderTopColor: COLOR.border, paddingTop: SPACE.s1, marginTop: SPACE.s1 }]}>
-                      <Text style={[styles.sumLabel, { fontWeight: FONT_WEIGHT.bold as any }]}>Total esperado en caja</Text>
+                      <Text style={[styles.sumLabel, { fontWeight: FONT_WEIGHT.bold as any }]}>Total efectivo de ventas</Text>
                       <Text style={[styles.sumValue, { fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink }]}>
-                        {formatHnl((summary.openingCashAmount ?? 0) + (summary.totalCashSales ?? 0) - (summary.totalShiftExpenses ?? 0))}
+                        {formatHnl((summary.totalCashSales ?? 0) - (summary.totalShiftExpenses ?? 0))}
                       </Text>
                     </View>
                     {(summary.totalCardSales ?? 0) > 0 && (
@@ -1131,7 +1131,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                 <View style={styles.cashInputBox}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACE.s2, marginBottom: SPACE.s2 }}>
                     <MaterialCommunityIcons name="hand-coin-outline" size={18} color={COLOR.income} />
-                    <Text style={styles.cashInputLabel}>¿Cuánto efectivo tenés en mano?</Text>
+                    <Text style={styles.cashInputLabel}>¿Cuánto efectivo de ventas tenés? (sin contar el fondo)</Text>
                   </View>
                   <View style={styles.cashInputRow}>
                     <Text style={styles.cashInputPrefix}>L</Text>
@@ -1154,7 +1154,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                   {/* Diferencia en tiempo real */}
                   {declaredCash !== '' && summary && (() => {
                     const declared  = parseFloat(declaredCash) || 0;
-                    const expected  = (summary.openingCashAmount ?? 0) + (summary.totalCashSales ?? 0) - (summary.totalShiftExpenses ?? 0);
+                    const expected  = (summary.totalCashSales ?? 0) - (summary.totalShiftExpenses ?? 0);
                     const diff      = declared - expected;
                     if (Math.abs(diff) < 0.01) return (
                       <Text style={{ color: COLOR.income, fontSize: FONT_SIZE.caption, marginTop: SPACE.s1 }}>

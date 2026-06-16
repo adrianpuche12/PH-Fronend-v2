@@ -1263,9 +1263,11 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
 
     // Para CLOSING con turno vinculado, el monto mostrado es lo que hay que depositar
     // (efectivo contado - fondo inicial), no la venta total (que incluye tarjeta/recargo).
+    // La cajera declara solo el efectivo de ventas (fondo excluido),
+    // por lo que el monto a depositar es directamente lo que declaró.
     const displayAmount = (item.type === 'CLOSING' && item.shiftId != null
-      && item.declaredCashAmount != null && item.openingCashAmount != null)
-      ? Math.max(0, item.declaredCashAmount - item.openingCashAmount)
+      && item.declaredCashAmount != null)
+      ? item.declaredCashAmount
       : item.amount;
 
     const amtStr = `L ${displayAmount.toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

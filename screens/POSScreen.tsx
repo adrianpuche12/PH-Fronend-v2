@@ -31,6 +31,9 @@ interface CartItem { productId: number; productName: string; price: number; qty:
 interface SaleRecord {
   id: number; shiftId: number; username: string; saleDate: string; status: string;
   subtotal: number; isv: number; total: number; createdAt: string;
+  edited?: boolean; editedAt?: string | null;
+  paymentMethod?: 'CASH' | 'CARD' | 'MIXED';
+  cashAmount?: number; cardAmount?: number;
   items: { id: number; productId: number; productName: string; unitPrice: number; quantity: number; subtotal: number; }[];
 }
 interface ProductSummaryItem { productId: number; productName: string; quantity: number; subtotal: number; }
@@ -101,6 +104,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
   const [shiftSales, setShiftSales]       = useState<SaleRecord[]>([]);
   const [loadingSales, setLoadingSales]   = useState(false);
   const [cancellingId, setCancellingId]   = useState<number | null>(null);
+  const [editingSaleId, setEditingSaleId] = useState<number | null>(null);
 
   // Egresos del turno
   const [shiftExpenses, setShiftExpenses]       = useState<ShiftExpense[]>([]);
@@ -191,9 +195,32 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
   }, [shift]);
 
   const handleSwitchTab = (tab: 'nueva' | 'ventas' | 'egresos') => {
+    // Si había una edición de venta en curso y el usuario navega sin guardar, se descarta
+    if (tab !== 'nueva' && editingSaleId != null) { setEditingSaleId(null); clearCart(); }
     setPosTab(tab);
     if (tab === 'ventas') loadShiftSales();
     if (tab === 'egresos') loadExpenses();
+  };
+
+  // Carga una venta existente en el carrito para editarla y cambia a la pestaña "Nueva venta".
+  // El stock se revierte/redescuenta recién al confirmar (en el backend), no acá.
+  const handleStartEditSale = (sale: SaleRecord) => {
+    setCart(sale.items.map(item => ({
+      productId: item.productId,
+      productName: item.productName,
+      price: item.unitPrice,
+      qty: item.quantity,
+      subtotal: item.subtotal,
+    })));
+    setEditingSaleId(sale.id);
+    setSelectedId(null);
+    setPendingQty(1);
+    setPosTab('nueva');
+  };
+
+  const handleCancelEditSale = () => {
+    setEditingSaleId(null);
+    clearCart();
   };
 
   const handleCancelSale = (saleId: number) => {
@@ -363,16 +390,17 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
 
   // ── Confirmar venta ───────────────────────────────────────────────────────
 
-  // Abre el modal de método de pago
+  // Abre el modal de método de pago (precarga el método original si se está editando)
   const handleSubmitSale = () => {
     if (!shift || cart.length === 0) return;
-    setPaymentMethod('CASH');
-    setMixedCash('');
-    setMixedCard('');
+    const editingSale = editingSaleId != null ? shiftSales.find(s => s.id === editingSaleId) : null;
+    setPaymentMethod(editingSale?.paymentMethod ?? 'CASH');
+    setMixedCash(editingSale?.paymentMethod === 'MIXED' ? String(editingSale.cashAmount ?? '') : '');
+    setMixedCard(editingSale?.paymentMethod === 'MIXED' ? String(editingSale.cardAmount ?? '') : '');
     setPaymentModal(true);
   };
 
-  // Envía la venta con el método de pago elegido
+  // Envía la venta (nueva o edición) con el método de pago elegido
   const confirmWithPayment = async () => {
     if (!shift) return;
 
@@ -399,14 +427,25 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
         body.cashAmount = parseFloat(mixedCash) || 0;
         body.cardAmount = parseFloat(mixedCard) || 0;
       }
-      const res = await axios.post<SaleRecord>(`${API}/api/v2/shifts/${shift.id}/sales`, body);
-      const saleTotal = res.data.total;
-      setKpiCount(prev => prev + 1);
-      setKpiTotal(prev => prev + saleTotal);
-      clearCart();
-      loadCatalog();
-      if (posTab === 'ventas') loadShiftSales();
-    } catch (e: any) { setSnackbar(e.response?.data?.error || 'Error al registrar venta'); }
+
+      if (editingSaleId != null) {
+        await axios.put<SaleRecord>(`${API}/api/v2/sales/${editingSaleId}`, body);
+        setSnackbar('Venta editada correctamente');
+        setEditingSaleId(null);
+        clearCart();
+        loadCatalog();
+        loadShiftSales();
+        setPosTab('ventas');
+      } else {
+        const res = await axios.post<SaleRecord>(`${API}/api/v2/shifts/${shift.id}/sales`, body);
+        const saleTotal = res.data.total;
+        setKpiCount(prev => prev + 1);
+        setKpiTotal(prev => prev + saleTotal);
+        clearCart();
+        loadCatalog();
+        if (posTab === 'ventas') loadShiftSales();
+      }
+    } catch (e: any) { setSnackbar(e.response?.data?.error || (editingSaleId != null ? 'Error al editar venta' : 'Error al registrar venta')); }
     finally { setSubmitting(false); }
   };
 
@@ -616,6 +655,17 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
         </ScrollView>
       </View>}
 
+      {/* ══ BANNER DE EDICIÓN (al editar una venta existente) ══ */}
+      {posTab === 'nueva' && editingSaleId != null && (
+        <View style={styles.editBanner}>
+          <MaterialCommunityIcons name="pencil" size={16} color={COLOR.brand} />
+          <Text style={styles.editBannerText}>Editando venta #{editingSaleId} — ajustá los productos y confirmá</Text>
+          <TouchableOpacity onPress={handleCancelEditSale}>
+            <Text style={styles.editBannerCancel}>Cancelar</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* ══ BUSCADOR (solo en tab nueva venta) ══ */}
       {posTab === 'nueva' && <View style={styles.searchWrap}>
         <View style={styles.searchBox}>
@@ -722,7 +772,9 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
         {/* ══ TICKET ══ */}
         {isDesktop && (
           <View style={styles.ticketDesktop}>
-            <Ticket cart={cart} subtotal={cartSubtotal} isv={cartISV} total={cartTotal} itemCount={cartItemCount} onRemove={removeFromCart} onClear={clearCart} onSubmit={handleSubmitSale} submitting={submitting} full />
+            <Ticket cart={cart} subtotal={cartSubtotal} isv={cartISV} total={cartTotal} itemCount={cartItemCount} onRemove={removeFromCart}
+              onClear={editingSaleId != null ? handleCancelEditSale : clearCart} onSubmit={handleSubmitSale} submitting={submitting} full
+              editing={editingSaleId != null} />
           </View>
         )}
       </View>}
@@ -772,11 +824,11 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                 loading={submitting} disabled={submitting}
                 buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand}
                 style={{ borderRadius: RADIUS.r2 }} labelStyle={{ fontWeight: FONT_WEIGHT.black as any }}>
-                Confirmar venta
+                {editingSaleId != null ? 'Guardar cambios' : 'Confirmar venta'}
               </Button>
-              <Button mode="outlined" onPress={() => { setCartModalOpen(false); clearCart(); }}
+              <Button mode="outlined" onPress={() => { setCartModalOpen(false); editingSaleId != null ? handleCancelEditSale() : clearCart(); }}
                 textColor={COLOR.expense} style={{ borderRadius: RADIUS.r2 }}>
-                Cancelar venta
+                {editingSaleId != null ? 'Cancelar edición' : 'Cancelar venta'}
               </Button>
             </View>
           </View>
@@ -817,6 +869,15 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                           {new Date(sale.createdAt).toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit' })}
                         </Text>
                         <Text style={styles.saleCardTotal}>{formatHnl(sale.total)}</Text>
+                        {sale.username === (userName ?? 'empleada') && (
+                          <TouchableOpacity
+                            style={[styles.editBtn, editingSaleId === sale.id && { opacity: 0.5 }]}
+                            onPress={() => handleStartEditSale(sale)}
+                            disabled={cancellingId === sale.id || editingSaleId === sale.id}
+                          >
+                            <Text style={styles.editBtnText}>Editar</Text>
+                          </TouchableOpacity>
+                        )}
                         <TouchableOpacity
                           style={[styles.cancelBtn, cancellingId === sale.id && { opacity: 0.5 }]}
                           onPress={() => handleCancelSale(sale.id)}
@@ -827,6 +888,13 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                           </Text>
                         </TouchableOpacity>
                       </View>
+
+                      {/* Badge de venta editada */}
+                      {sale.edited && (
+                        <View style={styles.editedBadge}>
+                          <Text style={styles.editedBadgeText}>Editada</Text>
+                        </View>
+                      )}
 
                       {/* Items de la venta */}
                       <View style={styles.saleCardItems}>
@@ -1377,7 +1445,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
 
 // ─── Ticket (componente interno) ──────────────────────────────────────────────
 
-function Ticket({ cart, subtotal, isv, total, itemCount, onRemove, onClear, onSubmit, submitting, full }: {
+function Ticket({ cart, subtotal, isv, total, itemCount, onRemove, onClear, onSubmit, submitting, full, editing }: {
   cart: CartItem[];
   subtotal: number; isv: number; total: number; itemCount: number;
   onRemove: (id: number) => void;
@@ -1385,6 +1453,7 @@ function Ticket({ cart, subtotal, isv, total, itemCount, onRemove, onClear, onSu
   onSubmit: () => void;
   submitting: boolean;
   full: boolean;
+  editing?: boolean;
 }) {
   const isEmpty = cart.length === 0;
 
@@ -1439,11 +1508,11 @@ function Ticket({ cart, subtotal, isv, total, itemCount, onRemove, onClear, onSu
       <View style={tkStyles.actions}>
         <Button mode="contained" onPress={onSubmit} loading={submitting} disabled={isEmpty || submitting}
           buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ borderRadius: RADIUS.r2 }} labelStyle={{ fontWeight: FONT_WEIGHT.black as any }}>
-          Confirmar venta
+          {editing ? 'Guardar cambios' : 'Confirmar venta'}
         </Button>
         {!isEmpty && (
           <Button mode="outlined" onPress={onClear} style={{ borderRadius: RADIUS.r2, marginTop: 6 }} textColor={COLOR.ink2}>
-            Cancelar venta
+            {editing ? 'Cancelar edición' : 'Cancelar venta'}
           </Button>
         )}
       </View>
@@ -1506,6 +1575,13 @@ const styles = StyleSheet.create({
   saleCardTotal:  { fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
   cancelBtn:      { backgroundColor: COLOR.expenseTint, borderRadius: RADIUS.r1, paddingHorizontal: SPACE.s2, paddingVertical: 5, borderWidth: 1, borderColor: COLOR.expenseBorder },
   cancelBtnText:  { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.expense },
+  editBtn:        { backgroundColor: COLOR.brandTint, borderRadius: RADIUS.r1, paddingHorizontal: SPACE.s2, paddingVertical: 5, borderWidth: 1, borderColor: COLOR.brandTint2 },
+  editBtnText:    { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.brand },
+  editedBadge:    { backgroundColor: COLOR.brandTint, borderRadius: RADIUS.r1, paddingHorizontal: SPACE.s1, paddingVertical: 2, alignSelf: 'flex-start' },
+  editedBadgeText: { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.brand },
+  editBanner:     { flexDirection: 'row', alignItems: 'center', gap: SPACE.s2, backgroundColor: COLOR.brandTint, borderWidth: 1, borderColor: COLOR.brandTint2, borderRadius: RADIUS.r2, paddingHorizontal: SPACE.s3, paddingVertical: SPACE.s2, marginHorizontal: 12, marginTop: SPACE.s2 },
+  editBannerText: { flex: 1, fontSize: FONT_SIZE.label, color: COLOR.ink2 },
+  editBannerCancel: { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.expense },
   saleCardItems:  { gap: 2, paddingLeft: SPACE.s1 },
   saleCardItem:   { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.medium as any, color: COLOR.ink2 },
   saleCardFooter: { borderTopWidth: 1, borderTopColor: COLOR.border, paddingTop: SPACE.s1 },

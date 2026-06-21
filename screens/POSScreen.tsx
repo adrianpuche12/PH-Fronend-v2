@@ -48,7 +48,7 @@ interface DailySummary {
 }
 
 const ISV = 0; // ISV deshabilitado por solicitud del cliente
-const CARD_SURCHARGE_RATE = 0.03; // Recargo por pago con tarjeta de crédito/débito
+const CARD_SURCHARGE_RATE = 0.02; // Recargo por pago con tarjeta de crédito/débito
 
 // Aplana categorías para chips
 const flatCats = (cats: Category[]): Category[] => {
@@ -1340,11 +1340,11 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
               })}
             </View>
 
-            {/* Desglose recargo tarjeta (3%) */}
+            {/* Desglose recargo tarjeta (2%) */}
             {paymentMethod === 'CARD' && (
               <View style={styles.paySurchargeBox}>
                 <View style={styles.paySurchargeRow}>
-                  <Text style={styles.paySurchargeLabel}>Recargo tarjeta (3%)</Text>
+                  <Text style={styles.paySurchargeLabel}>Recargo tarjeta (2%)</Text>
                   <Text style={styles.paySurchargeValue}>+{formatHnl(cartTotal * CARD_SURCHARGE_RATE)}</Text>
                 </View>
                 <View style={styles.paySurchargeRow}>
@@ -1399,7 +1399,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
               );
             })()}
 
-            {/* Desglose recargo tarjeta (3%) sobre la porción tarjeta */}
+            {/* Desglose recargo tarjeta (2%) sobre la porción tarjeta */}
             {paymentMethod === 'MIXED' && (() => {
               const cash = parseFloat(mixedCash) || 0;
               const card = parseFloat(mixedCard) || 0;
@@ -1408,7 +1408,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
               return (
                 <View style={styles.paySurchargeBox}>
                   <View style={styles.paySurchargeRow}>
-                    <Text style={styles.paySurchargeLabel}>Recargo tarjeta (3% de L {card.toFixed(2)})</Text>
+                    <Text style={styles.paySurchargeLabel}>Recargo tarjeta (2% de L {card.toFixed(2)})</Text>
                     <Text style={styles.paySurchargeValue}>+{formatHnl(surcharge)}</Text>
                   </View>
                   <View style={styles.paySurchargeRow}>

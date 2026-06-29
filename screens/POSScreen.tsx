@@ -64,7 +64,8 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
   const isDesktop = width >= 900;
 
   const { selectedStore, stores, setSelectedStore } = useStore();
-  const { userName } = useAuth();
+  const { userName, roles } = useAuth();
+  const isAdmin = roles.includes('admin');
   const storeId = selectedStore?.id ?? null;
   const API     = REACT_APP_API_URL;
 
@@ -131,8 +132,9 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [closingDone, setClosingDone]       = useState(false);
 
-  // Apertura — fondo inicial
+  // Apertura — fondo inicial y local elegido (admin)
   const [openingCash, setOpeningCash]           = useState('');
+  const [modalStoreId, setModalStoreId]         = useState<number | null>(null);
 
   // Reconciliación de caja al cierre
   const [declaredCash, setDeclaredCash]         = useState('');
@@ -375,12 +377,18 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
   // ── Abrir turno ───────────────────────────────────────────────────────────
 
   const handleOpenShift = async () => {
-    if (!storeId) return;
+    const targetStoreId = isAdmin ? (modalStoreId ?? storeId) : storeId;
+    if (!targetStoreId) return;
     try {
-      const res = await axios.post<Shift>(`${API}/api/v2/stores/${storeId}/shifts`, {
+      const res = await axios.post<Shift>(`${API}/api/v2/stores/${targetStoreId}/shifts`, {
         username: userName ?? 'empleada',
         openingCashAmount: parseFloat(openingCash) || 0,
       });
+      // Si el admin eligió un local distinto al seleccionado globalmente, sincronizar
+      if (isAdmin && targetStoreId !== storeId) {
+        const chosenStore = stores.find(s => s.id === targetStoreId);
+        if (chosenStore) setSelectedStore(chosenStore);
+      }
       setShift(res.data);
       setOpenShiftModal(false);
       setOpeningCash('');
@@ -517,7 +525,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
         />
       )}
 
-      <Button mode="contained" onPress={() => setOpenShiftModal(true)} buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ borderRadius: RADIUS.r2 }} labelStyle={{ fontSize: FONT_SIZE.h3, fontWeight: FONT_WEIGHT.black as any }}>
+      <Button mode="contained" onPress={() => { setModalStoreId(storeId); setOpenShiftModal(true); }} buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ borderRadius: RADIUS.r2 }} labelStyle={{ fontSize: FONT_SIZE.h3, fontWeight: FONT_WEIGHT.black as any }}>
         Abrir turno
       </Button>
 
@@ -525,8 +533,19 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
         <View style={styles.overlay}>
           <View style={styles.modal}>
             <Text style={styles.modalTitle}>Abrir turno</Text>
-            <Text style={styles.modalSub}>Local: <Text style={{ fontWeight: '900' }}>{selectedStore?.name ?? '—'}</Text></Text>
-            <Text style={styles.modalSub}>Empleada: <Text style={{ fontWeight: '900' }}>{userName ?? '—'}</Text></Text>
+            {isAdmin ? (
+              <View style={{ marginBottom: SPACE.s2 }}>
+                <Text style={[styles.modalSub, { marginBottom: SPACE.s1 }]}>Local:</Text>
+                <StoreDropdown
+                  stores={stores}
+                  selectedId={modalStoreId}
+                  onSelect={setModalStoreId}
+                />
+              </View>
+            ) : (
+              <Text style={styles.modalSub}>Local: <Text style={{ fontWeight: '900' }}>{selectedStore?.name ?? '—'}</Text></Text>
+            )}
+            <Text style={styles.modalSub}>Empleado/a: <Text style={{ fontWeight: '900' }}>{userName ?? '—'}</Text></Text>
 
             {/* Fondo inicial */}
             <View style={[styles.cashInputBox, { marginTop: SPACE.s3 }]}>

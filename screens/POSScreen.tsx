@@ -63,7 +63,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
   const { width } = useWindowDimensions();
   const isDesktop = width >= 900;
 
-  const { selectedStore, stores, setSelectedStore, refreshStores } = useStore();
+  const { selectedStore, stores, setSelectedStore } = useStore();
   const { userName, roles } = useAuth();
   const isAdmin = roles.includes('admin');
   const storeId = selectedStore?.id ?? null;
@@ -135,6 +135,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
   // Apertura — fondo inicial y local elegido (admin)
   const [openingCash, setOpeningCash]           = useState('');
   const [modalStoreId, setModalStoreId]         = useState<number | null>(null);
+  const [modalStores, setModalStores]           = useState<{ id: number; name: string }[]>([]);
 
   // Reconciliación de caja al cierre
   const [declaredCash, setDeclaredCash]         = useState('');
@@ -176,6 +177,15 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
 
   useEffect(() => { loadShift(); }, [loadShift]);
   useEffect(() => { loadCatalog(); setCart([]); setSelectedId(null); setPendingQty(1); }, [loadCatalog]);
+
+  // Carga locales frescos desde la API cada vez que el admin abre el modal de apertura de turno
+  useEffect(() => {
+    if (!openShiftModal || !isAdmin) return;
+    setModalStores(stores); // muestra los del contexto de inmediato como fallback
+    axios.get<{ id: number; name: string; active: boolean }[]>(`${API}/api/v2/stores`)
+      .then(r => setModalStores(r.data.filter(s => s.active)))
+      .catch(() => {});
+  }, [openShiftModal]);
 
   const loadShiftSales = useCallback(async () => {
     if (!shift) return;
@@ -525,7 +535,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
         />
       )}
 
-      <Button mode="contained" onPress={() => { setModalStoreId(storeId); refreshStores(); setOpenShiftModal(true); }} buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ borderRadius: RADIUS.r2 }} labelStyle={{ fontSize: FONT_SIZE.h3, fontWeight: FONT_WEIGHT.black as any }}>
+      <Button mode="contained" onPress={() => { setModalStoreId(storeId); setOpenShiftModal(true); }} buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ borderRadius: RADIUS.r2 }} labelStyle={{ fontSize: FONT_SIZE.h3, fontWeight: FONT_WEIGHT.black as any }}>
         Abrir turno
       </Button>
 
@@ -537,7 +547,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
               <View style={{ marginBottom: SPACE.s2 }}>
                 <Text style={[styles.modalSub, { marginBottom: SPACE.s1 }]}>Local:</Text>
                 <StoreDropdown
-                  stores={stores}
+                  stores={modalStores}
                   selectedId={modalStoreId}
                   onSelect={setModalStoreId}
                 />

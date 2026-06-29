@@ -63,7 +63,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
   const { width } = useWindowDimensions();
   const isDesktop = width >= 900;
 
-  const { selectedStore, stores, setSelectedStore } = useStore();
+  const { selectedStore, stores, setSelectedStore, refreshStores } = useStore();
   const { userName, roles } = useAuth();
   const isAdmin = roles.includes('admin');
   const storeId = selectedStore?.id ?? null;
@@ -525,7 +525,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
         />
       )}
 
-      <Button mode="contained" onPress={() => { setModalStoreId(storeId); setOpenShiftModal(true); }} buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ borderRadius: RADIUS.r2 }} labelStyle={{ fontSize: FONT_SIZE.h3, fontWeight: FONT_WEIGHT.black as any }}>
+      <Button mode="contained" onPress={() => { setModalStoreId(storeId); refreshStores(); setOpenShiftModal(true); }} buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ borderRadius: RADIUS.r2 }} labelStyle={{ fontSize: FONT_SIZE.h3, fontWeight: FONT_WEIGHT.black as any }}>
         Abrir turno
       </Button>
 

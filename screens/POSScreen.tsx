@@ -136,6 +136,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
   const [openingCash, setOpeningCash]           = useState('');
   const [modalStoreId, setModalStoreId]         = useState<number | null>(null);
   const [modalStores, setModalStores]           = useState<{ id: number; name: string }[]>([]);
+  const [loadingModalStores, setLoadingModalStores] = useState(false);
 
   // Reconciliación de caja al cierre
   const [declaredCash, setDeclaredCash]         = useState('');
@@ -178,14 +179,6 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
   useEffect(() => { loadShift(); }, [loadShift]);
   useEffect(() => { loadCatalog(); setCart([]); setSelectedId(null); setPendingQty(1); }, [loadCatalog]);
 
-  // Carga locales frescos desde la API cada vez que el admin abre el modal de apertura de turno
-  useEffect(() => {
-    if (!openShiftModal || !isAdmin) return;
-    setModalStores(stores); // muestra los del contexto de inmediato como fallback
-    axios.get<{ id: number; name: string; active: boolean }[]>(`${API}/api/v2/stores`)
-      .then(r => setModalStores(r.data.filter(s => s.active)))
-      .catch(() => {});
-  }, [openShiftModal]);
 
   const loadShiftSales = useCallback(async () => {
     if (!shift) return;
@@ -386,6 +379,23 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
 
   // ── Abrir turno ───────────────────────────────────────────────────────────
 
+  // Solo para admin: carga la lista de locales frescos ANTES de abrir el modal
+  const handleOpenShiftModal = async () => {
+    setModalStoreId(storeId);
+    if (isAdmin) {
+      setLoadingModalStores(true);
+      try {
+        const r = await axios.get<{ id: number; name: string; active: boolean }[]>(`${API}/api/v2/stores`);
+        setModalStores(r.data.filter(s => s.active));
+      } catch {
+        setModalStores(stores);
+      } finally {
+        setLoadingModalStores(false);
+      }
+    }
+    setOpenShiftModal(true);
+  };
+
   const handleOpenShift = async () => {
     const targetStoreId = isAdmin ? (modalStoreId ?? storeId) : storeId;
     if (!targetStoreId) return;
@@ -535,7 +545,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
         />
       )}
 
-      <Button mode="contained" onPress={() => { setModalStoreId(storeId); setOpenShiftModal(true); }} buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ borderRadius: RADIUS.r2 }} labelStyle={{ fontSize: FONT_SIZE.h3, fontWeight: FONT_WEIGHT.black as any }}>
+      <Button mode="contained" onPress={handleOpenShiftModal} loading={loadingModalStores} disabled={loadingModalStores} buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ borderRadius: RADIUS.r2 }} labelStyle={{ fontSize: FONT_SIZE.h3, fontWeight: FONT_WEIGHT.black as any }}>
         Abrir turno
       </Button>
 

@@ -554,13 +554,29 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
           <View style={styles.modal}>
             <Text style={styles.modalTitle}>Abrir turno</Text>
             {isAdmin ? (
-              <View style={{ marginBottom: SPACE.s2 }}>
-                <Text style={[styles.modalSub, { marginBottom: SPACE.s1 }]}>Local:</Text>
-                <StoreDropdown
-                  stores={modalStores}
-                  selectedId={modalStoreId}
-                  onSelect={setModalStoreId}
-                />
+              <View style={{ marginBottom: SPACE.s3 }}>
+                <Text style={[styles.modalSub, { marginBottom: SPACE.s2 }]}>Local:</Text>
+                {modalStores.map(s => (
+                  <TouchableOpacity
+                    key={s.id}
+                    onPress={() => setModalStoreId(s.id)}
+                    style={{
+                      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                      paddingVertical: SPACE.s2, paddingHorizontal: SPACE.s3,
+                      borderRadius: RADIUS.r2, marginBottom: SPACE.s1,
+                      backgroundColor: modalStoreId === s.id ? COLOR.brand : COLOR.surface,
+                      borderWidth: 1,
+                      borderColor: modalStoreId === s.id ? COLOR.brand : COLOR.border2,
+                    }}
+                  >
+                    <Text style={{ fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.semibold as any, color: modalStoreId === s.id ? COLOR.inkOnBrand : COLOR.ink }}>
+                      {s.name}
+                    </Text>
+                    {modalStoreId === s.id && (
+                      <MaterialCommunityIcons name="check" size={18} color={COLOR.inkOnBrand} />
+                    )}
+                  </TouchableOpacity>
+                ))}
               </View>
             ) : (
               <Text style={styles.modalSub}>Local: <Text style={{ fontWeight: '900' }}>{selectedStore?.name ?? '—'}</Text></Text>

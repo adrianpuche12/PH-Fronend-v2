@@ -574,11 +574,12 @@ const DynamicFormScreen = () => {
     executeSubmit();
   };
 
-  const renderImagePicker = () => (
+  const renderImagePicker = (required = false) => (
     <ImagePicker
       onImageSelected={(image) => setSelectedImage(image)}
       initialImage={selectedImage}
       disabled={false}
+      required={required}
     />
   );
 
@@ -1130,7 +1131,7 @@ const DynamicFormScreen = () => {
                   />
                 </FieldGroup>
 
-                {renderImagePicker()}
+                {renderImagePicker(true)}
               </>
             )}
           </>
@@ -1304,7 +1305,7 @@ const DynamicFormScreen = () => {
               <Button
                 mode="contained"
                 onPress={handleSubmit}
-                disabled={isSubmitting}
+                disabled={isSubmitting || (formType === 'bank-deposit' && closingsLoaded && pendingClosings.length > 0 && !selectedImage)}
                 loading={isSubmitting}
                 style={styles.submitButton}
                 contentStyle={styles.buttonContent}

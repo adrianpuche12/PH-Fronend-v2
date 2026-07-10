@@ -13,12 +13,14 @@ interface ImagePickerProps {
   onImageSelected: (image: SelectedImage | null) => void;
   initialImage?: SelectedImage | null;
   disabled?: boolean;
+  required?: boolean;
 }
 
-const ImagePicker: React.FC<ImagePickerProps> = ({ 
-  onImageSelected, 
+const ImagePicker: React.FC<ImagePickerProps> = ({
+  onImageSelected,
   initialImage,
-  disabled = false 
+  disabled = false,
+  required = false,
 }) => {
   const [selectedImage, setSelectedImage] = useState<SelectedImage | null>(initialImage || null);
 
@@ -51,7 +53,13 @@ const ImagePicker: React.FC<ImagePickerProps> = ({
   return (
     <Card style={styles.container}>
       <Card.Content>
-        <Text style={styles.label}>Comprobante (Opcional)</Text>
+        <Text style={styles.label}>
+          Comprobante{' '}
+          {required
+            ? <Text style={{ color: '#C0392B' }}>* Obligatorio</Text>
+            : <Text style={{ color: '#888' }}>(Opcional)</Text>
+          }
+        </Text>
         
         {selectedImage ? (
           <View style={styles.imageContainer}>

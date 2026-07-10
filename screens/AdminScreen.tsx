@@ -1342,9 +1342,14 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             {imageUri ? (
-              <IconButton icon="camera" size={16} iconColor={COLOR.income} onPress={() => setViewingImage(imageUri)} style={{ margin: 0 }} />
+              <TouchableOpacity onPress={() => setViewingImage(imageUri)} activeOpacity={0.8}>
+                <Image
+                  source={{ uri: imageUri }}
+                  style={{ width: 36, height: 36, borderRadius: 4, borderWidth: 1, borderColor: COLOR.border }}
+                />
+              </TouchableOpacity>
             ) : (
-              <View style={{ width: 32 }} />
+              <View style={{ width: 36 }} />
             )}
             <IconButton icon="pencil" size={16} onPress={() => handleEdit(item)} iconColor={COLOR.info} style={{ margin: 0 }} />
             <IconButton icon="delete" size={16} onPress={() => handleDelete(item)} iconColor={COLOR.expense} style={{ margin: 0 }} />

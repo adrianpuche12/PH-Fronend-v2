@@ -4,6 +4,7 @@ import { Platform, Alert } from 'react-native';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import { format } from 'date-fns';
+import ExcelJS from 'exceljs';
 
 interface Transaction {
   id?: number;
@@ -101,83 +102,100 @@ const normalizeAmount = (amount: unknown): number => {
   return isNaN(parsed) ? 0 : parsed;
 };
 
-// Función para exportar transacciones a Excel
+// Función para exportar transacciones a Excel (con logo en A1 usando ExcelJS)
 export const exportToExcel = async (transactions: Transaction[], fileName?: string) => {
   try {
-    const workbook = XLSX.utils.book_new();
-    const formattedData = transactions.map(tx => {
-      const storeName = tx.store?.name || tx.storeName || 'No asignado';
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Transacciones');
 
+    worksheet.columns = [
+      { width: 15 }, { width: 15 }, { width: 12 }, { width: 30 },
+      { width: 15 }, { width: 20 }, { width: 10 }, { width: 12 }, { width: 12 },
+    ];
+
+    // Agregar logo en A1 (solo en web)
+    let logoRows = 0;
+    if (Platform.OS === 'web') {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const logoSrc = require('../assets/images/logo_proyecto_Humberto.jpg') as string;
+        const res = await fetch(logoSrc);
+        const blob = await res.blob();
+        const b64: string = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+          reader.readAsDataURL(blob);
+        });
+        const imgId = workbook.addImage({ base64: b64, extension: 'jpeg' });
+        worksheet.addImage(imgId, {
+          tl: { col: 0, row: 0 },
+          ext: { width: 150, height: 58 },
+        } as any);
+        logoRows = 4;
+      } catch {
+        // continuar sin logo si falla
+      }
+    }
+
+    // Filas vacías para espacio del logo
+    for (let i = 0; i < logoRows; i++) worksheet.addRow([]);
+
+    // Fila de encabezado
+    const headers = [
+      'Tipo', 'Monto', 'Fecha', 'Descripción', 'Local',
+      'Proveedor', 'Cantidad de Cierres', 'Periodo Desde', 'Periodo Hasta',
+    ];
+    const headerRow = worksheet.addRow(headers);
+    headerRow.font = { bold: true };
+    headerRow.eachCell((cell) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5C430' } };
+    });
+
+    // Filas de datos
+    transactions.forEach((tx) => {
+      const storeName = tx.store?.name || tx.storeName || 'No asignado';
       const typeLabel = tx.type in TRANSACTION_LABELS ? TRANSACTION_LABELS[tx.type] : tx.type;
       const formattedAmount = tx.amount.toLocaleString('en-US', {
         minimumFractionDigits: 2,
-        maximumFractionDigits: 2
+        maximumFractionDigits: 2,
       });
-
-      return {
-        'Tipo': typeLabel,
-        'Monto': formattedAmount,
-        'Fecha': tx.date || '',
-        'Descripción': tx.description || '',
-        'Local': storeName,
-        'Proveedor': tx.supplier || '',
-        'Cantidad de Cierres': tx.closingsCount || '',
-        'Periodo Desde': tx.periodStart || '',
-        'Periodo Hasta': tx.periodEnd || '',
-      };
+      worksheet.addRow([
+        typeLabel, formattedAmount, tx.date || '',
+        tx.description || '', storeName, tx.supplier || '',
+        tx.closingsCount || '', tx.periodStart || '', tx.periodEnd || '',
+      ]);
     });
 
-    const worksheet = XLSX.utils.json_to_sheet(formattedData);
-
-    const columnWidths = [
-      { wch: 15 },  // Tipo
-      { wch: 15 },  // Monto
-      { wch: 12 },  // Fecha
-      { wch: 30 },  // Descripción
-      { wch: 15 },  // Local
-      { wch: 20 },  // Proveedor
-      { wch: 10 },  // Cantidad de Cierres
-      { wch: 12 },  // Periodo Desde
-      { wch: 12 },  // Periodo Hasta
-    ];
-    worksheet['!cols'] = columnWidths;
-
     const actualFileName = fileName || `Control de Gastos ${format(new Date(), 'MMMM yyyy')}`;
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Transacciones');
 
     if (Platform.OS === 'web') {
-      const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'binary' });
-      const buf = new ArrayBuffer(wbout.length);
-      const view = new Uint8Array(buf);
-      for (let i = 0; i < wbout.length; i++) {
-        view[i] = wbout.charCodeAt(i) & 0xFF;
-      }
-      const blob = new Blob([buf], { type: 'application/octet-stream' });
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `${actualFileName}.xlsx`;
       document.body.appendChild(a);
       a.click();
-
-      setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }, 100);
-
+      setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
       return { success: true, message: 'Archivo exportado con éxito' };
     } else {
-      const wbout = XLSX.write(workbook, { type: 'base64', bookType: 'xlsx' });
+      const buffer = await workbook.xlsx.writeBuffer();
+      const uint8 = new Uint8Array(buffer as ArrayBuffer);
+      let binary = '';
+      uint8.forEach((b) => { binary += String.fromCharCode(b); });
+      const base64 = btoa(binary);
       const filePath = `${FileSystem.documentDirectory}${actualFileName}.xlsx`;
-      await FileSystem.writeAsStringAsync(filePath, wbout, {
-        encoding: FileSystem.EncodingType.Base64
+      await FileSystem.writeAsStringAsync(filePath, base64, {
+        encoding: FileSystem.EncodingType.Base64,
       });
-
       if (Platform.OS === 'android' || Platform.OS === 'ios') {
         await Sharing.shareAsync(filePath, {
           mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           dialogTitle: 'Exportar Transacciones',
-          UTI: 'com.microsoft.excel.xlsx'
+          UTI: 'com.microsoft.excel.xlsx',
         });
         return { success: true, message: 'Archivo exportado con éxito' };
       }

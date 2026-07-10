@@ -23,6 +23,7 @@ interface StockItem   { stockId: number; productId: number; productName: string;
 interface Movement    { id: number; type: string; quantity: number; reason: string | null; notes: string | null; username: string | null; productId: number; productName: string; storeId: number; createdAt: string }
 interface Summary     { totalProducts: number; activeProducts: number; lowStockCount: number; categoryCount: number; estimatedValue: number }
 interface ProductForm { name: string; sku: string; type: string; price: string; minStock: string; description: string; categoryId: string }
+interface RecipeRow { ingredientId: number; ingredientName: string; quantity: string }
 
 const EMPTY_PRODUCT: ProductForm = { name: '', sku: '', type: 'SIMPLE', price: '', minStock: '0', description: '', categoryId: '' };
 
@@ -296,6 +297,10 @@ const InventoryScreen = () => {
   const [productFieldErrors, setProductFieldErrors] = useState<{name?:boolean; price?:boolean; category?:boolean}>({});
   const [catPickerOpen, setCatPickerOpen]   = useState(false);
   const [catPickerLabel, setCatPickerLabel] = useState('');
+  // Receta (productos FABRICATED)
+  const [recipeRows, setRecipeRows]             = useState<RecipeRow[]>([]);
+  const [ingredientPickerOpen, setIngredientPickerOpen] = useState(false);
+  const [ingredientSearch, setIngredientSearch] = useState('');
 
   // Categorías modal
   const [catModal, setCatModal]           = useState(false);
@@ -425,15 +430,25 @@ const InventoryScreen = () => {
     setCatPickerLabel('');
     setProductModalError('');
     setProductFieldErrors({});
+    setRecipeRows([]);
     setProductModal(true);
   };
 
-  const openEditProduct = (item: StockItem) => {
+  const openEditProduct = async (item: StockItem) => {
     setEditProduct(item);
     setProductForm({ name: item.productName, sku: item.productSku || '', type: item.productType, price: String(item.price), minStock: String(item.minStock), description: '', categoryId: item.categoryId ? String(item.categoryId) : '' });
     setCatPickerLabel(item.categoryPath || '');
     setProductModalError('');
     setProductFieldErrors({});
+    setRecipeRows([]);
+    if (item.productType === 'FABRICATED') {
+      try {
+        const res = await axios.get<{id:number; ingredientId:number; ingredientName:string; quantity:number}[]>(
+          `${API}/api/v2/products/${item.productId}/recipe`
+        );
+        setRecipeRows(res.data.map(r => ({ ingredientId: r.ingredientId, ingredientName: r.ingredientName, quantity: String(r.quantity) })));
+      } catch { /* sin receta aún */ }
+    }
     setProductModal(true);
   };
 
@@ -457,12 +472,25 @@ const InventoryScreen = () => {
     setProductSaving(true);
     try {
       const body = { name: productForm.name.trim(), sku: productForm.sku, type: productForm.type, price: Number(productForm.price), minStock: Number(productForm.minStock) || 0, description: productForm.description, categoryId: productForm.categoryId ? Number(productForm.categoryId) : null };
+      let savedProductId: number;
       if (editProduct) {
         await axios.put(`${API}/api/v2/products/${editProduct.productId}`, body);
+        savedProductId = editProduct.productId;
         setSnackbar('Producto actualizado');
       } else {
-        await axios.post(`${API}/api/v2/stores/${storeId}/products`, body);
+        const res = await axios.post<{id:number}>(`${API}/api/v2/stores/${storeId}/products`, body);
+        savedProductId = res.data.id;
         setSnackbar('Producto creado');
+      }
+      // Guardar receta si es FABRICATED
+      if (productForm.type === 'FABRICATED' && recipeRows.length > 0) {
+        const recipePayload = recipeRows.map(r => ({
+          ingredientId: r.ingredientId,
+          quantity: parseFloat(r.quantity) || 0,
+        })).filter(r => r.ingredientId && r.quantity > 0);
+        if (recipePayload.length > 0) {
+          await axios.put(`${API}/api/v2/products/${savedProductId}/recipe`, recipePayload);
+        }
       }
       setProductModal(false); loadAll();
     } catch (e: any) {
@@ -968,6 +996,39 @@ const InventoryScreen = () => {
                 ))}
               </View>
 
+              {/* Sección receta — solo para FABRICATED */}
+              {productForm.type === 'FABRICATED' && (
+                <View style={{ marginBottom: SPACE.s3, borderWidth: 1, borderColor: COLOR.border, borderRadius: RADIUS.r2, padding: SPACE.s3 }}>
+                  <Text style={{ fontWeight: FONT_WEIGHT.semiBold, color: COLOR.ink, marginBottom: SPACE.s2 }}>Receta (materias primas)</Text>
+                  {recipeRows.length === 0 && (
+                    <Text style={{ color: COLOR.inkMute, fontSize: FONT_SIZE.sm, marginBottom: SPACE.s2 }}>Sin ingredientes aún. Añadí al menos uno.</Text>
+                  )}
+                  {recipeRows.map((row, idx) => (
+                    <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: SPACE.s2, gap: SPACE.s2 }}>
+                      <View style={{ flex: 2 }}>
+                        <Text style={{ color: COLOR.ink, fontSize: FONT_SIZE.sm }} numberOfLines={1}>{row.ingredientName}</Text>
+                      </View>
+                      <TextInput
+                        value={row.quantity}
+                        onChangeText={v => setRecipeRows(prev => prev.map((r, i) => i === idx ? { ...r, quantity: v } : r))}
+                        keyboardType="decimal-pad"
+                        mode="outlined"
+                        style={{ flex: 1, height: 40 }}
+                        placeholder="Cant."
+                        dense
+                        theme={{ colors: { primary: COLOR.brand } }}
+                      />
+                      <IconButton icon="trash-can-outline" size={18} iconColor={COLOR.expense}
+                        onPress={() => setRecipeRows(prev => prev.filter((_, i) => i !== idx))} />
+                    </View>
+                  ))}
+                  <Button mode="outlined" icon="plus" onPress={() => { setIngredientSearch(''); setIngredientPickerOpen(true); }}
+                    style={{ marginTop: SPACE.s1 }} textColor={COLOR.brand}>
+                    Añadir ingrediente
+                  </Button>
+                </View>
+              )}
+
               {/* Selector de categoría */}
               <Text style={[styles.fieldLabel, productFieldErrors.category && { color: COLOR.expense }]}>Categoría *</Text>
               <TouchableOpacity
@@ -1026,6 +1087,45 @@ const InventoryScreen = () => {
               ))}
             </ScrollView>
             <Button mode="outlined" onPress={() => setCatPickerOpen(false)} style={{ marginTop: 8 }}>Cancelar</Button>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Picker de ingrediente para receta ── */}
+      <Modal visible={ingredientPickerOpen} transparent animationType="fade" onRequestClose={() => setIngredientPickerOpen(false)}>
+        <View style={styles.overlay}>
+          <View style={[styles.modal, { maxHeight: '80%' }]}>
+            <Text style={styles.modalTitle}>Seleccionar ingrediente</Text>
+            <TextInput
+              value={ingredientSearch}
+              onChangeText={setIngredientSearch}
+              mode="outlined"
+              placeholder="Buscar producto..."
+              style={{ marginBottom: SPACE.s2 }}
+              dense
+              theme={{ colors: { primary: COLOR.brand } }}
+              left={<TextInput.Icon icon="magnify" />}
+            />
+            <ScrollView style={{ marginVertical: 8 }}>
+              {stock
+                .filter(s => s.productType === 'SIMPLE' && s.productActive &&
+                  (!ingredientSearch || s.productName.toLowerCase().includes(ingredientSearch.toLowerCase())))
+                .filter(s => !recipeRows.some(r => r.ingredientId === s.productId))
+                .map(s => (
+                  <TouchableOpacity
+                    key={s.productId}
+                    style={styles.catPickerItem}
+                    onPress={() => {
+                      setRecipeRows(prev => [...prev, { ingredientId: s.productId, ingredientName: s.productName, quantity: '1' }]);
+                      setIngredientPickerOpen(false);
+                    }}
+                  >
+                    <Text style={styles.catPickerItemText}>{s.productName}</Text>
+                    {s.productSku ? <Text style={{ color: COLOR.inkMute, fontSize: FONT_SIZE.xs }}>{s.productSku}</Text> : null}
+                  </TouchableOpacity>
+                ))}
+            </ScrollView>
+            <Button mode="outlined" onPress={() => setIngredientPickerOpen(false)} style={{ marginTop: 8 }}>Cancelar</Button>
           </View>
         </View>
       </Modal>

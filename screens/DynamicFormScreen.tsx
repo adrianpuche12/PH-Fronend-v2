@@ -179,7 +179,7 @@ const DynamicFormScreen = () => {
         setDistribuciones(stores.map((s, i) => ({
           storeId:    s.id,
           nombre:     s.name,
-          porcentaje: i === 0 ? base + resto : base,
+          porcentaje: i === stores.length - 1 ? base + resto : base,
         })));
       })
       .catch(() => {});
@@ -232,7 +232,7 @@ const DynamicFormScreen = () => {
       const base  = Math.floor(100 / distribuciones.length);
       const resto = 100 - base * distribuciones.length;
       setDistribuciones(prev => prev.map((d, i) => ({
-        ...d, porcentaje: i === 0 ? base + resto : base,
+        ...d, porcentaje: i === prev.length - 1 ? base + resto : base,
       })));
     }
   };
@@ -701,7 +701,7 @@ const DynamicFormScreen = () => {
     if (!distribuciones.length) return;
     const base  = Math.floor(100 / distribuciones.length);
     const resto = 100 - base * distribuciones.length;
-    setDistribuciones(prev => prev.map((d, i) => ({ ...d, porcentaje: i === 0 ? base + resto : base })));
+    setDistribuciones(prev => prev.map((d, i) => ({ ...d, porcentaje: i === prev.length - 1 ? base + resto : base })));
   };
 
   const renderGastoAdminForm = () => {

@@ -5,6 +5,7 @@ import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import { format } from 'date-fns';
 import ExcelJS from 'exceljs';
+import { LOGO_B64, LOGO_EXT } from '../assets/logo_b64';
 
 interface Transaction {
   id?: number;
@@ -113,57 +114,110 @@ export const exportToExcel = async (transactions: Transaction[], fileName?: stri
       { width: 15 }, { width: 20 }, { width: 10 }, { width: 12 }, { width: 12 },
     ];
 
-    // Agregar logo en A1 (solo en web)
-    let logoRows = 0;
+    // ── Cabecera con logo y datos de empresa ──────────────────────────────────
     if (Platform.OS === 'web') {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const logoSrc = require('../assets/images/logo_proyecto_Humberto.jpg') as string;
-        const res = await fetch(logoSrc);
-        const blob = await res.blob();
-        const b64: string = await new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
-          reader.readAsDataURL(blob);
-        });
-        const imgId = workbook.addImage({ base64: b64, extension: 'jpeg' });
-        worksheet.addImage(imgId, {
-          tl: { col: 0, row: 0 },
-          ext: { width: 150, height: 58 },
-        } as any);
-        logoRows = 4;
-      } catch {
-        // continuar sin logo si falla
+      const YELLOW = 'FFF5C430';
+      const GOLD   = 'FFD4AC0D';
+
+      // Primero agregar las 5 filas físicas con fondo amarillo (ANTES del logo)
+      // Así los fills se serializan correctamente en el XLSX
+      for (let r = 0; r < 5; r++) {
+        const row = worksheet.addRow(Array(9).fill(''));
+        row.height = 20;
+        for (let c = 1; c <= 9; c++) {
+          row.getCell(c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: YELLOW } };
+        }
+        if (r === 4) {
+          for (let c = 1; c <= 9; c++) {
+            row.getCell(c).border = { bottom: { style: 'medium', color: { argb: GOLD } } };
+          }
+        }
       }
+
+      // Bloque de empresa a la derecha del logo (E1:I3)
+      const companyData: Array<{ row: number; text: string; size: number; bold: boolean }> = [
+        { row: 1, text: 'LOS POLLOS HERMANOS',           size: 14, bold: true  },
+        { row: 2, text: 'Reporte de Transacciones',       size: 11, bold: false },
+        { row: 3, text: `Generado: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, size: 10, bold: false },
+      ];
+      for (const { row, text, size, bold } of companyData) {
+        worksheet.mergeCells(row, 5, row, 9);
+        const cell = worksheet.getCell(row, 5);
+        cell.value = text;
+        cell.font = { bold, size, color: { argb: 'FF1A1A1A' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: YELLOW } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      }
+
+      // Logo flotante con tamaño fijo en píxeles
+      const imgId = workbook.addImage({ base64: LOGO_B64, extension: LOGO_EXT as any });
+      worksheet.addImage(imgId, {
+        tl: { col: 0, row: 0 },
+        ext: { width: 110, height: 110 },
+        editAs: 'absolute',
+      } as any);
+
+      // Fila separadora (row 6)
+      worksheet.addRow([]);
     }
 
-    // Filas vacías para espacio del logo
-    for (let i = 0; i < logoRows; i++) worksheet.addRow([]);
-
-    // Fila de encabezado
+    // ── Encabezados de columna ─────────────────────────────────────────────────
     const headers = [
       'Tipo', 'Monto', 'Fecha', 'Descripción', 'Local',
       'Proveedor', 'Cantidad de Cierres', 'Periodo Desde', 'Periodo Hasta',
     ];
     const headerRow = worksheet.addRow(headers);
-    headerRow.font = { bold: true };
+    headerRow.height = 26;
     headerRow.eachCell((cell) => {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5C430' } };
+      cell.font = { bold: true, size: 11, color: { argb: 'FF1A1A1A' } };
+      cell.border = {
+        top:    { style: 'medium', color: { argb: 'FFD4AC0D' } },
+        bottom: { style: 'medium', color: { argb: 'FFD4AC0D' } },
+        left:   { style: 'thin',   color: { argb: 'FFD4AC0D' } },
+        right:  { style: 'thin',   color: { argb: 'FFD4AC0D' } },
+      };
+      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
     });
 
-    // Filas de datos
-    transactions.forEach((tx) => {
+    // ── Filas de datos (colores alternados) ───────────────────────────────────
+    transactions.forEach((tx, index) => {
       const storeName = tx.store?.name || tx.storeName || 'No asignado';
       const typeLabel = tx.type in TRANSACTION_LABELS ? TRANSACTION_LABELS[tx.type] : tx.type;
       const formattedAmount = tx.amount.toLocaleString('en-US', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       });
-      worksheet.addRow([
+      const dataRow = worksheet.addRow([
         typeLabel, formattedAmount, tx.date || '',
         tx.description || '', storeName, tx.supplier || '',
         tx.closingsCount || '', tx.periodStart || '', tx.periodEnd || '',
       ]);
+      dataRow.height = 20;
+      const rowBg = index % 2 === 0 ? 'FFFFFFFF' : 'FFFFF8DC';
+      dataRow.eachCell({ includeEmpty: true }, (cell) => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowBg } };
+        cell.border = { bottom: { style: 'thin', color: { argb: 'FFDDDDDD' } } };
+        cell.alignment = { vertical: 'middle' };
+      });
+    });
+
+    // ── Fila de totales ────────────────────────────────────────────────────────
+    const totalAmount = transactions.reduce((sum, tx) => sum + tx.amount, 0);
+    const totalsRow = worksheet.addRow([
+      'TOTAL',
+      totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+      '', '', '', '', '', '', '',
+    ]);
+    totalsRow.height = 24;
+    totalsRow.eachCell({ includeEmpty: true }, (cell) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5C430' } };
+      cell.font = { bold: true, size: 11, color: { argb: 'FF1A1A1A' } };
+      cell.border = {
+        top:    { style: 'medium', color: { argb: 'FFD4AC0D' } },
+        bottom: { style: 'medium', color: { argb: 'FFD4AC0D' } },
+      };
+      cell.alignment = { vertical: 'middle' };
     });
 
     const actualFileName = fileName || `Control de Gastos ${format(new Date(), 'MMMM yyyy')}`;

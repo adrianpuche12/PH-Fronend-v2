@@ -467,6 +467,10 @@ const InventoryScreen = () => {
       setProductModalError(`Completá ${msgs.join(', ')} para continuar.`);
       return;
     }
+    if (productForm.type === 'FABRICATED' && recipeRows.length === 0) {
+      setProductModalError('Los productos fabricados requieren al menos un ingrediente en la receta.');
+      return;
+    }
     setProductFieldErrors({});
     setProductModalError('');
     setProductSaving(true);
@@ -655,10 +659,17 @@ const InventoryScreen = () => {
           {/* Fila 1: nombre + stock */}
           <View style={styles.mobileCardTop}>
             <Text style={styles.mobileCardName} numberOfLines={2}>{item.productName}</Text>
-            <View style={[styles.stockBadge, { backgroundColor: stockColor(item) + '22' }]}>
-              <Text style={[styles.stockNum, { color: stockColor(item) }]}>{item.quantity}</Text>
-              <Text style={[styles.stockMin, { color: stockColor(item) }]}>/{item.minStock}</Text>
-            </View>
+            {item.productType === 'FABRICATED' ? (
+              <View style={[styles.stockBadge, { backgroundColor: COLOR.brand + '22' }]}>
+                <Text style={[styles.stockNum, { color: COLOR.brand }]}>{item.quantity}</Text>
+                <Text style={[styles.stockMin, { color: COLOR.brand }]}> Auto</Text>
+              </View>
+            ) : (
+              <View style={[styles.stockBadge, { backgroundColor: stockColor(item) + '22' }]}>
+                <Text style={[styles.stockNum, { color: stockColor(item) }]}>{item.quantity}</Text>
+                <Text style={[styles.stockMin, { color: stockColor(item) }]}>/{item.minStock}</Text>
+              </View>
+            )}
           </View>
           {/* Fila 2: precio + categoria */}
           <View style={styles.mobileCardMeta}>
@@ -667,9 +678,11 @@ const InventoryScreen = () => {
           </View>
           {/* Fila 3: acciones */}
           <View style={styles.mobileCardActions}>
-            <TouchableOpacity style={styles.adjustBtn} onPress={() => { setAdjustType('ENTRADA'); setAdjustItem(item); }}>
-              <Text style={styles.adjustBtnText}>{isAdmin ? 'Ajustar' : 'Agregar'}</Text>
-            </TouchableOpacity>
+            {item.productType !== 'FABRICATED' && (
+              <TouchableOpacity style={styles.adjustBtn} onPress={() => { setAdjustType('ENTRADA'); setAdjustItem(item); }}>
+                <Text style={styles.adjustBtnText}>{isAdmin ? 'Ajustar' : 'Agregar'}</Text>
+              </TouchableOpacity>
+            )}
             {isAdmin && (
               <View style={{ flexDirection: 'row' }}>
                 <IconButton icon="pencil" size={18} iconColor={COLOR.ink2} onPress={() => openEditProduct(item)} style={styles.actionIcon} />
@@ -690,9 +703,11 @@ const InventoryScreen = () => {
       {/* Acciones — solo desktop */}
       {isDesktop && (
         <View style={styles.rowActions}>
-          <TouchableOpacity style={styles.adjustBtn} onPress={() => { setAdjustType('ENTRADA'); setAdjustItem(item); }}>
-            <Text style={styles.adjustBtnText}>{isAdmin ? 'Ajustar' : 'Agregar'}</Text>
-          </TouchableOpacity>
+          {item.productType !== 'FABRICATED' && (
+            <TouchableOpacity style={styles.adjustBtn} onPress={() => { setAdjustType('ENTRADA'); setAdjustItem(item); }}>
+              <Text style={styles.adjustBtnText}>{isAdmin ? 'Ajustar' : 'Agregar'}</Text>
+            </TouchableOpacity>
+          )}
           {isAdmin && <IconButton icon="pencil" size={18} iconColor={COLOR.ink2} onPress={() => openEditProduct(item)} style={styles.actionIcon} />}
           {isAdmin && (
             <IconButton
@@ -982,7 +997,9 @@ const InventoryScreen = () => {
               />
               {productFieldErrors.price && <Text style={styles.fieldErrorText}>El precio es obligatorio y debe ser mayor a 0</Text>}
 
-              <TextInput label="Stock mínimo (alerta)" value={productForm.minStock} onChangeText={v => setProductForm({ ...productForm, minStock: v })} keyboardType="numeric" mode="outlined" style={styles.input} />
+              {productForm.type !== 'FABRICATED' && (
+                <TextInput label="Stock mínimo (alerta)" value={productForm.minStock} onChangeText={v => setProductForm({ ...productForm, minStock: v })} keyboardType="numeric" mode="outlined" style={styles.input} />
+              )}
 
               {/* Tipo */}
               <Text style={styles.fieldLabel}>Tipo</Text>
@@ -999,14 +1016,14 @@ const InventoryScreen = () => {
               {/* Sección receta — solo para FABRICATED */}
               {productForm.type === 'FABRICATED' && (
                 <View style={{ marginBottom: SPACE.s3, borderWidth: 1, borderColor: COLOR.border, borderRadius: RADIUS.r2, padding: SPACE.s3 }}>
-                  <Text style={{ fontWeight: FONT_WEIGHT.semiBold, color: COLOR.ink, marginBottom: SPACE.s2 }}>Receta (materias primas)</Text>
+                  <Text style={{ fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink, marginBottom: SPACE.s2 }}>Receta (materias primas)</Text>
                   {recipeRows.length === 0 && (
-                    <Text style={{ color: COLOR.inkMute, fontSize: FONT_SIZE.sm, marginBottom: SPACE.s2 }}>Sin ingredientes aún. Añadí al menos uno.</Text>
+                    <Text style={{ color: COLOR.inkMute, fontSize: FONT_SIZE.label, marginBottom: SPACE.s2 }}>Sin ingredientes aún. Añadí al menos uno.</Text>
                   )}
                   {recipeRows.map((row, idx) => (
                     <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: SPACE.s2, gap: SPACE.s2 }}>
                       <View style={{ flex: 2 }}>
-                        <Text style={{ color: COLOR.ink, fontSize: FONT_SIZE.sm }} numberOfLines={1}>{row.ingredientName}</Text>
+                        <Text style={{ color: COLOR.ink, fontSize: FONT_SIZE.label }} numberOfLines={1}>{row.ingredientName}</Text>
                       </View>
                       <TextInput
                         value={row.quantity}
@@ -1121,7 +1138,7 @@ const InventoryScreen = () => {
                     }}
                   >
                     <Text style={styles.catPickerItemText}>{s.productName}</Text>
-                    {s.productSku ? <Text style={{ color: COLOR.inkMute, fontSize: FONT_SIZE.xs }}>{s.productSku}</Text> : null}
+                    {s.productSku ? <Text style={{ color: COLOR.inkMute, fontSize: FONT_SIZE.caption }}>{s.productSku}</Text> : null}
                   </TouchableOpacity>
                 ))}
             </ScrollView>

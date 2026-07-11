@@ -748,6 +748,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                   const isSelected  = selectedId === item.productId;
                   const inCart      = isInCart(item.productId);
                   const outOfStock  = item.quantity === 0;
+                  const noRecipe    = item.productType === 'FABRICATED' && item.quantity === 0;
                   return (
                     <TouchableOpacity
                       key={item.productId}
@@ -769,7 +770,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                       )}
                       {outOfStock && (
                         <View style={styles.outOfStockBadge}>
-                          <Text style={styles.outOfStockBadgeText}>Sin stock</Text>
+                          <Text style={styles.outOfStockBadgeText}>{noRecipe ? 'Sin receta' : 'Sin stock'}</Text>
                         </View>
                       )}
 
@@ -784,7 +785,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
 
                       {/* Fila 2: stock */}
                       <Text style={[styles.pcStock, { color: stockColor(item) }]}>
-                        Stock: {item.quantity}
+                        {item.productType === 'FABRICATED' ? `Stock: ${item.quantity} (auto)` : `Stock: ${item.quantity}`}
                       </Text>
 
                       {/* Fila 3: qty controls + Agregar (solo cuando está seleccionado) */}
@@ -814,7 +815,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                         /* Estado inactivo */
                         <View style={styles.pcBottomInactive}>
                           <Text style={[styles.pcTapHint, outOfStock && { color: COLOR.expense }]}>
-                            {outOfStock ? 'No disponible' : inCart ? 'En carrito' : 'Toca para seleccionar'}
+                            {noRecipe ? 'Asignar receta en inventario' : outOfStock ? 'No disponible' : inCart ? 'En carrito' : 'Toca para seleccionar'}
                           </Text>
                         </View>
                       )}

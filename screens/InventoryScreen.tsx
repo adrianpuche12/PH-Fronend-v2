@@ -456,7 +456,7 @@ const InventoryScreen = () => {
     // Validacion inline — marca campos vacios
     const fieldErrs: {name?:boolean; price?:boolean; category?:boolean} = {};
     if (!productForm.name.trim()) fieldErrs.name = true;
-    if (!productForm.price || Number(productForm.price) <= 0) fieldErrs.price = true;
+    if (productForm.price === '' || productForm.price === null || Number(productForm.price) < 0) fieldErrs.price = true;
     if (!productForm.categoryId) fieldErrs.category = true;
     if (Object.keys(fieldErrs).length > 0) {
       setProductFieldErrors(fieldErrs);
@@ -996,13 +996,13 @@ const InventoryScreen = () => {
 
               <TextInput
                 label="Precio *" value={productForm.price}
-                onChangeText={v => { setProductForm({ ...productForm, price: v }); if (v && Number(v) > 0) setProductFieldErrors(prev => ({ ...prev, price: false })); }}
+                onChangeText={v => { setProductForm({ ...productForm, price: v }); if (v !== '' && Number(v) >= 0) setProductFieldErrors(prev => ({ ...prev, price: false })); }}
                 keyboardType="decimal-pad" mode="outlined" style={styles.input}
                 error={!!productFieldErrors.price}
                 outlineColor={productFieldErrors.price ? COLOR.expense : undefined}
                 activeOutlineColor={productFieldErrors.price ? COLOR.expense : COLOR.brand}
               />
-              {productFieldErrors.price && <Text style={styles.fieldErrorText}>El precio es obligatorio y debe ser mayor a 0</Text>}
+              {productFieldErrors.price && <Text style={styles.fieldErrorText}>El precio es obligatorio y no puede ser negativo</Text>}
 
               {productForm.type !== 'FABRICATED' && (
                 <TextInput label="Stock mínimo (alerta)" value={productForm.minStock} onChangeText={v => setProductForm({ ...productForm, minStock: v })} keyboardType="numeric" mode="outlined" style={styles.input} />

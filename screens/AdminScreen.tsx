@@ -392,6 +392,7 @@ const CompactDateFilters = ({
 const AdminScreen = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
   const [datePickerOpen, setDatePickerOpen] = useState(false);
@@ -472,32 +473,21 @@ const AdminScreen = () => {
 
   // Función para obtener solo gastos administrativos
   const fetchAdminExpenses = async (start?: Date, end?: Date, storeId?: number | null) => {
-    setLoading(true);
+    if (transactions.length === 0) setLoading(true);
+    else setRefreshing(true);
     try {
       let url = `${REACT_APP_API_URL}/api/operations/admin-expenses`;
-      const queryParams = [];
-
+      const queryParams: string[] = [];
       if (start && end) {
-        const startStr = format(start, 'yyyy-MM-dd');
-        const endStr = format(end, 'yyyy-MM-dd');
-        queryParams.push(`startDate=${startStr}`);
-        queryParams.push(`endDate=${endStr}`);
+        queryParams.push(`startDate=${format(start, 'yyyy-MM-dd')}`);
+        queryParams.push(`endDate=${format(end, 'yyyy-MM-dd')}`);
       }
-
-      if (storeId) {
-        queryParams.push(`storeId=${storeId}`);
-      }
-
-      if (queryParams.length > 0) {
-        url += `?${queryParams.join('&')}`;
-      }
+      if (storeId) queryParams.push(`storeId=${storeId}`);
+      if (queryParams.length > 0) url += `?${queryParams.join('&')}`;
 
       const response = await fetch(url);
       let adminExpensesData: Transaction[] = [];
-
-      if (response.ok) {
-        adminExpensesData = await response.json();
-      }
+      if (response.ok) adminExpensesData = await response.json();
 
       setTransactions(adminExpensesData);
       setCurrentPage(1);
@@ -505,93 +495,70 @@ const AdminScreen = () => {
       console.error('Error al cargar los gastos administrativos:', err);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  // Función para obtener datos de dos endpoints y unificarlos.
+  // Obtiene datos de dos endpoints en paralelo y los unifica.
   const fetchData = async (start?: Date, end?: Date, storeId?: number | null) => {
-    setLoading(true);
+    if (transactions.length === 0) setLoading(true);
+    else setRefreshing(true);
     try {
-      // Se obtienen las operaciones desde el endpoint de operaciones.
+      // Construir URLs antes de lanzar las llamadas en paralelo
       let urlOperations = `${REACT_APP_API_URL}/api/operations/all`;
-      const queryParams = [];
-
+      const queryParams: string[] = [];
       if (start && end) {
-        const startStr = format(start, 'yyyy-MM-dd');
-        const endStr = format(end, 'yyyy-MM-dd');
-        queryParams.push(`startDate=${startStr}`);
-        queryParams.push(`endDate=${endStr}`);
+        queryParams.push(`startDate=${format(start, 'yyyy-MM-dd')}`);
+        queryParams.push(`endDate=${format(end, 'yyyy-MM-dd')}`);
       }
+      if (storeId) queryParams.push(`storeId=${storeId}`);
+      if (queryParams.length > 0) urlOperations += `?${queryParams.join('&')}`;
 
-      if (storeId) {
-        queryParams.push(`storeId=${storeId}`);
-      }
+      const urlTransactions = storeId
+        ? `${REACT_APP_API_URL}/api/transactions/store/${storeId}`
+        : `${REACT_APP_API_URL}/transactions`;
 
-      if (queryParams.length > 0) {
-        urlOperations += `?${queryParams.join('&')}`;
-      }
+      // Fetch en paralelo — ambas llamadas se lanzan simultáneamente
+      const [responseOps, responseTrans] = await Promise.all([
+        fetch(urlOperations),
+        fetch(urlTransactions),
+      ]);
 
-      const responseOps = await fetch(urlOperations);
       let operationsData: Transaction[] = [];
-
       if (responseOps.ok) {
         operationsData = await responseOps.json();
         operationsData = operationsData.map(op => {
           const newOp = { ...op };
-
-          if (op.type === 'CLOSING' && op.depositDate) {
-            newOp.date = op.depositDate;
-          } else if (op.type === 'SUPPLIER' && op.paymentDate) {
-            newOp.date = op.paymentDate;
-          } else if (op.type === 'SALARY' && op.salaryDate) {
-            newOp.date = op.salaryDate;
-          }
+          if (op.type === 'CLOSING' && op.depositDate) newOp.date = op.depositDate;
+          else if (op.type === 'SUPPLIER' && op.paymentDate) newOp.date = op.paymentDate;
+          else if (op.type === 'SALARY' && op.salaryDate) newOp.date = op.salaryDate;
           return newOp;
         });
       }
 
-      let urlTransactions = `${REACT_APP_API_URL}/transactions`;
-      const transactionParams = [];
-
-      if (storeId) {
-        urlTransactions = `${REACT_APP_API_URL}/api/transactions/store/${storeId}`;
-      }
-
-      const responseTrans = await fetch(urlTransactions);
       let transactionsData: Transaction[] = [];
-
       if (responseTrans.ok) {
         transactionsData = await responseTrans.json();
-
         if (start && end) {
           const startDateStr = format(start, 'yyyy-MM-dd');
-          const endDateStr = format(end, 'yyyy-MM-dd');
-
+          const endDateStr   = format(end, 'yyyy-MM-dd');
           transactionsData = transactionsData.filter(tx => {
             if (!tx.date) return false;
-
             try {
               const txDateStr = typeof tx.date === 'string'
                 ? tx.date.split('T')[0]
                 : format(new Date(tx.date), 'yyyy-MM-dd');
-
               return txDateStr >= startDateStr && txDateStr <= endDateStr;
-            } catch (error) {
-              console.warn('Error al procesar fecha:', tx.date, error);
-              return false;
-            }
+            } catch { return false; }
           });
         }
       }
-      // Se unen ambos arreglos
+
       const merged = [...operationsData, ...transactionsData];
       const sortedTransactions = merged.sort((a, b) => {
         if (!a.date) return 1;
         if (!b.date) return -1;
-        const dateA = new Date(a.date);
-        const dateB = new Date(b.date);
-
-        return dateB.getTime() - dateA.getTime();
+        return new Date(b.date).getTime() - new Date(a.date).getTime();
       });
 
       setTransactions(sortedTransactions);
@@ -600,6 +567,7 @@ const AdminScreen = () => {
       console.error('Error al cargar las transacciones:', err);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -1765,6 +1733,14 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
           <Text style={[styles.txTableHeaderText, { flex: 1, textAlign: 'right' }]}>FECHA</Text>
           <Text style={[styles.txTableHeaderText, { flex: 1, textAlign: 'right' }]}>MONTO</Text>
           <View style={{ width: 80 }} />
+        </View>
+      )}
+
+      {/* Indicador sutil cuando hay datos previos y se está actualizando */}
+      {refreshing && (
+        <View style={{ paddingVertical: 6, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <ActivityIndicator size="small" color={COLOR.brand} />
+          <Text style={{ fontSize: 12, color: COLOR.inkMute }}>Actualizando...</Text>
         </View>
       )}
 

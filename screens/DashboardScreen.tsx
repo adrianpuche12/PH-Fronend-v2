@@ -41,6 +41,9 @@ interface DashboardData {
 }
 
 
+// Cache a nivel de módulo — sobrevive el unmount/remount al navegar entre secciones
+let _dashboardCache: DashboardData | null = null;
+
 // ─── DashboardScreen ──────────────────────────────────────────────────────────
 
 export default function DashboardScreen() {
@@ -48,8 +51,9 @@ export default function DashboardScreen() {
   const { width } = useWindowDimensions();
   const isDesktop = width >= BREAKPOINT.desktop;
 
-  const [data, setData]             = useState<DashboardData | null>(null);
-  const [loading, setLoading]       = useState(true);
+  // Inicializar con cache si existe → el usuario ve datos al instante al volver
+  const [data, setData]             = useState<DashboardData | null>(_dashboardCache);
+  const [loading, setLoading]       = useState(_dashboardCache === null);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError]           = useState('');
 
@@ -57,11 +61,12 @@ export default function DashboardScreen() {
     setError('');
     try {
       const res = await axios.get<DashboardData>(`${API}/api/v2/dashboard`);
+      _dashboardCache = res.data;
       setData(res.data);
     } catch {
       setError('No se pudo cargar el dashboard.');
     } finally { setLoading(false); }
-  }, []);
+  }, [API]);
 
   useEffect(() => { load(); }, [load]);
 

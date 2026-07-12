@@ -436,7 +436,7 @@ const InventoryScreen = () => {
 
   const openEditProduct = async (item: StockItem) => {
     setEditProduct(item);
-    setProductForm({ name: item.productName, sku: item.productSku || '', type: item.productType, price: String(item.price), minStock: String(item.minStock), description: '', categoryId: item.categoryId ? String(item.categoryId) : '' });
+    setProductForm({ name: item.productName, sku: item.productSku || '', type: item.productType, price: String(item.price), minStock: String(item.minStock ?? 0), description: '', categoryId: item.categoryId ? String(item.categoryId) : '' });
     setCatPickerLabel(item.categoryPath || '');
     setProductModalError('');
     setProductFieldErrors({});
@@ -646,10 +646,17 @@ const InventoryScreen = () => {
             </View>
           </View>
           <Text style={styles.rowPrice}>{formatHnl(item.price)}</Text>
-          <View style={[styles.stockBadge, { backgroundColor: stockColor(item) + '18' }]}>
-            <Text style={[styles.stockNum, { color: stockColor(item) }]}>{item.quantity}</Text>
-            <Text style={[styles.stockMin, { color: stockColor(item) }]}>/ {item.minStock}</Text>
-          </View>
+          {item.productType === 'FABRICATED' ? (
+            <View style={[styles.stockBadge, { backgroundColor: COLOR.brand + '18' }]}>
+              <Text style={[styles.stockNum, { color: COLOR.brand }]}>{item.quantity}</Text>
+              <Text style={[styles.stockMin, { color: COLOR.brand }]}> Auto</Text>
+            </View>
+          ) : (
+            <View style={[styles.stockBadge, { backgroundColor: stockColor(item) + '18' }]}>
+              <Text style={[styles.stockNum, { color: stockColor(item) }]}>{item.quantity}</Text>
+              <Text style={[styles.stockMin, { color: stockColor(item) }]}>/ {item.minStock}</Text>
+            </View>
+          )}
         </>
       ) : null}
 

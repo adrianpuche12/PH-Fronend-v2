@@ -517,9 +517,17 @@ const AdminScreen = () => {
       if (storeId) queryParams.push(`storeId=${storeId}`);
       if (queryParams.length > 0) urlOperations += `?${queryParams.join('&')}`;
 
+      // Pasar fechas al backend para filtrar en DB (evita descargar todo el historial)
+      const transDateParams: string[] = [];
+      if (start && end) {
+        transDateParams.push(`startDate=${format(start, 'yyyy-MM-dd')}`);
+        transDateParams.push(`endDate=${format(end, 'yyyy-MM-dd')}`);
+      }
+      const transDateSuffix = transDateParams.length > 0 ? `?${transDateParams.join('&')}` : '';
+
       const urlTransactions = storeId
-        ? `${REACT_APP_API_URL}/api/transactions/store/${storeId}`
-        : `${REACT_APP_API_URL}/transactions`;
+        ? `${REACT_APP_API_URL}/api/transactions/store/${storeId}${transDateSuffix}`
+        : `${REACT_APP_API_URL}/transactions${transDateSuffix}`;
 
       // Fetch + parse JSON completamente en paralelo
       const [opsRaw, transRaw]: [Transaction[], Transaction[]] = await Promise.all([
@@ -535,20 +543,8 @@ const AdminScreen = () => {
         return newOp;
       });
 
-      let transactionsData: Transaction[] = transRaw;
-      if (start && end) {
-        const startDateStr = format(start, 'yyyy-MM-dd');
-        const endDateStr   = format(end, 'yyyy-MM-dd');
-        transactionsData = transRaw.filter(tx => {
-          if (!tx.date) return false;
-          try {
-            const txDateStr = typeof tx.date === 'string'
-              ? tx.date.split('T')[0]
-              : format(new Date(tx.date), 'yyyy-MM-dd');
-            return txDateStr >= startDateStr && txDateStr <= endDateStr;
-          } catch { return false; }
-        });
-      }
+      // El filtrado de fecha ya lo hizo el backend; solo necesitamos el array tal cual
+      const transactionsData: Transaction[] = transRaw;
 
       const merged = [...operationsData, ...transactionsData];
       const sortedTransactions = merged.sort((a, b) => {

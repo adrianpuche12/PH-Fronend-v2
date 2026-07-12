@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -78,6 +78,17 @@ interface Transaction {
   closingShiftId?: number;
 }
 
+interface DepositGroup {
+  type: 'DEPOSIT_GROUP';
+  id: number;
+  amount: number;
+  date?: string;
+  imageUri?: string;
+  storeNames: string[];
+  closingCount: number;
+}
+
+type DisplayItem = Transaction | DepositGroup;
 
 const ITEMS_PER_PAGE = 5;
 
@@ -649,24 +660,58 @@ const AdminScreen = () => {
   // Filtro por tipo de transacción
   const INCOME_TYPES = ['income', 'CLOSING'];
   const EXPENSE_TYPES = ['expense', 'SALARY', 'SUPPLIER', 'GASTO_ADMIN', 'gasto_admin'];
+
+  // Reemplaza los cierres DEPOSITED por un único DepositGroup por bankDepositId.
+  // Los cierres PENDING permanecen como items individuales.
+  const displayItems: DisplayItem[] = useMemo(() => {
+    const groups = new Map<number, DepositGroup>();
+    const result: DisplayItem[] = [];
+    for (const tx of transactions) {
+      if (tx.type === 'CLOSING' && tx.depositStatus === 'DEPOSITED' && tx.bankDepositId != null) {
+        const gid = tx.bankDepositId;
+        const sName = tx.store?.name ?? tx.storeName ?? '—';
+        if (groups.has(gid)) {
+          const g = groups.get(gid)!;
+          g.amount += tx.declaredCashAmount ?? tx.amount;
+          g.closingCount += 1;
+          if (!g.storeNames.includes(sName)) g.storeNames.push(sName);
+        } else {
+          const g: DepositGroup = {
+            type: 'DEPOSIT_GROUP',
+            id: gid,
+            amount: tx.declaredCashAmount ?? tx.amount,
+            date: tx.date,
+            imageUri: tx.imageUri,
+            storeNames: [sName],
+            closingCount: 1,
+          };
+          groups.set(gid, g);
+          result.push(g);
+        }
+      } else {
+        result.push(tx);
+      }
+    }
+    return result;
+  }, [transactions]);
+
   const filteredByType = typeFilter === 'all'
-    ? transactions
+    ? displayItems
     : typeFilter === 'income'
-      ? transactions.filter(tx => INCOME_TYPES.includes(tx.type))
-      : transactions.filter(tx => EXPENSE_TYPES.includes(tx.type));
+      ? displayItems.filter(tx => tx.type === 'DEPOSIT_GROUP' || INCOME_TYPES.includes((tx as Transaction).type))
+      : displayItems.filter(tx => tx.type !== 'DEPOSIT_GROUP' && EXPENSE_TYPES.includes((tx as Transaction).type));
 
   // Conteos para badges en las tabs
-  const incomeCount  = transactions.filter(tx => INCOME_TYPES.includes(tx.type)).length;
-  const expenseCount = transactions.filter(tx => EXPENSE_TYPES.includes(tx.type)).length;
-  const allCount     = transactions.length;
+  const incomeCount  = displayItems.filter(tx => tx.type === 'DEPOSIT_GROUP' || INCOME_TYPES.includes((tx as Transaction).type)).length;
+  const expenseCount = displayItems.filter(tx => tx.type !== 'DEPOSIT_GROUP' && EXPENSE_TYPES.includes((tx as Transaction).type)).length;
+  const allCount     = displayItems.length;
 
-  // Filtro por estado de depósito (solo aplica a cierres - CLOSING)
+  // Filtro por estado de depósito
   const filteredByDeposit = depositFilter === 'all'
     ? filteredByType
-    : filteredByType.filter(tx =>
-        tx.type === 'CLOSING' &&
-        tx.depositStatus === (depositFilter === 'pending' ? 'PENDING' : 'DEPOSITED')
-      );
+    : depositFilter === 'deposited'
+      ? filteredByType.filter(tx => tx.type === 'DEPOSIT_GROUP')
+      : filteredByType.filter(tx => tx.type === 'CLOSING' && (tx as Transaction).depositStatus === 'PENDING');
 
   // Paginación
   const totalPages = Math.ceil(filteredByDeposit.length / ITEMS_PER_PAGE);
@@ -1197,7 +1242,67 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
   return `${REACT_APP_API_URL}/${imagePath}`;
 };
 
-  const renderTransaction = (item: Transaction, index: number) => {
+  const renderTransaction = (item: DisplayItem, index: number) => {
+    // ── Card agrupado para cierres depositados ──
+    if (item.type === 'DEPOSIT_GROUP') {
+      const fmtD = (d?: string) => {
+        if (!d) return '—';
+        try { return format(parseISO(d), 'dd MMM yyyy'); } catch { return String(d).split('T')[0]; }
+      };
+      const amtStr = `L ${item.amount.toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      const rawUri = item.imageUri;
+      const imageUri = rawUri && rawUri !== 'null' && rawUri !== 'undefined' && rawUri.startsWith('http') ? rawUri : null;
+      return (
+        <View key={`dg-${item.id}-${index}`} style={{ backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border }}>
+          <View style={[styles.txRow, { borderBottomWidth: 0 }]}>
+            <View style={[styles.txIconWrap, { backgroundColor: COLOR.incomeTint }]}>
+              <MaterialCommunityIcons name="bank-check" size={20} color={COLOR.income} />
+            </View>
+            <View style={styles.txMain}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
+                <Text style={styles.txName}>Depósito bancario</Text>
+              </View>
+              {!isLargeScreen && (
+                <Text style={styles.txMeta}>{fmtD(item.date)}</Text>
+              )}
+              <Text style={styles.txMeta} numberOfLines={1}>
+                {item.closingCount} cierre{item.closingCount !== 1 ? 's' : ''} · {item.storeNames.join(', ')}
+              </Text>
+              <View style={[styles.depositBadge, styles.depositBadgeDone]}>
+                <MaterialCommunityIcons name="bank-check" size={11} color="#166534" />
+                <Text style={[styles.depositBadgeText, { color: '#166534' }]}>Depositado</Text>
+              </View>
+            </View>
+            {isLargeScreen && (
+              <Text style={styles.txStore} numberOfLines={1}>{item.storeNames.join(', ')}</Text>
+            )}
+            {isLargeScreen && (
+              <View style={styles.txDateWrap}>
+                <Text style={styles.txDate}>{fmtD(item.date)}</Text>
+              </View>
+            )}
+            <View style={{ alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
+              <View style={styles.txAmtWrap}>
+                <Text style={[styles.txAmt, { color: COLOR.income }]}>+{amtStr}</Text>
+                <Text style={styles.txAmtLabel}>LEMPIRAS</Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                {imageUri ? (
+                  <TouchableOpacity onPress={() => setViewingImage(imageUri)} activeOpacity={0.8}>
+                    <Image source={{ uri: imageUri }} style={{ width: 36, height: 36, borderRadius: 4, borderWidth: 1, borderColor: COLOR.border }} />
+                  </TouchableOpacity>
+                ) : (
+                  <View style={{ width: 36 }} />
+                )}
+                <View style={{ width: 36 }} />
+                <View style={{ width: 36 }} />
+              </View>
+            </View>
+          </View>
+        </View>
+      );
+    }
+
     const isIncome = INCOME_TYPES.includes(item.type);
 
     const typeIconMap: Record<string, string> = {

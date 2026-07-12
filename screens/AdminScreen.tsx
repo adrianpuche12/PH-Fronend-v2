@@ -393,6 +393,8 @@ const AdminScreen = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  // Ref para saber si ya se realizó al menos una carga exitosa (evita closure stale)
+  const hasLoadedRef = useRef(false);
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
   const [datePickerOpen, setDatePickerOpen] = useState(false);
@@ -473,7 +475,7 @@ const AdminScreen = () => {
 
   // Función para obtener solo gastos administrativos
   const fetchAdminExpenses = async (start?: Date, end?: Date, storeId?: number | null) => {
-    if (transactions.length === 0) setLoading(true);
+    if (!hasLoadedRef.current) setLoading(true);
     else setRefreshing(true);
     try {
       let url = `${REACT_APP_API_URL}/api/operations/admin-expenses`;
@@ -489,6 +491,7 @@ const AdminScreen = () => {
       let adminExpensesData: Transaction[] = [];
       if (response.ok) adminExpensesData = await response.json();
 
+      hasLoadedRef.current = true;
       setTransactions(adminExpensesData);
       setCurrentPage(1);
     } catch (err) {
@@ -499,12 +502,12 @@ const AdminScreen = () => {
     }
   };
 
-  // Obtiene datos de dos endpoints en paralelo y los unifica.
+  // Obtiene datos de dos endpoints en paralelo (fetch + body) y los unifica.
   const fetchData = async (start?: Date, end?: Date, storeId?: number | null) => {
-    if (transactions.length === 0) setLoading(true);
+    if (!hasLoadedRef.current) setLoading(true);
     else setRefreshing(true);
     try {
-      // Construir URLs antes de lanzar las llamadas en paralelo
+      // Construir URLs
       let urlOperations = `${REACT_APP_API_URL}/api/operations/all`;
       const queryParams: string[] = [];
       if (start && end) {
@@ -518,40 +521,33 @@ const AdminScreen = () => {
         ? `${REACT_APP_API_URL}/api/transactions/store/${storeId}`
         : `${REACT_APP_API_URL}/transactions`;
 
-      // Fetch en paralelo — ambas llamadas se lanzan simultáneamente
-      const [responseOps, responseTrans] = await Promise.all([
-        fetch(urlOperations),
-        fetch(urlTransactions),
+      // Fetch + parse JSON completamente en paralelo
+      const [opsRaw, transRaw]: [Transaction[], Transaction[]] = await Promise.all([
+        fetch(urlOperations).then(r => r.ok ? r.json() : []),
+        fetch(urlTransactions).then(r => r.ok ? r.json() : []),
       ]);
 
-      let operationsData: Transaction[] = [];
-      if (responseOps.ok) {
-        operationsData = await responseOps.json();
-        operationsData = operationsData.map(op => {
-          const newOp = { ...op };
-          if (op.type === 'CLOSING' && op.depositDate) newOp.date = op.depositDate;
-          else if (op.type === 'SUPPLIER' && op.paymentDate) newOp.date = op.paymentDate;
-          else if (op.type === 'SALARY' && op.salaryDate) newOp.date = op.salaryDate;
-          return newOp;
-        });
-      }
+      const operationsData: Transaction[] = opsRaw.map(op => {
+        const newOp = { ...op };
+        if (op.type === 'CLOSING' && op.depositDate) newOp.date = op.depositDate;
+        else if (op.type === 'SUPPLIER' && op.paymentDate) newOp.date = op.paymentDate;
+        else if (op.type === 'SALARY' && op.salaryDate) newOp.date = op.salaryDate;
+        return newOp;
+      });
 
-      let transactionsData: Transaction[] = [];
-      if (responseTrans.ok) {
-        transactionsData = await responseTrans.json();
-        if (start && end) {
-          const startDateStr = format(start, 'yyyy-MM-dd');
-          const endDateStr   = format(end, 'yyyy-MM-dd');
-          transactionsData = transactionsData.filter(tx => {
-            if (!tx.date) return false;
-            try {
-              const txDateStr = typeof tx.date === 'string'
-                ? tx.date.split('T')[0]
-                : format(new Date(tx.date), 'yyyy-MM-dd');
-              return txDateStr >= startDateStr && txDateStr <= endDateStr;
-            } catch { return false; }
-          });
-        }
+      let transactionsData: Transaction[] = transRaw;
+      if (start && end) {
+        const startDateStr = format(start, 'yyyy-MM-dd');
+        const endDateStr   = format(end, 'yyyy-MM-dd');
+        transactionsData = transRaw.filter(tx => {
+          if (!tx.date) return false;
+          try {
+            const txDateStr = typeof tx.date === 'string'
+              ? tx.date.split('T')[0]
+              : format(new Date(tx.date), 'yyyy-MM-dd');
+            return txDateStr >= startDateStr && txDateStr <= endDateStr;
+          } catch { return false; }
+        });
       }
 
       const merged = [...operationsData, ...transactionsData];
@@ -561,6 +557,7 @@ const AdminScreen = () => {
         return new Date(b.date).getTime() - new Date(a.date).getTime();
       });
 
+      hasLoadedRef.current = true;
       setTransactions(sortedTransactions);
       setCurrentPage(1);
     } catch (err) {

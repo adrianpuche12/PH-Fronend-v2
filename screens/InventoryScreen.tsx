@@ -396,9 +396,9 @@ const InventoryScreen = () => {
   // ── Ajuste de stock ──────────────────────────────────────────────────────────
 
   const handleAdjust = async () => {
-    if (!adjustQty || Number(adjustQty) <= 0 || !Number.isInteger(Number(adjustQty))) {
+    if (!adjustQty || Number(adjustQty) <= 0 || isNaN(Number(adjustQty))) {
       setAdjustQtyError(true);
-      setAdjustModalError('Ingresá una cantidad válida (número entero mayor a 0).');
+      setAdjustModalError('Ingresá una cantidad válida (mayor a 0).');
       return;
     }
     if (adjustType === 'SALIDA' && adjustItem && Number(adjustQty) > adjustItem.quantity) {
@@ -950,12 +950,12 @@ const InventoryScreen = () => {
             <TextInput
               label="Cantidad *" value={adjustQty}
               onChangeText={v => { setAdjustQty(v); if (v && Number(v) > 0) { setAdjustQtyError(false); setAdjustModalError(''); } }}
-              keyboardType="numeric" mode="outlined" style={styles.input}
+              keyboardType="decimal-pad" mode="outlined" style={styles.input}
               error={adjustQtyError}
               outlineColor={adjustQtyError ? COLOR.expense : undefined}
               activeOutlineColor={adjustQtyError ? COLOR.expense : (adjustType === 'ENTRADA' ? COLOR.income : COLOR.expense)}
             />
-            {adjustQtyError && <Text style={styles.fieldErrorText}>La cantidad debe ser un número entero mayor a 0</Text>}
+            {adjustQtyError && <Text style={styles.fieldErrorText}>La cantidad debe ser un número mayor a 0</Text>}
             <TextInput label="Motivo" value={adjustReason} onChangeText={setAdjustReason} mode="outlined" style={styles.input} />
             {!!adjustModalError && (
               <View style={styles.modalErrorBanner}>

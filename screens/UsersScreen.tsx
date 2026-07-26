@@ -99,6 +99,10 @@ export default function UsersScreen() {
   const [storeSelected, setStoreSelected]   = useState<number[]>([]);
   const [savingStore, setSavingStore]       = useState(false);
 
+  // Modal contraseña temporal
+  const [tempPwdModal, setTempPwdModal] = useState<{ fullName: string; username: string; password: string } | null>(null);
+  const [tempPwdCopied, setTempPwdCopied] = useState(false);
+
   // ConfirmDialog
   const [confirmDlg, setConfirmDlg] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
   const askConfirm = (title: string, message: string, onConfirm: () => void) =>
@@ -135,17 +139,21 @@ export default function UsersScreen() {
     }
     setSaving(true);
     try {
-      await axios.post(`${API}/api/v2/users`, {
+      const res = await axios.post(`${API}/api/v2/users`, {
         fullName: form.fullName.trim(),
         username: form.username.trim().toLowerCase(),
         email:    form.email.trim().toLowerCase(),
         role:     form.role,
         storeId:  form.storeId ? Number(form.storeId) : undefined,
       });
-      setSnackbar('Usuario creado. Se envio la contrasena temporal por email.');
       setCreateModal(false);
       setForm(EMPTY_FORM);
       loadAll();
+      setTempPwdModal({
+        fullName: res.data.fullName,
+        username: res.data.username,
+        password: res.data.tempPassword,
+      });
     } catch (e: any) {
       setSnackbar(e.response?.data?.error || 'Error al crear usuario');
     } finally { setSaving(false); }
@@ -419,7 +427,7 @@ export default function UsersScreen() {
               </View>
 
               <Text style={styles.roleNote}>
-                Se generara una contrasena temporal y se enviara al email del usuario.
+                Se generara una contrasena temporal. Podras copiarla y enviarsela al usuario por WhatsApp.
               </Text>
 
               <View style={styles.modalActions}>
@@ -542,6 +550,50 @@ export default function UsersScreen() {
               <Button mode="outlined" onPress={() => setStoreModal(null)} style={{ flex: 1 }}>Cancelar</Button>
               <Button mode="contained" onPress={handleSaveStoreAccess} loading={savingStore} buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ flex: 1 }}>Guardar</Button>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Modal contraseña temporal ── */}
+      <Modal visible={!!tempPwdModal} transparent animationType="fade" onRequestClose={() => { setTempPwdModal(null); setTempPwdCopied(false); }}>
+        <View style={styles.overlay}>
+          <View style={[styles.modal, { alignItems: 'center' }]}>
+            <Text style={{ fontSize: 36, marginBottom: SPACE.s2 }}>🔑</Text>
+            <Text style={styles.modalTitle}>Usuario creado</Text>
+            <Text style={styles.modalSub}>{tempPwdModal?.fullName} (@{tempPwdModal?.username})</Text>
+
+            <Text style={[styles.fieldLabel, { textAlign: 'center', marginTop: SPACE.s2 }]}>
+              Contrasena temporal — enviala por WhatsApp al usuario
+            </Text>
+
+            <View style={{ backgroundColor: COLOR.bg, borderRadius: RADIUS.r2, padding: SPACE.s3, width: '100%', alignItems: 'center', borderWidth: 1, borderColor: COLOR.border, marginBottom: SPACE.s3 }}>
+              <Text selectable style={{ fontSize: FONT_SIZE.h2, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink, letterSpacing: 2 }}>
+                {tempPwdModal?.password}
+              </Text>
+            </View>
+
+            <Button
+              mode={tempPwdCopied ? 'outlined' : 'contained'}
+              buttonColor={tempPwdCopied ? undefined : COLOR.brand}
+              textColor={tempPwdCopied ? COLOR.income : COLOR.inkOnBrand}
+              style={{ width: '100%', borderRadius: RADIUS.r2, marginBottom: SPACE.s2 }}
+              onPress={async () => {
+                if (tempPwdModal?.password) {
+                  try {
+                    await navigator.clipboard.writeText(tempPwdModal.password);
+                  } catch {
+                    // clipboard no disponible en mobile: el usuario puede seleccionar el texto
+                  }
+                  setTempPwdCopied(true);
+                }
+              }}
+            >
+              {tempPwdCopied ? 'Copiado!' : 'Copiar contrasena'}
+            </Button>
+
+            <Button mode="outlined" style={{ width: '100%', borderRadius: RADIUS.r2 }} onPress={() => { setTempPwdModal(null); setTempPwdCopied(false); }}>
+              Listo
+            </Button>
           </View>
         </View>
       </Modal>

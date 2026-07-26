@@ -2,7 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
-import { API_KEYCLOAK_ADAPTER_URL } from '../config';
+import { API_KEYCLOAK_ADAPTER_URL, REACT_APP_API_URL } from '../config';
 import { Platform } from 'react-native';
 
 
@@ -13,6 +13,7 @@ interface AuthState {
   roles: string[];
   userName: string | null;
   userId: string | null;
+  firstLogin: boolean;
   loading: boolean;
   error: string | null;
 }
@@ -21,6 +22,7 @@ interface AuthState {
 interface AuthContextType extends AuthState {
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
+  setFirstLoginFalse: () => Promise<void>;
   isAuthenticated: boolean;
 }
 
@@ -108,6 +110,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     roles: [],
     userName: null,
     userId: null,
+    firstLogin: false,
     loading: true,
     error: null,
   });
@@ -216,6 +219,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const userName = decodedToken.preferred_username;
       const userId = decodedToken.sub;
 
+      // ── Verificar cuenta + leer firstLogin ──────────────────────────────────
+      // Admins no están en app_users (404) → firstLogin=false, continuar.
+      // 403 ACCOUNT_SUSPENDED → bloquear acceso.
+      let firstLogin = false;
+      try {
+        const profileResp = await axios.get(
+          `${REACT_APP_API_URL}/api/v2/users/by-username/${encodeURIComponent(userName.toLowerCase())}`
+        );
+        firstLogin = profileResp.data?.firstLogin ?? false;
+      } catch (profileErr: any) {
+        if (profileErr.response?.status === 403 &&
+            profileErr.response?.data?.error === 'ACCOUNT_SUSPENDED') {
+          const suspendedError: any = new Error('Cuenta suspendida');
+          suspendedError.response = { status: 403, data: { error: 'ACCOUNT_SUSPENDED' } };
+          throw suspendedError;
+        }
+        // 404 u otro error → admin o backend no disponible → continuar
+      }
+
       await Storage.multiSet([
         ['accessToken', access_token],
         ['refreshToken', refresh_token],
@@ -223,6 +245,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ['userName', userName],
         ['userId', userId],
         ['roles', JSON.stringify(isAdmin ? ['admin'] : ['user'])],
+        ['firstLogin', String(firstLogin)],
       ]);
 
       setAxiosAuthHeader(access_token);
@@ -233,6 +256,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         roles: isAdmin ? ['admin'] : ['user'],
         userName,
         userId,
+        firstLogin,
         loading: false,
         error: null,
       });
@@ -252,14 +276,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       await Storage.multiRemove([
-        'accessToken', 
-        'refreshToken', 
-        'expiresIn', 
-        'userName', 
-        'userId', 
-        'roles'
+        'accessToken',
+        'refreshToken',
+        'expiresIn',
+        'userName',
+        'userId',
+        'roles',
+        'firstLogin',
       ]);
-      
+
       setAxiosAuthHeader(null);
       setAuthState({
         accessToken: null,
@@ -268,12 +293,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         roles: [],
         userName: null,
         userId: null,
+        firstLogin: false,
         loading: false,
         error: null,
       });
     } catch (error) {
       console.error('Logout error:', error);
     }
+  };
+
+  const setFirstLoginFalse = async () => {
+    await Storage.setItem('firstLogin', 'false');
+    setAuthState(prev => ({ ...prev, firstLogin: false }));
   };
 
   useEffect(() => {
@@ -285,7 +316,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           'expiresIn',
           'userName',
           'userId',
-          'roles'
+          'roles',
+          'firstLogin',
         ]);
     
         const storageMap = Object.fromEntries(storageData);
@@ -314,6 +346,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 roles,
                 userName: storageMap.userName,
                 userId: storageMap.userId,
+                firstLogin: storageMap.firstLogin === 'true',
                 loading: false,
                 error: null,
               });
@@ -379,6 +412,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ...authState,
         login,
         logout,
+        setFirstLoginFalse,
         isAuthenticated: !!authState.accessToken,
       }}
     >

@@ -2,10 +2,10 @@ import { Slot, useSegments, useRootNavigationState, router } from 'expo-router';
 import { useEffect } from 'react';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 
-type ValidSegment = 'login' | 'admin' | 'index' | '(tabs)' | '+not-found';
+type ValidSegment = 'login' | 'change-password' | 'admin' | 'index' | '(tabs)' | '+not-found';
 
 function RootLayoutNav() {
-  const { isAuthenticated, roles } = useAuth();
+  const { isAuthenticated, roles, firstLogin } = useAuth();
   const segments = useSegments();
   const navigationState = useRootNavigationState();
 
@@ -16,29 +16,35 @@ function RootLayoutNav() {
 
     const handleNavigation = () => {
       if (!isAuthenticated) {
-        // Si no está autenticado, redirige al login
         if (currentSegment !== 'login') {
           router.replace('/login');
         }
+        return;
+      }
+
+      // Primer login: forzar cambio de contraseña antes de entrar
+      if (firstLogin) {
+        if (currentSegment !== 'change-password') {
+          router.replace('/change-password');
+        }
+        return;
+      }
+
+      const isAdmin = roles.includes('admin');
+      if (isAdmin) {
+        if (currentSegment === 'login' || currentSegment === 'change-password') {
+          router.replace('/admin');
+        }
       } else {
-        const isAdmin = roles.includes('admin');
-        if (isAdmin) {
-          // El admin tiene acceso a todo el sistema, no se fuerza ninguna redirección
-          if (currentSegment === 'login') {
-            router.replace('/admin'); // Redirige al admin a su dashboard
-          }
-        } else {
-          // Usuarios normales solo pueden acceder a '/' o rutas específicas
-          const allowedSegments = ['index', '(tabs)']; // Rutas permitidas para usuarios normales
-          if (!allowedSegments.includes(currentSegment)) {
-            router.replace('/'); // Redirige a la ruta raíz
-          }
+        const allowedSegments = ['index', '(tabs)'];
+        if (!allowedSegments.includes(currentSegment)) {
+          router.replace('/');
         }
       }
     };
 
     handleNavigation();
-  }, [isAuthenticated, navigationState?.key, segments, roles]);
+  }, [isAuthenticated, firstLogin, navigationState?.key, segments, roles]);
 
   return <Slot />;
 }

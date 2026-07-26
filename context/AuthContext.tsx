@@ -13,6 +13,7 @@ interface AuthState {
   roles: string[];
   userName: string | null;
   userId: string | null;
+  firstLogin: boolean;
   loading: boolean;
   error: string | null;
 }
@@ -21,6 +22,7 @@ interface AuthState {
 interface AuthContextType extends AuthState {
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
+  setFirstLoginFalse: () => Promise<void>;
   isAuthenticated: boolean;
 }
 
@@ -108,6 +110,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     roles: [],
     userName: null,
     userId: null,
+    firstLogin: false,
     loading: true,
     error: null,
   });
@@ -124,7 +127,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const decoded = jwtDecode<any>(token);
       const currentTime = Date.now() / 1000;
-      return decoded.exp - currentTime < 300; 
+      return decoded.exp - currentTime < 300;
     } catch {
       return true;
     }
@@ -133,7 +136,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refreshAccessToken = async (tokenToUse?: string) => {
     try {
       let refreshToken = tokenToUse || authState.refreshToken;
-      
+
       if (!refreshToken) {
         const storedRefreshToken = await Storage.getItem('refreshToken');
         if (!storedRefreshToken) {
@@ -179,7 +182,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loading: false,
         error: null
       }));
-  
+
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 401 || error.response?.status === 403) {
@@ -199,8 +202,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           password,
           client_id: 'proyecto-h-client',
         }),
-        { 
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, 
+        {
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           withCredentials: false
         }
       );
@@ -216,17 +219,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const userName = decodedToken.preferred_username;
       const userId = decodedToken.sub;
 
-      // ── Verificar estado de cuenta (fail-CLOSED) ─────────────────────────
+      // ── Verificar cuenta + leer firstLogin ──────────────────────────────────
       // Reglas:
-      //   admin (role=admin) → 404 en DB es normal, se permite el login
-      //   user  (role=user)  → DEBE estar en DB; si no está (404) → bloqueado
+      //   admin (role=admin) → 404 en DB es normal, firstLogin=false, continuar
+      //   user  (role=user)  → DEBE estar en DB; 404 → bloqueado (fail-closed)
       //   cualquiera         → 403 ACCOUNT_SUSPENDED → bloqueado
-      //   cualquiera         → 5xx / error de red → bloqueado
+      //   user               → 5xx / error de red → bloqueado
+      let firstLogin = false;
       if (!isAdmin) {
         try {
-          await axios.get(
+          const profileResp = await axios.get(
             `${REACT_APP_API_URL}/api/v2/users/by-username/${encodeURIComponent(userName.toLowerCase())}`
           );
+          firstLogin = profileResp.data?.firstLogin ?? false;
         } catch (profileErr: any) {
           const profileStatus: number = profileErr.response?.status ?? 0;
           if (profileStatus === 403 &&
@@ -238,7 +243,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // 404 → usuario no registrado en el sistema → bloquear
           // 5xx / timeout → no se puede verificar → bloquear
           const err: any = new Error('ACCESS_DENIED');
-          err.suspended = true;   // reutilizamos el mensaje de suspensión
+          err.suspended = true;
           throw err;
         }
       }
@@ -250,6 +255,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ['userName', userName],
         ['userId', userId],
         ['roles', JSON.stringify(isAdmin ? ['admin'] : ['user'])],
+        ['firstLogin', String(firstLogin)],
       ]);
 
       setAxiosAuthHeader(access_token);
@@ -260,6 +266,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         roles: isAdmin ? ['admin'] : ['user'],
         userName,
         userId,
+        firstLogin,
         loading: false,
         error: null,
       });
@@ -285,14 +292,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       await Storage.multiRemove([
-        'accessToken', 
-        'refreshToken', 
-        'expiresIn', 
-        'userName', 
-        'userId', 
-        'roles'
+        'accessToken',
+        'refreshToken',
+        'expiresIn',
+        'userName',
+        'userId',
+        'roles',
+        'firstLogin',
       ]);
-      
+
       setAxiosAuthHeader(null);
       setAuthState({
         accessToken: null,
@@ -301,12 +309,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         roles: [],
         userName: null,
         userId: null,
+        firstLogin: false,
         loading: false,
         error: null,
       });
     } catch (error) {
       console.error('Logout error:', error);
     }
+  };
+
+  const setFirstLoginFalse = async () => {
+    await Storage.setItem('firstLogin', 'false');
+    setAuthState(prev => ({ ...prev, firstLogin: false }));
   };
 
   useEffect(() => {
@@ -318,20 +332,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           'expiresIn',
           'userName',
           'userId',
-          'roles'
+          'roles',
+          'firstLogin',
         ]);
-    
+
         const storageMap = Object.fromEntries(storageData);
         const accessToken = storageMap.accessToken;
         const refreshToken = storageMap.refreshToken;
-        
+
         if (accessToken && refreshToken) {
           try {
             if (isTokenExpiringSoon(accessToken)) {
               await refreshAccessToken();
             } else {
               setAxiosAuthHeader(accessToken);
-              
+
               let roles: string[] = [];
               try {
                 if (storageMap.roles) {
@@ -339,7 +354,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
               } catch (e) {
               }
-              
+
               setAuthState({
                 accessToken,
                 refreshToken,
@@ -347,13 +362,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 roles,
                 userName: storageMap.userName,
                 userId: storageMap.userId,
+                firstLogin: storageMap.firstLogin === 'true',
                 loading: false,
                 error: null,
               });
             }
           } catch (tokenError) {
-            setAuthState(prev => ({ 
-              ...prev, 
+            setAuthState(prev => ({
+              ...prev,
               accessToken: null,
               refreshToken: null,
               roles: [],
@@ -379,8 +395,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       async error => {
         const originalRequest = error.config;
         if (
-          error.response?.status === 401 && 
-          !originalRequest._retry && 
+          error.response?.status === 401 &&
+          !originalRequest._retry &&
           authState.refreshToken
         ) {
           originalRequest._retry = true;
@@ -412,6 +428,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ...authState,
         login,
         logout,
+        setFirstLoginFalse,
         isAuthenticated: !!authState.accessToken,
       }}
     >

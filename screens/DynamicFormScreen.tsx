@@ -324,6 +324,11 @@ const DynamicFormScreen = () => {
       if (totalPct !== 100) newErrors.porcentajes = true;
     }
 
+    // Validación para depósito bancario — comprobante obligatorio
+    if (formType === 'closing-deposits' && !selectedImage) {
+      newErrors.image = true;
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -899,6 +904,11 @@ const DynamicFormScreen = () => {
             </FieldGroup>
 
             {renderImagePicker()}
+            {errors.image && (
+              <HelperText type="error" visible style={{ marginTop: -SPACE.s2, marginBottom: SPACE.s2 }}>
+                ⚠️ El comprobante bancario es obligatorio para este tipo de operación
+              </HelperText>
+            )}
           </>
         );
       case 'supplier-payments':

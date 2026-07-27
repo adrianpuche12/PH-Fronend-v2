@@ -560,10 +560,17 @@ export default function UsersScreen() {
           <View style={[styles.modal, { alignItems: 'center' }]}>
             <Text style={{ fontSize: 36, marginBottom: SPACE.s2 }}>🔑</Text>
             <Text style={styles.modalTitle}>Usuario creado</Text>
-            <Text style={styles.modalSub}>{tempPwdModal?.fullName} (@{tempPwdModal?.username})</Text>
+            <Text style={styles.modalSub}>{tempPwdModal?.fullName}</Text>
 
-            <Text style={[styles.fieldLabel, { textAlign: 'center', marginTop: SPACE.s2 }]}>
-              Contrasena temporal — enviala por WhatsApp al usuario
+            <View style={{ backgroundColor: COLOR.brandTint, borderRadius: RADIUS.r2, padding: SPACE.s3, width: '100%', alignItems: 'center', borderWidth: 1, borderColor: COLOR.brandDark, marginTop: SPACE.s2, marginBottom: SPACE.s3 }}>
+              <Text style={{ fontSize: FONT_SIZE.caption, color: COLOR.inkMute, marginBottom: 2 }}>Usuario para iniciar sesión</Text>
+              <Text selectable style={{ fontSize: FONT_SIZE.h2, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink, letterSpacing: 1 }}>
+                {tempPwdModal?.username}
+              </Text>
+            </View>
+
+            <Text style={[styles.fieldLabel, { textAlign: 'center' }]}>
+              Contraseña temporal — enviala por WhatsApp al usuario
             </Text>
 
             <View style={{ backgroundColor: COLOR.bg, borderRadius: RADIUS.r2, padding: SPACE.s3, width: '100%', alignItems: 'center', borderWidth: 1, borderColor: COLOR.border, marginBottom: SPACE.s3 }}>
@@ -580,7 +587,7 @@ export default function UsersScreen() {
               onPress={async () => {
                 if (tempPwdModal?.password) {
                   try {
-                    await navigator.clipboard.writeText(tempPwdModal.password);
+                    await navigator.clipboard.writeText(`Usuario: ${tempPwdModal.username}\nContraseña: ${tempPwdModal.password}`);
                   } catch {
                     // clipboard no disponible en mobile: el usuario puede seleccionar el texto
                   }
@@ -588,7 +595,7 @@ export default function UsersScreen() {
                 }
               }}
             >
-              {tempPwdCopied ? 'Copiado!' : 'Copiar contrasena'}
+              {tempPwdCopied ? 'Copiado!' : 'Copiar usuario y contraseña'}
             </Button>
 
             <Button mode="outlined" style={{ width: '100%', borderRadius: RADIUS.r2 }} onPress={() => { setTempPwdModal(null); setTempPwdCopied(false); }}>

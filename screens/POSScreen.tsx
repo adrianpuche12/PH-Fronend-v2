@@ -87,9 +87,11 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
   const [selectedId, setSelectedId]   = useState<number | null>(null);
   const [pendingQty, setPendingQty]   = useState(1);
 
-  // Carrito: array fijo — solo se puede eliminar, no editar qty
+  // Carrito: +/− por ítem y eliminación
   const [cart, setCart]               = useState<CartItem[]>([]);
   const [snackbar, setSnackbar]       = useState('');
+  const [snackbarType, setSnackbarType] = useState<'ok' | 'err' | 'info'>('info');
+  const toast = (msg: string, type: 'ok' | 'err' | 'info' = 'info') => { setSnackbar(msg); setSnackbarType(type); };
   const [submitting, setSubmitting]   = useState(false);
 
   // Modal de método de pago
@@ -172,7 +174,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
       ]);
       setCategories(catRes.data);
       setStock(stockRes.data.filter(s => s.productActive));
-    } catch { setSnackbar('Error al cargar catálogo'); }
+    } catch { toast('Error al cargar catálogo', 'err'); }
     finally { setLoading(false); }
   }, [storeId]);
 
@@ -243,7 +245,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
             setKpiTotal(prev => Math.max(0, prev - cancelled.total));
           }
           loadCatalog();
-        } catch (e: any) { setSnackbar(e.response?.data?.error || 'Error al anular'); }
+        } catch (e: any) { toast(e.response?.data?.error || 'Error al anular', 'err'); }
         finally { setCancellingId(null); }
       }
     );
@@ -264,7 +266,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
   const handleAddExpense = async () => {
     if (!shift || !expenseDesc.trim() || !expenseAmount) return;
     const amount = parseFloat(expenseAmount);
-    if (isNaN(amount) || amount <= 0) { setSnackbar('Ingresá un monto válido'); return; }
+    if (isNaN(amount) || amount <= 0) { toast('Ingresá un monto válido', 'err'); return; }
     setSavingExpense(true);
     try {
       await axios.post(`${API}/api/v2/shifts/${shift.id}/expenses`, {
@@ -275,7 +277,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
       setExpenseDesc('');
       setExpenseAmount('');
       loadExpenses();
-    } catch (e: any) { setSnackbar(e.response?.data?.error || 'Error al registrar egreso'); }
+    } catch (e: any) { toast(e.response?.data?.error || 'Error al registrar egreso', 'err'); }
     finally { setSavingExpense(false); }
   };
 
@@ -288,7 +290,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
   const handleSaveEditExpense = async () => {
     if (!editingExpense || !editExpenseDesc.trim() || !editExpenseAmount) return;
     const amount = parseFloat(editExpenseAmount);
-    if (isNaN(amount) || amount <= 0) { setSnackbar('Ingresá un monto válido'); return; }
+    if (isNaN(amount) || amount <= 0) { toast('Ingresá un monto válido', 'err'); return; }
     setSavingEditExpense(true);
     try {
       await axios.put(`${API}/api/v2/expenses/${editingExpense.id}`, {
@@ -297,7 +299,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
       });
       setEditingExpense(null);
       loadExpenses();
-    } catch (e: any) { setSnackbar(e.response?.data?.error || 'Error al editar egreso'); }
+    } catch (e: any) { toast(e.response?.data?.error || 'Error al editar egreso', 'err'); }
     finally { setSavingEditExpense(false); }
   };
 
@@ -310,7 +312,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
         try {
           await axios.delete(`${API}/api/v2/expenses/${exp.id}`);
           setShiftExpenses(prev => prev.filter(e => e.id !== exp.id));
-        } catch (e: any) { setSnackbar(e.response?.data?.error || 'Error al eliminar egreso'); }
+        } catch (e: any) { toast(e.response?.data?.error || 'Error al eliminar egreso', 'err'); }
         finally { setDeletingExpenseId(null); }
       },
       'Sí, eliminar'
@@ -352,7 +354,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
   // Seleccionar producto (solo si no está ya en el carrito)
   const selectProduct = (item: StockItem) => {
     if (isInCart(item.productId)) {
-      setSnackbar('Ya está en el carrito. Eliminalo para cambiar la cantidad.');
+      toast('Ya está en el carrito — usá los controles +/− para cambiar la cantidad', 'info');
       return;
     }
     setSelectedId(item.productId);
@@ -364,7 +366,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
     const item = stock.find(s => s.productId === selectedId);
     if (!item || pendingQty < 1) return;
     if (pendingQty > item.quantity) {
-      setSnackbar(`Stock insuficiente. Disponible: ${item.quantity} unidades.`);
+      toast(`Stock insuficiente. Disponible: ${item.quantity} unidades.`, 'err');
       return;
     }
     setCart(prev => [...prev, { productId: item.productId, productName: item.productName, price: item.price, qty: pendingQty, subtotal: item.price * pendingQty }]);
@@ -376,6 +378,21 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
     setCart(prev => prev.filter(c => c.productId !== productId));
 
   const clearCart = () => { setCart([]); setSelectedId(null); setPendingQty(1); };
+
+  const updateCartQty = (productId: number, delta: number) => {
+    const stockItem = stock.find(s => s.productId === productId);
+    setCart(prev => {
+      const next = prev.map(c => {
+        if (c.productId !== productId) return c;
+        const newQty = c.qty + delta;
+        if (newQty <= 0) return null;
+        const maxAvail = stockItem ? Number(stockItem.quantity) : c.qty;
+        const clampedQty = Math.min(newQty, maxAvail);
+        return { ...c, qty: clampedQty, subtotal: c.price * clampedQty };
+      });
+      return next.filter((c): c is CartItem => c !== null);
+    });
+  };
 
   // ── Abrir turno ───────────────────────────────────────────────────────────
 
@@ -412,8 +429,8 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
       setShift(res.data);
       setOpenShiftModal(false);
       setOpeningCash('');
-      setSnackbar(`Turno ${res.data.code} abierto`);
-    } catch (e: any) { setSnackbar(e.response?.data?.error || 'Error al abrir turno'); }
+      toast(`Turno ${res.data.code} abierto`, 'ok');
+    } catch (e: any) { toast(e.response?.data?.error || 'Error al abrir turno', 'err'); }
   };
 
   // ── Confirmar venta ───────────────────────────────────────────────────────
@@ -438,7 +455,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
       const card = parseFloat(mixedCard) || 0;
       const diff = Math.abs(cash + card - cartTotal);
       if (diff > 0.01) {
-        setSnackbar(`Efectivo + Tarjeta (L ${(cash + card).toFixed(2)}) no coincide con el total (L ${cartTotal.toFixed(2)})`);
+        toast(`Efectivo + Tarjeta (L ${(cash + card).toFixed(2)}) no coincide con el total (L ${cartTotal.toFixed(2)})`, 'err');
         return;
       }
     }
@@ -458,7 +475,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
 
       if (editingSaleId != null) {
         await axios.put<SaleRecord>(`${API}/api/v2/sales/${editingSaleId}`, body);
-        setSnackbar('Venta editada correctamente');
+        toast('Venta editada correctamente', 'ok');
         setEditingSaleId(null);
         clearCart();
         loadCatalog();
@@ -473,7 +490,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
         loadCatalog();
         if (posTab === 'ventas') loadShiftSales();
       }
-    } catch (e: any) { setSnackbar(e.response?.data?.error || (editingSaleId != null ? 'Error al editar venta' : 'Error al registrar venta')); }
+    } catch (e: any) { toast(e.response?.data?.error || (editingSaleId != null ? 'Error al editar venta' : 'Error al registrar venta'), 'err'); }
     finally { setSubmitting(false); }
   };
 
@@ -489,7 +506,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
     try {
       const res = await axios.get<DailySummary>(`${API}/api/v2/shifts/${shift.id}/summary`);
       setSummary(res.data);
-    } catch { setSnackbar('Error al cargar resumen'); setClosingModal(false); }
+    } catch { toast('Error al cargar resumen', 'err'); setClosingModal(false); }
     finally { setLoadingSummary(false); }
   };
 
@@ -613,7 +630,10 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
         </View>
       </Modal>
 
-      <Snackbar visible={!!snackbar} onDismiss={() => setSnackbar('')} duration={2500}>{snackbar}</Snackbar>
+      <Snackbar visible={!!snackbar} onDismiss={() => setSnackbar('')} duration={2500}
+        style={{ backgroundColor: snackbarType === 'err' ? COLOR.expense : snackbarType === 'ok' ? COLOR.income : COLOR.ink }}>
+        {snackbar}
+      </Snackbar>
     </View>
   );
 
@@ -829,6 +849,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
         {isDesktop && (
           <View style={styles.ticketDesktop}>
             <Ticket cart={cart} subtotal={cartSubtotal} isv={cartISV} total={cartTotal} itemCount={cartItemCount} onRemove={removeFromCart}
+              onUpdateQty={updateCartQty}
               onClear={editingSaleId != null ? handleCancelEditSale : clearCart} onSubmit={handleSubmitSale} submitting={submitting} full
               editing={editingSaleId != null} />
           </View>
@@ -837,7 +858,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
 
       {/* ══ BARRA FLOTANTE DEL CARRITO (mobile) ══ */}
       {!isDesktop && posTab === 'nueva' && cart.length > 0 && (
-        <TouchableOpacity style={styles.cartFloatingBar} onPress={() => setCartModalOpen(true)} activeOpacity={0.9}>
+        <TouchableOpacity style={[styles.cartFloatingBar, Platform.OS === 'web' && { position: 'fixed' as any }]} onPress={() => setCartModalOpen(true)} activeOpacity={0.9}>
           <View style={styles.cartBarBadge}>
             <Text style={styles.cartBarBadgeText}>{cartItemCount}</Text>
           </View>
@@ -860,14 +881,22 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
             <ScrollView style={{ maxHeight: 260 }}>
               {cart.map(item => (
                 <View key={item.productId} style={styles.cartModalItem}>
-                  <View style={{ flex: 1 }}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={styles.cartModalItemName} numberOfLines={1}>{item.productName}</Text>
-                    <Text style={styles.cartModalItemSub}>{item.qty} × {formatHnl(item.price)}</Text>
+                    <Text style={styles.cartModalItemSub}>{formatHnl(item.price)} c/u · {formatHnl(item.subtotal)}</Text>
                   </View>
-                  <Text style={styles.cartModalItemTotal}>{formatHnl(item.subtotal)}</Text>
-                  <TouchableOpacity onPress={() => removeFromCart(item.productId)} style={{ padding: 4 }}>
-                    <MaterialCommunityIcons name="trash-can-outline" size={18} color={COLOR.expense} />
-                  </TouchableOpacity>
+                  <View style={styles.cartQtyCtrl}>
+                    <TouchableOpacity
+                      onPress={() => item.qty === 1 ? removeFromCart(item.productId) : updateCartQty(item.productId, -1)}
+                      style={styles.cartQtyBtn}
+                    >
+                      <MaterialCommunityIcons name={item.qty === 1 ? 'trash-can-outline' : 'minus'} size={14} color={item.qty === 1 ? COLOR.expense : COLOR.ink} />
+                    </TouchableOpacity>
+                    <Text style={styles.cartQtyNum}>{item.qty}</Text>
+                    <TouchableOpacity onPress={() => updateCartQty(item.productId, 1)} style={styles.cartQtyBtn}>
+                      <MaterialCommunityIcons name="plus" size={14} color={COLOR.ink} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
               ))}
             </ScrollView>
@@ -1366,7 +1395,10 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
         onConfirm={() => { confirmDlg?.onConfirm(); setConfirmDlg(null); }}
         onCancel={() => setConfirmDlg(null)}
       />
-      <Snackbar visible={!!snackbar} onDismiss={() => setSnackbar('')} duration={2500}>{snackbar}</Snackbar>
+      <Snackbar visible={!!snackbar} onDismiss={() => setSnackbar('')} duration={2500}
+        style={{ backgroundColor: snackbarType === 'err' ? COLOR.expense : snackbarType === 'ok' ? COLOR.income : COLOR.ink }}>
+        {snackbar}
+      </Snackbar>
 
       {/* ══ MODAL MÉTODO DE PAGO ══ */}
       <Modal visible={paymentModal} transparent animationType="fade" onRequestClose={() => setPaymentModal(false)}>
@@ -1501,10 +1533,11 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
 
 // ─── Ticket (componente interno) ──────────────────────────────────────────────
 
-function Ticket({ cart, subtotal, isv, total, itemCount, onRemove, onClear, onSubmit, submitting, full, editing }: {
+function Ticket({ cart, subtotal, isv, total, itemCount, onRemove, onUpdateQty, onClear, onSubmit, submitting, full, editing }: {
   cart: CartItem[];
   subtotal: number; isv: number; total: number; itemCount: number;
   onRemove: (id: number) => void;
+  onUpdateQty: (id: number, delta: number) => void;
   onClear: () => void;
   onSubmit: () => void;
   submitting: boolean;
@@ -1540,12 +1573,21 @@ function Ticket({ cart, subtotal, isv, total, itemCount, onRemove, onClear, onSu
                 <View key={item.productId} style={tkStyles.item}>
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={tkStyles.itemName} numberOfLines={1}>{item.productName}</Text>
-                    <Text style={tkStyles.itemCode}>{item.qty} × {formatHnl(item.price)}</Text>
+                    <Text style={tkStyles.itemCode}>{formatHnl(item.price)} c/u</Text>
+                  </View>
+                  <View style={tkStyles.qtyCtrl}>
+                    <TouchableOpacity
+                      onPress={() => item.qty === 1 ? onRemove(item.productId) : onUpdateQty(item.productId, -1)}
+                      style={tkStyles.qtyCtrlBtn}
+                    >
+                      <MaterialCommunityIcons name={item.qty === 1 ? 'trash-can-outline' : 'minus'} size={13} color={item.qty === 1 ? COLOR.expense : COLOR.ink} />
+                    </TouchableOpacity>
+                    <Text style={tkStyles.qtyCtrlNum}>{item.qty}</Text>
+                    <TouchableOpacity onPress={() => onUpdateQty(item.productId, 1)} style={tkStyles.qtyCtrlBtn}>
+                      <MaterialCommunityIcons name="plus" size={13} color={COLOR.ink} />
+                    </TouchableOpacity>
                   </View>
                   <Text style={tkStyles.itemSub}>{formatHnl(item.subtotal)}</Text>
-                  <TouchableOpacity onPress={() => onRemove(item.productId)} style={tkStyles.deleteBtn} accessibilityRole="button" accessibilityLabel="Quitar del carrito">
-                    <MaterialCommunityIcons name="trash-can-outline" size={18} color={COLOR.expense} />
-                  </TouchableOpacity>
                 </View>
               ))}
             </ScrollView>
@@ -1703,6 +1745,11 @@ const styles = StyleSheet.create({
   cartBarLabel:       { flex: 1, fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.inkOnBrand },
   cartBarTotal:       { fontSize: FONT_SIZE.h2, fontWeight: FONT_WEIGHT.black as any, color: COLOR.inkOnBrand },
 
+  // Cart +/- controls (mobile modal)
+  cartQtyCtrl:        { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: COLOR.border2, borderRadius: RADIUS.r1, overflow: 'hidden', marginHorizontal: SPACE.s2 },
+  cartQtyBtn:         { width: 28, height: 28, justifyContent: 'center', alignItems: 'center', backgroundColor: COLOR.surface },
+  cartQtyNum:         { width: 28, textAlign: 'center', fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
+
   // Modal carrito mobile
   cartModalOverlay:   { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
   cartModalSheet:     { backgroundColor: COLOR.surface, borderTopLeftRadius: RADIUS.r4, borderTopRightRadius: RADIUS.r4, padding: SPACE.s4, gap: SPACE.s3 },
@@ -1802,6 +1849,11 @@ const tkStyles = StyleSheet.create({
   itemCode:       { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.medium as any },
   itemSub:        { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink, width: 70, textAlign: 'right' },
   deleteBtn:      { marginLeft: SPACE.s2, padding: SPACE.s1 },
+
+  // +/- controls inside ticket items
+  qtyCtrl:        { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: COLOR.border2, borderRadius: RADIUS.r1, overflow: 'hidden' },
+  qtyCtrlBtn:     { width: 24, height: 24, justifyContent: 'center', alignItems: 'center', backgroundColor: COLOR.bg },
+  qtyCtrlNum:     { width: 22, textAlign: 'center', fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
 
   totals:         { paddingTop: SPACE.s2, gap: SPACE.s1, borderTopWidth: 1, borderTopColor: COLOR.border, marginTop: SPACE.s2 },
   totalLine:      { flexDirection: 'row', justifyContent: 'space-between' },

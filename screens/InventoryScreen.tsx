@@ -521,7 +521,7 @@ const InventoryScreen = () => {
       `¿Eliminar "${item.productName}"? Esta acción no se puede deshacer.`,
       async () => {
         try { await axios.delete(`${API}/api/v2/products/${item.productId}`); setSnackbar('Producto eliminado'); loadAll(); }
-        catch { setSnackbar('No se puede eliminar — el producto tiene historial'); }
+        catch { setSnackbar('Este producto tiene ventas registradas. Podés desactivarlo para quitarlo del POS.'); }
         finally { setConfirmDlg(null); }
       }
     );
@@ -641,6 +641,11 @@ const InventoryScreen = () => {
           <View style={styles.rowInfo}>
             <Text style={styles.rowName} numberOfLines={1}>{item.productName}</Text>
             <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 2 }}>
+              {!item.productActive && (
+                <View style={{ backgroundColor: COLOR.inkMute + '22', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 1 }}>
+                  <Text style={{ fontSize: FONT_SIZE.caption, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.semibold as any }}>Archivado</Text>
+                </View>
+              )}
               {item.productSku ? <Text style={styles.rowSku}>{item.productSku}</Text> : null}
               {item.categoryPath ? <Text style={styles.rowCat} numberOfLines={1}>· {item.categoryPath}</Text> : null}
             </View>
@@ -665,7 +670,14 @@ const InventoryScreen = () => {
         <View style={styles.mobileCard}>
           {/* Fila 1: nombre + stock */}
           <View style={styles.mobileCardTop}>
-            <Text style={styles.mobileCardName} numberOfLines={2}>{item.productName}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.mobileCardName} numberOfLines={2}>{item.productName}</Text>
+              {!item.productActive && (
+                <View style={{ backgroundColor: COLOR.inkMute + '22', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 1, alignSelf: 'flex-start', marginTop: 3 }}>
+                  <Text style={{ fontSize: FONT_SIZE.caption, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.semibold as any }}>Archivado</Text>
+                </View>
+              )}
+            </View>
             {item.productType === 'FABRICATED' ? (
               <View style={[styles.stockBadge, { backgroundColor: COLOR.brand + '22' }]}>
                 <Text style={[styles.stockNum, { color: COLOR.brand }]}>{item.quantity}</Text>

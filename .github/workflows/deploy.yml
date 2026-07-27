@@ -25,7 +25,7 @@ jobs:
         run: npx expo export --platform web
         env:
           EXPO_PUBLIC_API_URL: ${{ secrets.DEV_API_URL }}
-          EXPO_PUBLIC_KEYCLOAK_URL: https://keycloak.belopia.app
+          EXPO_PUBLIC_KEYCLOAK_URL: https://keycloak-production-e4ef.up.railway.app
           EXPO_PUBLIC_KEYCLOAK_REALM: proyecto-h-dev
           EXPO_PUBLIC_R2_PUBLIC_URL: https://pub-7e31005d201d4d34894758b2b1d00d9a.r2.dev
 
@@ -47,6 +47,6 @@ jobs:
         run: npx expo export --platform web
         env:
           EXPO_PUBLIC_API_URL: ${{ secrets.PROD_API_URL }}
-          EXPO_PUBLIC_KEYCLOAK_URL: https://keycloak.belopia.app
+          EXPO_PUBLIC_KEYCLOAK_URL: https://keycloak-production-e4ef.up.railway.app
           EXPO_PUBLIC_KEYCLOAK_REALM: proyecto-h-prod
           EXPO_PUBLIC_R2_PUBLIC_URL: https://pub-7e31005d201d4d34894758b2b1d00d9a.r2.dev

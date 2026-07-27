@@ -240,35 +240,43 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
                   <View style={styles.detail}>
                     {isLoading ? (
                       <ActivityIndicator color={COLOR.brand} style={{ margin: 12 }} />
-                    ) : summary && summary.totalSales > 0 ? (
+                    ) : (
                       <>
-                        {/* Tabla de productos */}
-                        <View style={styles.detailHeader}>
-                          <Text style={[styles.detailCol, styles.detailColName]}>Producto</Text>
-                          <Text style={[styles.detailCol, { width: 44, textAlign: 'center' }]}>Cant.</Text>
-                          <Text style={[styles.detailCol, { width: 88, textAlign: 'right' }]}>Subtotal</Text>
-                        </View>
-                        {summary.productSummary.map((p, i) => (
-                          <View key={i} style={styles.detailRow}>
-                            <Text style={[styles.detailCell, styles.detailColName]} numberOfLines={1}>{p.productName}</Text>
-                            <Text style={[styles.detailCell, { width: 44, textAlign: 'center' }]}>{p.quantity}</Text>
-                            <Text style={[styles.detailCell, { width: 88, textAlign: 'right' }]}>{formatHnl(p.subtotal)}</Text>
-                          </View>
-                        ))}
+                        {summary && summary.totalSales > 0 ? (
+                          <>
+                            {/* Tabla de productos */}
+                            <View style={styles.detailHeader}>
+                              <Text style={[styles.detailCol, styles.detailColName]}>Producto</Text>
+                              <Text style={[styles.detailCol, { width: 44, textAlign: 'center' }]}>Cant.</Text>
+                              <Text style={[styles.detailCol, { width: 88, textAlign: 'right' }]}>Subtotal</Text>
+                            </View>
+                            {summary.productSummary.map((p, i) => (
+                              <View key={i} style={styles.detailRow}>
+                                <Text style={[styles.detailCell, styles.detailColName]} numberOfLines={1}>{p.productName}</Text>
+                                <Text style={[styles.detailCell, { width: 44, textAlign: 'center' }]}>{p.quantity}</Text>
+                                <Text style={[styles.detailCell, { width: 88, textAlign: 'right' }]}>{formatHnl(p.subtotal)}</Text>
+                              </View>
+                            ))}
 
-                        {/* Totales */}
-                        <View style={styles.detailTotals}>
-                          <View style={styles.totalLine}>
-                            <Text style={styles.totalLabel}>{summary.totalSales} venta{summary.totalSales !== 1 ? 's' : ''}</Text>
-                            <Text style={styles.totalLabel}>Subtotal: {formatHnl(summary.totalSubtotal)}</Text>
-                          </View>
-                          <View style={[styles.totalLine, styles.totalFinal]}>
-                            <Text style={styles.totalFinalLabel}>TOTAL</Text>
-                            <Text style={styles.totalFinalAmount}>{formatHnl(summary.totalAmount)}</Text>
-                          </View>
-                        </View>
+                            {/* Totales */}
+                            <View style={styles.detailTotals}>
+                              <View style={styles.totalLine}>
+                                <Text style={styles.totalLabel}>{summary.totalSales} venta{summary.totalSales !== 1 ? 's' : ''}</Text>
+                                <Text style={styles.totalLabel}>Subtotal: {formatHnl(summary.totalSubtotal)}</Text>
+                              </View>
+                              <View style={[styles.totalLine, styles.totalFinal]}>
+                                <Text style={styles.totalFinalLabel}>TOTAL</Text>
+                                <Text style={styles.totalFinalAmount}>{formatHnl(summary.totalAmount)}</Text>
+                              </View>
+                            </View>
+                          </>
+                        ) : (
+                          <Text style={styles.noSalesText}>
+                            {summary ? 'Turno sin ventas registradas.' : 'No se pudo cargar el resumen.'}
+                          </Text>
+                        )}
 
-                        {/* Reconciliación de caja — solo si hay datos */}
+                        {/* Reconciliación de caja — visible para cualquier turno cerrado con datos */}
                         {isClosed && shift.declaredCashAmount != null && (
                           <View style={styles.recBox}>
                             <Text style={styles.recTitle}>Reconciliación de caja</Text>
@@ -289,7 +297,7 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
                             <View style={[styles.recLine, { borderTopWidth: 1, borderTopColor: COLOR.border, paddingTop: SPACE.s1 }]}>
                               <Text style={[styles.recLabelHist, { fontWeight: FONT_WEIGHT.bold as any }]}>Total esperado</Text>
                               <Text style={[styles.recValueHist, { fontWeight: FONT_WEIGHT.bold as any }]}>
-                                {formatHnl((shift.openingCashAmount ?? 0) + (shift.totalCashSales ?? 0) - (shift.totalShiftExpenses ?? 0))}
+                                {formatHnl((shift.totalCashSales ?? 0) - (shift.totalShiftExpenses ?? 0))}
                               </Text>
                             </View>
                             <View style={styles.recLine}>
@@ -320,10 +328,6 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
                           </View>
                         )}
                       </>
-                    ) : (
-                      <Text style={styles.noSalesText}>
-                        {summary ? 'Turno sin ventas registradas.' : 'No se pudo cargar el resumen.'}
-                      </Text>
                     )}
                   </View>
                 )}

@@ -86,6 +86,8 @@ interface DepositGroup {
   imageUri?: string;
   storeNames: string[];
   closingCount: number;
+  periodStart?: string;
+  periodEnd?: string;
 }
 
 type DisplayItem = Transaction | DepositGroup;
@@ -636,6 +638,8 @@ const AdminScreen = () => {
           g.amount += tx.declaredCashAmount ?? tx.amount;
           g.closingCount += 1;
           if (!g.storeNames.includes(sName)) g.storeNames.push(sName);
+          if (tx.periodStart && (!g.periodStart || tx.periodStart < g.periodStart)) g.periodStart = tx.periodStart;
+          if (tx.periodEnd   && (!g.periodEnd   || tx.periodEnd   > g.periodEnd))   g.periodEnd   = tx.periodEnd;
         } else {
           const g: DepositGroup = {
             type: 'DEPOSIT_GROUP',
@@ -645,6 +649,8 @@ const AdminScreen = () => {
             imageUri: tx.imageUri,
             storeNames: [sName],
             closingCount: 1,
+            periodStart: tx.periodStart,
+            periodEnd: tx.periodEnd,
           };
           groups.set(gid, g);
           result.push(g);
@@ -1229,6 +1235,11 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
               <Text style={styles.txMeta} numberOfLines={1}>
                 {item.closingCount} cierre{item.closingCount !== 1 ? 's' : ''} · {item.storeNames.join(', ')}
               </Text>
+              {item.periodStart && (
+                <Text style={styles.txMeta} numberOfLines={1}>
+                  Periodo {fmtD(item.periodStart)}{item.periodEnd ? ` al ${fmtD(item.periodEnd)}` : ''}
+                </Text>
+              )}
               <View style={[styles.depositBadge, styles.depositBadgeDone]}>
                 <MaterialCommunityIcons name="bank-check" size={11} color="#166534" />
                 <Text style={[styles.depositBadgeText, { color: '#166534' }]}>Depositado</Text>

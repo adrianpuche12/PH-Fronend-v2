@@ -15,12 +15,17 @@ import DynamicFormScreen from './DynamicFormScreen';
 
 type UserScreen = 'sales' | 'inventory' | 'salesHistory' | 'operaciones';
 
-const MENU: { key: UserScreen; label: string; icon: string }[] = [
-  { key: 'sales',        label: 'Ventas',           icon: 'cart-outline' },
-  { key: 'inventory',    label: 'Inventario',        icon: 'package-variant' },
-  { key: 'salesHistory', label: 'Mis ventas',        icon: 'receipt-text-outline' },
-  { key: 'operaciones',  label: 'Operaciones',       icon: 'clipboard-text-outline' },
+interface UserMenuItem { key: UserScreen; label: string; icon: string; permission?: string }
+
+const MENU_ALL: UserMenuItem[] = [
+  { key: 'sales',        label: 'Ventas',      icon: 'cart-outline',          permission: 'POS' },
+  { key: 'inventory',    label: 'Inventario',  icon: 'package-variant',       permission: 'INVENTORY' },
+  { key: 'salesHistory', label: 'Mis ventas',  icon: 'receipt-text-outline',  permission: 'SALES_HISTORY' },
+  { key: 'operaciones',  label: 'Operaciones', icon: 'clipboard-text-outline' },
 ];
+
+const hasPermission = (permissions: string[], section?: string) =>
+  !section || permissions.length === 0 || permissions.includes(section);
 
 // ─── Sidebar del usuario ──────────────────────────────────────────────────────
 
@@ -31,8 +36,9 @@ const UserSidebar = ({ active, onSelect, onClose, isDesktop }: {
   active: UserScreen; onSelect: (s: UserScreen) => void;
   onClose: () => void; isDesktop: boolean;
 }) => {
-  const { logout, userName } = useAuth();
+  const { logout, userName, permissions } = useAuth();
   const { sidebarCollapsed, toggleSidebar } = useUIPreferences();
+  const menu = MENU_ALL.filter(item => hasPermission(permissions, item.permission));
   const collapsed = isDesktop && sidebarCollapsed;
 
   const animW = useRef(new Animated.Value(
@@ -75,7 +81,7 @@ const UserSidebar = ({ active, onSelect, onClose, isDesktop }: {
       </View>
 
       <View style={styles.menuScroll}>
-        {MENU.map(item => (
+        {menu.map(item => (
           <TouchableOpacity
             key={item.key}
             style={[
@@ -112,10 +118,13 @@ const UserSidebar = ({ active, onSelect, onClose, isDesktop }: {
 const UserContent = () => {
   const { width } = useWindowDimensions();
   const isDesktop = width >= BREAKPOINT.desktop;
-  const { userName, logout } = useAuth();
+  const { userName, logout, permissions } = useAuth();
   const { stores, setSelectedStore } = useStore();
 
-  const [active, setActive]         = useState<UserScreen>('sales');
+  const filteredMenu = MENU_ALL.filter(item => hasPermission(permissions, item.permission));
+  const defaultScreen = filteredMenu[0]?.key ?? 'sales';
+
+  const [active, setActive]         = useState<UserScreen>(defaultScreen);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [ready, setReady]           = useState(false);
 
@@ -139,7 +148,7 @@ const UserContent = () => {
       .finally(() => setReady(true));
   }, [userName, stores]);
 
-  const screenTitle = MENU.find(m => m.key === active)?.label ?? '';
+  const screenTitle = filteredMenu.find(m => m.key === active)?.label ?? '';
 
   if (!ready) return <ActivityIndicator size="large" color={COLOR.brand} style={{ flex: 1, marginTop: 60 }} />;
 
@@ -191,7 +200,7 @@ const UserContent = () => {
 
               {/* Menú */}
               <View style={{ flex: 1, paddingTop: SPACE.s3 }}>
-                {MENU.map(item => {
+                {filteredMenu.map(item => {
                   const isActive = active === item.key;
                   return (
                     <TouchableOpacity

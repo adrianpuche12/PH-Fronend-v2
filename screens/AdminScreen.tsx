@@ -1322,9 +1322,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
         ].filter(Boolean)
       : [
           item.closingsCount ? `${item.closingsCount} cierres` : null,
-          (item.periodStart && item.periodEnd)
-            ? `${fmtDate(item.periodStart)} → ${fmtDate(item.periodEnd)}`
-            : item.periodStart ? `Periodo ${fmtDate(item.periodStart)}` : null,
+          item.periodStart ? `Periodo ${fmtDate(item.periodStart)}${item.periodEnd ? ` al ${fmtDate(item.periodEnd)}` : ''}` : null,
           item.supplier || null,
           item.description || null,
         ].filter(Boolean);

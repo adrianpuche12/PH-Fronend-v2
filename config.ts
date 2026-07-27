@@ -4,7 +4,7 @@
 // PROD:   Vercel production env vars
 //
 // EXPO_PUBLIC_* se expone al cliente en builds de Expo web.
-// Los fallbacks apuntan a DEV (ambiente más seguro para errores de config).
+// Estas variables DEBEN estar seteadas en Vercel — sin fallbacks a dominios externos.
 
 export const KEYCLOAK_URL      = process.env.EXPO_PUBLIC_KEYCLOAK_URL      || "https://keycloak-production-e4ef.up.railway.app";
 export const KEYCLOAK_REALM    = process.env.EXPO_PUBLIC_KEYCLOAK_REALM    || "proyecto-h-dev";

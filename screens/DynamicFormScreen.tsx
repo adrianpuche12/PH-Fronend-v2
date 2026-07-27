@@ -352,8 +352,13 @@ const DynamicFormScreen = () => {
       const res = await fetch(`${REACT_APP_API_URL}/api/v2/deposits/pending-closings?${params}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      setPendingClosings(Array.isArray(data) ? data : []);
+      const closings = Array.isArray(data) ? data : [];
+      setPendingClosings(closings);
       setClosingsLoaded(true);
+      if (closings.length > 0) {
+        const total = closings.reduce((sum: number, c: any) => sum + (c.amount || 0), 0);
+        setBankDeclaredAmount(total.toFixed(2));
+      }
     } catch {
       showMessage('error', 'Error al buscar cierres pendientes');
     } finally {

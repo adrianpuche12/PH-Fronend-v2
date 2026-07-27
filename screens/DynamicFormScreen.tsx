@@ -35,6 +35,7 @@ import { formatAmountInput, parseFormattedNumber } from '../utils/numberFormat';
 import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW } from '../theme';
 import { ImageService } from '../utils/ImageService';
 import ImagePicker from '../components/ImagePicker';
+import ImageViewer from '../components/ImageViewer';
 
 const BACKEND_URL = `${REACT_APP_API_URL}/api/forms`;
 const TRANSACTIONS_URL = `${REACT_APP_API_URL}/transactions`;
@@ -47,6 +48,8 @@ const DynamicFormScreen = () => {
   interface OperacionHistorial {
     id: number; type: string; amount: number; date: string;
     description: string; storeName: string; username: string;
+    periodStart?: string; periodEnd?: string;
+    imageUri?: string; depositStatus?: string;
   }
   const [historial, setHistorial]         = useState<OperacionHistorial[]>([]);
   const [histLoading, setHistLoading]     = useState(false);
@@ -1217,12 +1220,22 @@ const DynamicFormScreen = () => {
                 <Text style={histStyles.desc} numberOfLines={1}>{op.description}</Text>
               ) : null}
               <Text style={histStyles.date}>{op.date ? formatDate(op.date) : ''}</Text>
+              {op.periodStart && op.periodEnd ? (
+                <Text style={[histStyles.date, { color: COLOR.inkMute }]}>
+                  {formatDate(op.periodStart)} → {formatDate(op.periodEnd)}
+                </Text>
+              ) : null}
             </View>
 
-            {/* Monto */}
-            <Text style={[histStyles.amount, { color: isIncome ? COLOR.income : COLOR.expense }]}>
-              {isIncome ? '+' : '-'}{formatHnl(op.amount)}
-            </Text>
+            {/* Monto + comprobante */}
+            <View style={{ alignItems: 'flex-end', gap: SPACE.s1 }}>
+              <Text style={[histStyles.amount, { color: isIncome ? COLOR.income : COLOR.expense }]}>
+                {isIncome ? '+' : '-'}{formatHnl(op.amount)}
+              </Text>
+              {op.imageUri ? (
+                <ImageViewer imageUri={op.imageUri} size="small" />
+              ) : null}
+            </View>
           </View>
         </View>
         );

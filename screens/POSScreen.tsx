@@ -809,27 +809,29 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
 
                       {/* Fila 3: qty controls + Agregar (solo cuando está seleccionado) */}
                       {isSelected ? (
-                        <View style={styles.pcBottom}>
-                          <View style={styles.qtyControl}>
-                            <TouchableOpacity style={styles.qtyBtn} onPress={() => setPendingQty(q => Math.max(1, q - 1))}>
-                              <Text style={styles.qtyBtnText}>−</Text>
-                            </TouchableOpacity>
-                            <Text style={[styles.qtyNum, pendingQty >= item.quantity && { color: COLOR.expense }]}>{pendingQty}</Text>
-                            <TouchableOpacity
-                              style={[styles.qtyBtn, pendingQty >= item.quantity && { opacity: 0.4 }]}
-                              onPress={() => setPendingQty(q => Math.min(q + 1, item.quantity))}
-                              disabled={pendingQty >= item.quantity}
-                            >
-                              <Text style={styles.qtyBtnText}>+</Text>
-                            </TouchableOpacity>
-                          </View>
+                        <>
                           {pendingQty >= item.quantity && item.quantity > 0 && (
                             <Text style={{ fontSize: 10, color: COLOR.expense, marginBottom: 2 }}>Máx. {item.quantity}</Text>
                           )}
-                          <TouchableOpacity style={styles.addBtn} onPress={addToCart}>
-                            <Text style={styles.addBtnText}>Agregar</Text>
-                          </TouchableOpacity>
-                        </View>
+                          <View style={styles.pcBottom}>
+                            <View style={styles.qtyControl}>
+                              <TouchableOpacity style={styles.qtyBtn} onPress={() => setPendingQty(q => Math.max(1, q - 1))}>
+                                <Text style={styles.qtyBtnText}>−</Text>
+                              </TouchableOpacity>
+                              <Text style={[styles.qtyNum, pendingQty >= item.quantity && { color: COLOR.expense }]}>{pendingQty}</Text>
+                              <TouchableOpacity
+                                style={[styles.qtyBtn, pendingQty >= item.quantity && { opacity: 0.4 }]}
+                                onPress={() => setPendingQty(q => Math.min(q + 1, item.quantity))}
+                                disabled={pendingQty >= item.quantity}
+                              >
+                                <Text style={styles.qtyBtnText}>+</Text>
+                              </TouchableOpacity>
+                            </View>
+                            <TouchableOpacity style={styles.addBtn} onPress={addToCart}>
+                              <Text style={styles.addBtnText}>Agregar</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </>
                       ) : (
                         /* Estado inactivo */
                         <View style={styles.pcBottomInactive}>

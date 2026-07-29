@@ -705,9 +705,18 @@ const DynamicFormScreen = () => {
   );
 
   const updatePorcentaje = (storeId: number, valor: number) => {
-    setDistribuciones(prev => prev.map(d =>
-      d.storeId === storeId ? { ...d, porcentaje: Math.max(0, Math.min(100, valor)) } : d
-    ));
+    setDistribuciones(prev => {
+      const newDist = prev.map(d =>
+        d.storeId === storeId ? { ...d, porcentaje: Math.max(0, Math.min(100, valor)) } : d
+      );
+      const lastIdx    = newDist.length - 1;
+      const changedIdx = newDist.findIndex(d => d.storeId === storeId);
+      if (changedIdx !== lastIdx) {
+        const sumExceptLast = newDist.slice(0, lastIdx).reduce((s, d) => s + d.porcentaje, 0);
+        newDist[lastIdx] = { ...newDist[lastIdx], porcentaje: Math.max(0, 100 - sumExceptLast) };
+      }
+      return newDist;
+    });
   };
 
   const dividirIgual = () => {

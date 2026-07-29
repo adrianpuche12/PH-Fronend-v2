@@ -14,6 +14,8 @@ interface AuthState {
   userName: string | null;
   userId: string | null;
   firstLogin: boolean;
+  permissions: string[];
+  storeIds: number[];
   loading: boolean;
   error: string | null;
 }
@@ -111,6 +113,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     userName: null,
     userId: null,
     firstLogin: false,
+    permissions: [],
+    storeIds: [],
     loading: true,
     error: null,
   });
@@ -226,12 +230,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       //   cualquiera         → 403 ACCOUNT_SUSPENDED → bloqueado
       //   user               → 5xx / error de red → bloqueado
       let firstLogin = false;
+      let permissions: string[] = [];
+      let storeIds: number[] = [];
       if (!isAdmin) {
         try {
           const profileResp = await axios.get(
             `${REACT_APP_API_URL}/api/v2/users/by-username/${encodeURIComponent(userName.toLowerCase())}`
           );
-          firstLogin = profileResp.data?.firstLogin ?? false;
+          firstLogin   = profileResp.data?.firstLogin   ?? false;
+          permissions  = profileResp.data?.permissions  ?? [];
+          storeIds     = profileResp.data?.storeIds     ?? [];
         } catch (profileErr: any) {
           const profileStatus: number = profileErr.response?.status ?? 0;
           if (profileStatus === 403 &&
@@ -256,6 +264,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ['userId', userId],
         ['roles', JSON.stringify(isAdmin ? ['admin'] : ['user'])],
         ['firstLogin', String(firstLogin)],
+        ['permissions', JSON.stringify(permissions)],
+        ['storeIds', JSON.stringify(storeIds)],
       ]);
 
       setAxiosAuthHeader(access_token);
@@ -267,6 +277,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         userName,
         userId,
         firstLogin,
+        permissions,
+        storeIds,
         loading: false,
         error: null,
       });
@@ -299,6 +311,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         'userId',
         'roles',
         'firstLogin',
+        'permissions',
+        'storeIds',
       ]);
 
       setAxiosAuthHeader(null);
@@ -310,6 +324,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         userName: null,
         userId: null,
         firstLogin: false,
+        permissions: [],
+        storeIds: [],
         loading: false,
         error: null,
       });
@@ -334,6 +350,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           'userId',
           'roles',
           'firstLogin',
+          'permissions',
+          'storeIds',
         ]);
 
         const storageMap = Object.fromEntries(storageData);
@@ -363,6 +381,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 userName: storageMap.userName,
                 userId: storageMap.userId,
                 firstLogin: storageMap.firstLogin === 'true',
+                permissions: storageMap.permissions ? JSON.parse(storageMap.permissions) : [],
+                storeIds: storageMap.storeIds ? JSON.parse(storageMap.storeIds) : [],
                 loading: false,
                 error: null,
               });
@@ -373,6 +393,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               accessToken: null,
               refreshToken: null,
               roles: [],
+              permissions: [],
+              storeIds: [],
               loading: false,
               error: null
             }));

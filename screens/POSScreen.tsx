@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput as RNTextInput, ActivityIndicator, Modal,
-  useWindowDimensions, Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { Button, Snackbar } from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -758,8 +758,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
       {/* ══ LAYOUT PRINCIPAL ══ */}
       {posTab === 'nueva' && <View style={[styles.main, isDesktop && styles.mainDesktop]}>
 
-        {/* Grilla de productos — padding extra en mobile para no tapar con la barra flotante */}
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={[styles.grid, !isDesktop && cart.length > 0 && { paddingBottom: 80 }]}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.grid}>
           {loading
             ? <ActivityIndicator color={COLOR.brand} style={{ marginTop: 40 }} />
             : filtered.length === 0
@@ -845,7 +844,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
           }
         </ScrollView>
 
-        {/* ══ TICKET ══ */}
+        {/* ══ TICKET (desktop) ══ */}
         {isDesktop && (
           <View style={styles.ticketDesktop}>
             <Ticket cart={cart} subtotal={cartSubtotal} isv={cartISV} total={cartTotal} itemCount={cartItemCount} onRemove={removeFromCart}
@@ -854,19 +853,19 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
               editing={editingSaleId != null} />
           </View>
         )}
-      </View>}
 
-      {/* ══ BARRA FLOTANTE DEL CARRITO (mobile) ══ */}
-      {!isDesktop && posTab === 'nueva' && cart.length > 0 && (
-        <TouchableOpacity style={[styles.cartFloatingBar, Platform.OS === 'web' && { position: 'fixed' as any }]} onPress={() => setCartModalOpen(true)} activeOpacity={0.9}>
-          <View style={styles.cartBarBadge}>
-            <Text style={styles.cartBarBadgeText}>{cartItemCount}</Text>
-          </View>
-          <Text style={styles.cartBarLabel}>Ver carrito</Text>
-          <Text style={styles.cartBarTotal}>{formatHnl(cartTotal)}</Text>
-          <MaterialCommunityIcons name="chevron-up" size={20} color={COLOR.inkOnBrand} />
-        </TouchableOpacity>
-      )}
+        {/* ══ BARRA DEL CARRITO (mobile) — en flujo normal, no flotante ══ */}
+        {!isDesktop && cart.length > 0 && (
+          <TouchableOpacity style={styles.cartFloatingBar} onPress={() => setCartModalOpen(true)} activeOpacity={0.9}>
+            <View style={styles.cartBarBadge}>
+              <Text style={styles.cartBarBadgeText}>{cartItemCount}</Text>
+            </View>
+            <Text style={styles.cartBarLabel}>Ver carrito</Text>
+            <Text style={styles.cartBarTotal}>{formatHnl(cartTotal)}</Text>
+            <MaterialCommunityIcons name="chevron-up" size={20} color={COLOR.inkOnBrand} />
+          </TouchableOpacity>
+        )}
+      </View>}
 
       {/* ══ MODAL CARRITO MOBILE ══ */}
       <Modal visible={cartModalOpen} transparent animationType="slide" onRequestClose={() => setCartModalOpen(false)}>
@@ -1739,7 +1738,7 @@ const styles = StyleSheet.create({
   ticketDesktop:  { width: 340, backgroundColor: COLOR.surface, borderLeftWidth: 1, borderLeftColor: COLOR.border },
 
   // Barra flotante carrito mobile
-  cartFloatingBar:    { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: COLOR.brandDark, flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACE.s4, paddingVertical: SPACE.s3, gap: SPACE.s3 },
+  cartFloatingBar:    { backgroundColor: COLOR.brandDark, flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACE.s4, paddingVertical: SPACE.s3, gap: SPACE.s3 },
   cartBarBadge:       { backgroundColor: COLOR.inkOnBrand, borderRadius: RADIUS.full, minWidth: 24, height: 24, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6 },
   cartBarBadgeText:   { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.black as any, color: COLOR.brandDark },
   cartBarLabel:       { flex: 1, fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.inkOnBrand },

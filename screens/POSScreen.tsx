@@ -353,10 +353,6 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
 
   // Seleccionar producto (solo si no está ya en el carrito)
   const selectProduct = (item: StockItem) => {
-    if (isInCart(item.productId)) {
-      toast('Ya está en el carrito — usá los controles +/− para cambiar la cantidad', 'info');
-      return;
-    }
     setSelectedId(item.productId);
     setPendingQty(1);
   };
@@ -365,11 +361,21 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
   const addToCart = () => {
     const item = stock.find(s => s.productId === selectedId);
     if (!item || pendingQty < 1) return;
-    if (pendingQty > item.quantity) {
-      toast(`Stock insuficiente. Disponible: ${item.quantity} unidades.`, 'err');
+    const existing = cart.find(c => c.productId === item.productId);
+    const totalQty = (existing?.qty ?? 0) + pendingQty;
+    if (totalQty > item.quantity) {
+      toast(`Stock insuficiente. Disponible: ${item.quantity} unidades (${existing?.qty ?? 0} ya en carrito).`, 'err');
       return;
     }
-    setCart(prev => [...prev, { productId: item.productId, productName: item.productName, price: item.price, qty: pendingQty, subtotal: item.price * pendingQty }]);
+    if (existing) {
+      setCart(prev => prev.map(c =>
+        c.productId === item.productId
+          ? { ...c, qty: totalQty, subtotal: item.price * totalQty }
+          : c
+      ));
+    } else {
+      setCart(prev => [...prev, { productId: item.productId, productName: item.productName, price: item.price, qty: pendingQty, subtotal: item.price * pendingQty }]);
+    }
     setSelectedId(null);
     setPendingQty(1);
   };

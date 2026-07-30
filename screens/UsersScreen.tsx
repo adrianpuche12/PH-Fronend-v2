@@ -7,6 +7,7 @@ import { Button, TextInput, Snackbar, IconButton } from 'react-native-paper';
 import axios from 'axios';
 import { REACT_APP_API_URL } from '../config';
 import ConfirmDialog from '../components/ConfirmDialog';
+import UserCreationWizard from '../components/UserCreationWizard';
 import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW, BREAKPOINT } from '../theme';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -27,16 +28,6 @@ interface AppUser {
   firstLogin: boolean;
   createdAt: string;
 }
-
-interface UserForm {
-  fullName: string;
-  username: string;
-  email: string;
-  role: string;
-  storeId: string;
-}
-
-const EMPTY_FORM: UserForm = { fullName: '', username: '', email: '', role: 'ENCARGADO', storeId: '' };
 
 // Secciones disponibles con sus labels en español
 const SECTIONS: { key: string; label: string }[] = [
@@ -73,10 +64,8 @@ export default function UsersScreen() {
   const [loading, setLoading]   = useState(false);
   const [snackbar, setSnackbar] = useState('');
 
-  // Modal crear usuario
+  // Wizard de creación de usuario
   const [createModal, setCreateModal] = useState(false);
-  const [form, setForm]               = useState<UserForm>(EMPTY_FORM);
-  const [saving, setSaving]           = useState(false);
 
   // Modal reasignar local
   const [reassignModal, setReassignModal]     = useState<AppUser | null>(null);
@@ -124,40 +113,6 @@ export default function UsersScreen() {
   }, []);
 
   useEffect(() => { loadAll(); }, [loadAll]);
-
-  // ── Crear usuario ──────────────────────────────────────────────────────────
-
-  const handleCreate = async () => {
-    if (!form.fullName.trim() || !form.username.trim() || !form.email.trim()) {
-      setSnackbar('Completa nombre, usuario y email'); return;
-    }
-    if (!form.email.includes('@')) {
-      setSnackbar('Email invalido'); return;
-    }
-    if (form.role === 'ENCARGADO' && !form.storeId) {
-      setSnackbar('El encargado debe tener un local asignado'); return;
-    }
-    setSaving(true);
-    try {
-      const res = await axios.post(`${API}/api/v2/users`, {
-        fullName: form.fullName.trim(),
-        username: form.username.trim().toLowerCase(),
-        email:    form.email.trim().toLowerCase(),
-        role:     form.role,
-        storeId:  form.storeId ? Number(form.storeId) : undefined,
-      });
-      setCreateModal(false);
-      setForm(EMPTY_FORM);
-      loadAll();
-      setTempPwdModal({
-        fullName: res.data.fullName,
-        username: res.data.username,
-        password: res.data.tempPassword,
-      });
-    } catch (e: any) {
-      setSnackbar(e.response?.data?.error || 'Error al crear usuario');
-    } finally { setSaving(false); }
-  };
 
   // ── Suspender / Activar ────────────────────────────────────────────────────
 
@@ -381,63 +336,16 @@ export default function UsersScreen() {
         </ScrollView>
       )}
 
-      {/* ── Modal crear usuario ── */}
-      <Modal visible={createModal} transparent animationType="fade" onRequestClose={() => setCreateModal(false)}>
-        <View style={styles.overlay}>
-          <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 16 }}>
-            <View style={[styles.modal, { width: '100%', maxWidth: 460 }]}>
-              <Text style={styles.modalTitle}>Nuevo usuario</Text>
-
-              <TextInput label="Nombre completo *" value={form.fullName} onChangeText={v => setForm({ ...form, fullName: v })} mode="outlined" style={styles.input} />
-              <TextInput label="Username *" value={form.username} onChangeText={v => setForm({ ...form, username: v.toLowerCase().replace(/\s+/g, '.') })} mode="outlined" style={styles.input} autoCapitalize="none" />
-              <TextInput label="Email *" value={form.email} onChangeText={v => setForm({ ...form, email: v.toLowerCase() })} mode="outlined" style={styles.input} autoCapitalize="none" keyboardType="email-address" />
-
-              {/* Selector de rol */}
-              <Text style={styles.fieldLabel}>Rol *</Text>
-              <View style={[styles.storeSelector, { marginBottom: SPACE.s3 }]}>
-                {ROLES.map(r => (
-                  <TouchableOpacity
-                    key={r}
-                    style={[styles.storeChip, form.role === r && styles.storeChipActive]}
-                    onPress={() => setForm({ ...form, role: r })}
-                  >
-                    <Text style={[styles.storeChipText, form.role === r && styles.storeChipTextActive]}>
-                      {roleLabel(r)}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {/* Selector de local (requerido solo para ENCARGADO) */}
-              <Text style={styles.fieldLabel}>
-                Local principal {form.role === 'ENCARGADO' ? '*' : '(opcional)'}
-              </Text>
-              <View style={styles.storeSelector}>
-                {stores.map(s => (
-                  <TouchableOpacity
-                    key={s.id}
-                    style={[styles.storeChip, form.storeId === String(s.id) && styles.storeChipActive]}
-                    onPress={() => setForm({ ...form, storeId: form.storeId === String(s.id) ? '' : String(s.id) })}
-                  >
-                    <Text style={[styles.storeChipText, form.storeId === String(s.id) && styles.storeChipTextActive]}>
-                      {s.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <Text style={styles.roleNote}>
-                Se generara una contrasena temporal. Podras copiarla y enviarsela al usuario por WhatsApp.
-              </Text>
-
-              <View style={styles.modalActions}>
-                <Button mode="outlined" onPress={() => { setCreateModal(false); setForm(EMPTY_FORM); }} style={{ flex: 1 }}>Cancelar</Button>
-                <Button mode="contained" onPress={handleCreate} loading={saving} buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ flex: 1 }}>Crear</Button>
-              </View>
-            </View>
-          </ScrollView>
-        </View>
-      </Modal>
+      {/* ── Wizard de creación de usuario ── */}
+      <UserCreationWizard
+        visible={createModal}
+        stores={stores}
+        onClose={() => setCreateModal(false)}
+        onCreated={(fullName, username, tempPassword) => {
+          loadAll();
+          setTempPwdModal({ fullName, username, password: tempPassword });
+        }}
+      />
 
       {/* ── Modal reasignar local ── */}
       <Modal visible={!!reassignModal} transparent animationType="fade" onRequestClose={() => setReassignModal(null)}>

@@ -322,16 +322,21 @@ const InventoryScreen = () => {
     if (!storeId) return;
     setLoading(true);
     try {
-      const [stockRes, summaryRes, catRes] = await Promise.all([
+      const [stockRes, summaryRes] = await Promise.all([
         axios.get<StockItem[]>(`${API}/api/v2/stores/${storeId}/stock`),
         axios.get<Summary>(`${API}/api/v2/stores/${storeId}/stock/summary`),
-        axios.get<Category[]>(`${API}/api/v2/stores/${storeId}/categories`),
       ]);
       setStock(stockRes.data);
       setSummary(summaryRes.data);
-      setCategories(catRes.data);
     } catch { setSnackbar('Error al cargar inventario'); }
     finally { setLoading(false); }
+
+    // Categorías se cargan por separado — usuarios con solo INVENTORY
+    // no tienen permiso CATALOG y reciben 403; en ese caso se muestra lista vacía.
+    try {
+      const catRes = await axios.get<Category[]>(`${API}/api/v2/stores/${storeId}/categories`);
+      setCategories(catRes.data);
+    } catch { setCategories([]); }
   }, [storeId]);
 
   useEffect(() => { loadAll(); }, [loadAll]);

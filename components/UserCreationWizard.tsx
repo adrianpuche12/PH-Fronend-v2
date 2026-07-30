@@ -160,7 +160,7 @@ export default function UserCreationWizard({ visible, stores, onClose, onCreated
         storeIds:    allStores ? [] : selectedStores,
         permissions: allSections ? [] : selectedSections,
       });
-      reset();
+      handleClose();
       onCreated(res.data.fullName, res.data.username, res.data.tempPassword);
     } catch (e: any) {
       setError(e.response?.data?.error || 'Error al crear el usuario');

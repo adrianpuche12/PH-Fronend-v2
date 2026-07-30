@@ -174,6 +174,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ['roles', JSON.stringify(isAdmin ? ['admin'] : ['user'])],
       ]);
 
+      // Read permissions/storeIds from storage — not overwritten by this refresh,
+      // and not available in `prev` when called from initializeAuth (initial state is empty).
+      const storedPerms   = await Storage.getItem('permissions');
+      const storedStoreIds = await Storage.getItem('storeIds');
+
       setAxiosAuthHeader(access_token);
       setAuthState(prev => ({
         ...prev,
@@ -183,6 +188,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         roles: isAdmin ? ['admin'] : ['user'],
         userName,
         userId,
+        permissions: storedPerms   ? JSON.parse(storedPerms)   : prev.permissions,
+        storeIds:    storedStoreIds ? JSON.parse(storedStoreIds) : prev.storeIds,
         loading: false,
         error: null
       }));

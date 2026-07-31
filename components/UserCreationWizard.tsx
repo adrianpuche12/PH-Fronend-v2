@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, Modal, TouchableOpacity,
+  View, Text, StyleSheet, Modal, TouchableOpacity, Switch,
   ScrollView, KeyboardAvoidingView, Platform, useWindowDimensions,
 } from 'react-native';
 import { TextInput, Button, ActivityIndicator } from 'react-native-paper';
@@ -8,7 +8,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import axios from 'axios';
 import { REACT_APP_API_URL } from '../config';
 import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, BREAKPOINT } from '../theme';
-import { ALL_SECTIONS } from '../constants/sections';
+import { ALL_SECTIONS, SECTION_GROUPS } from '../constants/sections';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -24,10 +24,10 @@ interface Props {
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
 const ROLES = [
-  { value: 'ENCARGADO', label: 'Encargado' },
-  { value: 'CONTADOR',  label: 'Contador'  },
-  { value: 'SOCIO',     label: 'Socio'     },
-  { value: 'EXTERNO',   label: 'Externo'   },
+  { value: 'ENCARGADO', label: 'Encargado', icon: 'account-tie-outline',   desc: 'Gestión diaria del local, ventas y operaciones' },
+  { value: 'CONTADOR',  label: 'Contador',  icon: 'calculator-variant',     desc: 'Acceso a reportes financieros y operaciones'    },
+  { value: 'SOCIO',     label: 'Socio',     icon: 'handshake-outline',      desc: 'Vista gerencial del negocio'                   },
+  { value: 'EXTERNO',   label: 'Externo',   icon: 'account-arrow-right',    desc: 'Acceso limitado para personal externo'         },
 ];
 
 
@@ -241,19 +241,29 @@ export default function UserCreationWizard({ visible, stores, onClose, onCreated
                 />
 
                 <Text style={wiz.fieldLabel}>Tipo de usuario</Text>
-                <View style={wiz.roleRow}>
-                  {ROLES.map(r => (
-                    <TouchableOpacity
-                      key={r.value}
-                      style={[wiz.roleChip, role === r.value && wiz.roleChipActive]}
-                      onPress={() => setRole(r.value)}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={[wiz.roleChipText, role === r.value && wiz.roleChipTextActive]}>
-                        {r.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                <View style={wiz.roleGrid}>
+                  {ROLES.map(r => {
+                    const active = role === r.value;
+                    return (
+                      <TouchableOpacity
+                        key={r.value}
+                        style={[wiz.roleCard, active && wiz.roleCardActive]}
+                        onPress={() => setRole(r.value)}
+                        activeOpacity={0.8}
+                      >
+                        <View style={[wiz.roleCardIcon, active && wiz.roleCardIconActive]}>
+                          <MaterialCommunityIcons name={r.icon as any} size={22} color={active ? COLOR.brandDeep : COLOR.ink2} />
+                        </View>
+                        <Text style={[wiz.roleCardLabel, active && wiz.roleCardLabelActive]}>{r.label}</Text>
+                        <Text style={wiz.roleCardDesc}>{r.desc}</Text>
+                        {active && (
+                          <View style={wiz.roleCardCheck}>
+                            <MaterialCommunityIcons name="check-circle" size={16} color={COLOR.brand} />
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
 
                 <View style={wiz.infoBox}>
@@ -361,15 +371,37 @@ export default function UserCreationWizard({ visible, stores, onClose, onCreated
                 </TouchableOpacity>
 
                 {!allSections && (
-                  <View style={wiz.checkList}>
-                    {ALL_SECTIONS.map(s => (
-                      <CheckRow
-                        key={s.key}
-                        label={s.label}
-                        icon={s.icon}
-                        checked={selectedSections.includes(s.key)}
-                        onToggle={() => toggleSection(s.key)}
-                      />
+                  <View style={wiz.sectionList}>
+                    {SECTION_GROUPS.map(group => (
+                      <View key={group}>
+                        <Text style={wiz.sectionGroupLabel}>{group}</Text>
+                        {ALL_SECTIONS.filter(s => s.group === group).map(s => {
+                          const isOn = selectedSections.includes(s.key);
+                          return (
+                            <TouchableOpacity
+                              key={s.key}
+                              style={[wiz.sectionRow, isOn && wiz.sectionRowOn]}
+                              onPress={() => toggleSection(s.key)}
+                              activeOpacity={0.8}
+                            >
+                              <View style={[wiz.sectionIcon, isOn && wiz.sectionIconOn]}>
+                                <MaterialCommunityIcons name={s.icon as any} size={18} color={isOn ? COLOR.brandDeep : COLOR.inkMute} />
+                              </View>
+                              <View style={wiz.sectionInfo}>
+                                <Text style={wiz.sectionName}>{s.label}</Text>
+                                <Text style={wiz.sectionDesc}>{s.description}</Text>
+                              </View>
+                              <Switch
+                                value={isOn}
+                                onValueChange={() => toggleSection(s.key)}
+                                trackColor={{ false: COLOR.border2, true: COLOR.brand }}
+                                thumbColor={COLOR.surface}
+                                ios_backgroundColor={COLOR.border2}
+                              />
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
                     ))}
                   </View>
                 )}
@@ -484,11 +516,15 @@ const wiz = StyleSheet.create({
   input:       { backgroundColor: COLOR.surface },
   fieldLabel:  { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink2, marginBottom: SPACE.s1 },
 
-  roleRow:     { flexDirection: 'row', flexWrap: 'wrap', gap: SPACE.s2 },
-  roleChip:    { paddingHorizontal: SPACE.s4, paddingVertical: SPACE.s2, borderRadius: RADIUS.full, borderWidth: 1.5, borderColor: COLOR.border2, backgroundColor: COLOR.surface },
-  roleChipActive: { borderColor: COLOR.brand, backgroundColor: COLOR.brandTint },
-  roleChipText:   { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.medium as any, color: COLOR.ink2 },
-  roleChipTextActive: { color: COLOR.brandDeep, fontWeight: FONT_WEIGHT.bold as any },
+  roleGrid:           { flexDirection: 'row', flexWrap: 'wrap', gap: SPACE.s3 },
+  roleCard:           { width: '47%', padding: SPACE.s3, borderRadius: RADIUS.r3, borderWidth: 1.5, borderColor: COLOR.border, backgroundColor: COLOR.surface, gap: SPACE.s2, position: 'relative' },
+  roleCardActive:     { borderColor: COLOR.brand, backgroundColor: COLOR.brandTint },
+  roleCardIcon:       { width: 40, height: 40, borderRadius: RADIUS.r2, backgroundColor: COLOR.bg, justifyContent: 'center', alignItems: 'center' },
+  roleCardIconActive: { backgroundColor: 'rgba(245,196,48,.15)' },
+  roleCardLabel:      { fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
+  roleCardLabelActive:{ color: COLOR.brandDeep },
+  roleCardDesc:       { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, lineHeight: 16 },
+  roleCardCheck:      { position: 'absolute', top: SPACE.s2, right: SPACE.s2 },
 
   toggleCard:      { flexDirection: 'row', alignItems: 'flex-start', gap: SPACE.s3, padding: SPACE.s4, borderRadius: RADIUS.r3, borderWidth: 1.5, borderColor: COLOR.border, backgroundColor: COLOR.surface },
   toggleCardActive:{ borderColor: COLOR.brand, backgroundColor: COLOR.brandTint },
@@ -497,6 +533,16 @@ const wiz = StyleSheet.create({
 
   checkList:   { gap: SPACE.s2 },
   empty:       { fontSize: FONT_SIZE.body, color: COLOR.inkMute, textAlign: 'center', paddingVertical: SPACE.s4 },
+
+  sectionList:       { gap: 0 },
+  sectionGroupLabel: { fontSize: 10.5, fontWeight: FONT_WEIGHT.bold as any, letterSpacing: 0.7, textTransform: 'uppercase', color: COLOR.inkMute, paddingTop: SPACE.s3, paddingBottom: SPACE.s1 } as any,
+  sectionRow:        { flexDirection: 'row', alignItems: 'center', gap: SPACE.s3, paddingVertical: 10, paddingHorizontal: SPACE.s3, borderLeftWidth: 3, borderLeftColor: 'transparent', borderRadius: RADIUS.r2 },
+  sectionRowOn:      { backgroundColor: COLOR.brandTint, borderLeftColor: COLOR.brand },
+  sectionIcon:       { width: 36, height: 36, borderRadius: 9, backgroundColor: COLOR.bgAlt, alignItems: 'center', justifyContent: 'center' },
+  sectionIconOn:     { backgroundColor: 'rgba(245,196,48,.15)' },
+  sectionInfo:       { flex: 1 },
+  sectionName:       { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink },
+  sectionDesc:       { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, marginTop: 2, lineHeight: 16 },
 
   summaryCard: { backgroundColor: COLOR.surface, borderRadius: RADIUS.r3, borderWidth: 1, borderColor: COLOR.border, overflow: 'hidden' },
 

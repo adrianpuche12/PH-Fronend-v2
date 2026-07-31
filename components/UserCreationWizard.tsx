@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, Modal, TouchableOpacity, Switch,
+  View, Text, StyleSheet, Modal, TouchableOpacity,
   ScrollView, KeyboardAvoidingView, Platform, useWindowDimensions,
 } from 'react-native';
 import { TextInput, Button, ActivityIndicator } from 'react-native-paper';
@@ -9,6 +9,14 @@ import axios from 'axios';
 import { REACT_APP_API_URL } from '../config';
 import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, BREAKPOINT } from '../theme';
 import { ALL_SECTIONS, SECTION_GROUPS } from '../constants/sections';
+
+// ─── Toggle visual (sin Switch nativo — no respeta trackColor en web) ────────
+
+const ToggleSwitch = ({ value }: { value: boolean }) => (
+  <View style={{ width: 44, height: 24, borderRadius: 12, backgroundColor: value ? COLOR.brandDark : COLOR.border2, padding: 2, justifyContent: 'center' }}>
+    <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: COLOR.surface, alignSelf: value ? 'flex-end' : 'flex-start', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.18, shadowRadius: 2, elevation: 2 }} />
+  </View>
+);
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -391,15 +399,7 @@ export default function UserCreationWizard({ visible, stores, onClose, onCreated
                                 <Text style={wiz.sectionName}>{s.label}</Text>
                                 <Text style={wiz.sectionDesc}>{s.description}</Text>
                               </View>
-                              <View pointerEvents="none">
-                                <Switch
-                                  value={isOn}
-                                  onValueChange={() => {}}
-                                  trackColor={{ false: COLOR.border2, true: COLOR.brand }}
-                                  thumbColor={COLOR.surface}
-                                  ios_backgroundColor={COLOR.border2}
-                                />
-                              </View>
+                              <ToggleSwitch value={isOn} />
                             </TouchableOpacity>
                           );
                         })}

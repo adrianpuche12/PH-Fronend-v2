@@ -435,13 +435,15 @@ export default function UsersScreen() {
                           <Text style={styles.permName}>{s.label}</Text>
                           <Text style={styles.permDesc}>{s.description}</Text>
                         </View>
-                        <Switch
-                          value={isOn}
-                          onValueChange={() => togglePerm(s.key)}
-                          trackColor={{ false: COLOR.border2, true: COLOR.brand }}
-                          thumbColor={COLOR.surface}
-                          ios_backgroundColor={COLOR.border2}
-                        />
+                        <View pointerEvents="none">
+                          <Switch
+                            value={isOn}
+                            onValueChange={() => {}}
+                            trackColor={{ false: COLOR.border2, true: COLOR.brand }}
+                            thumbColor={COLOR.surface}
+                            ios_backgroundColor={COLOR.border2}
+                          />
+                        </View>
                       </TouchableOpacity>
                     );
                   })}

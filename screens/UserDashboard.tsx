@@ -15,18 +15,25 @@ import DynamicFormScreen from './DynamicFormScreen';
 
 type UserScreen = 'sales' | 'inventory' | 'salesHistory' | 'operaciones';
 
-interface UserMenuItem { key: UserScreen; label: string; icon: string; permission?: string }
+interface UserMenuItem { key: UserScreen; label: string; icon: string; permission?: string | string[] }
 interface AccessibleStore { id: number; name: string }
+
+// Operaciones visible si el usuario tiene cualquiera de estos permisos
+const OPERATIONS_PERMS = ['TRANSACTIONS', 'BANK_DEPOSITS', 'SALARY_PAYMENTS', 'SUPPLIER_PAYMENTS', 'FORMS'];
 
 const MENU_ALL: UserMenuItem[] = [
   { key: 'sales',        label: 'Ventas',      icon: 'cart-outline',          permission: 'POS' },
   { key: 'inventory',    label: 'Inventario',  icon: 'package-variant',       permission: 'INVENTORY' },
   { key: 'salesHistory', label: 'Mis ventas',  icon: 'receipt-text-outline',  permission: 'SALES_HISTORY' },
-  { key: 'operaciones',  label: 'Operaciones', icon: 'clipboard-text-outline', permission: 'TRANSACTIONS' },
+  { key: 'operaciones',  label: 'Operaciones', icon: 'clipboard-text-outline', permission: OPERATIONS_PERMS },
 ];
 
-const hasPermission = (permissions: string[], section?: string) =>
-  !section || permissions.length === 0 || permissions.includes(section);
+const hasPermission = (permissions: string[], section?: string | string[]) => {
+  if (!section) return true;
+  if (permissions.length === 0) return true;
+  if (Array.isArray(section)) return section.some(s => permissions.includes(s));
+  return permissions.includes(section);
+};
 
 // ─── UserHomeDashboard — selector de locales ──────────────────────────────────
 

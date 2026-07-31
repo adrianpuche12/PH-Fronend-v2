@@ -8,31 +8,29 @@ import { UIPreferencesProvider, useUIPreferences } from '../context/UIPreference
 import { useAuth } from '../context/AuthContext';
 import { REACT_APP_API_URL } from '../config';
 import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, BREAKPOINT, CONTROL } from '../theme';
+import { ALL_SECTIONS, USER_SCREEN_ORDER, UserScreen } from '../constants/sections';
 import POSScreen from './POSScreen';
 import InventoryScreen from './InventoryScreen';
 import SalesHistoryScreen from './SalesHistoryScreen';
 import DynamicFormScreen from './DynamicFormScreen';
 
-type UserScreen = 'sales' | 'inventory' | 'salesHistory' | 'operaciones';
-
-interface UserMenuItem { key: UserScreen; label: string; icon: string; permission?: string | string[] }
+interface UserMenuItem { key: UserScreen; label: string; icon: string; permission: string[] }
 interface AccessibleStore { id: number; name: string }
 
-// Operaciones visible si el usuario tiene cualquiera de estos permisos
-const OPERATIONS_PERMS = ['TRANSACTIONS', 'BANK_DEPOSITS', 'SALARY_PAYMENTS', 'SUPPLIER_PAYMENTS', 'FORMS'];
+const MENU_ALL: UserMenuItem[] = USER_SCREEN_ORDER.map(screenKey => {
+  const sections = ALL_SECTIONS.filter(s => s.screen === screenKey);
+  const first = sections[0];
+  return {
+    key: screenKey,
+    label: first.screenLabel ?? first.label,
+    icon: first.icon,
+    permission: sections.map(s => s.key),
+  };
+});
 
-const MENU_ALL: UserMenuItem[] = [
-  { key: 'sales',        label: 'Ventas',      icon: 'cart-outline',          permission: 'POS' },
-  { key: 'inventory',    label: 'Inventario',  icon: 'package-variant',       permission: 'INVENTORY' },
-  { key: 'salesHistory', label: 'Mis ventas',  icon: 'receipt-text-outline',  permission: 'SALES_HISTORY' },
-  { key: 'operaciones',  label: 'Operaciones', icon: 'clipboard-text-outline', permission: OPERATIONS_PERMS },
-];
-
-const hasPermission = (permissions: string[], section?: string | string[]) => {
-  if (!section) return true;
+const hasPermission = (permissions: string[], sectionPerms: string[]): boolean => {
   if (permissions.length === 0) return true;
-  if (Array.isArray(section)) return section.some(s => permissions.includes(s));
-  return permissions.includes(section);
+  return sectionPerms.some(p => permissions.includes(p));
 };
 
 // ─── UserHomeDashboard — selector de locales ──────────────────────────────────

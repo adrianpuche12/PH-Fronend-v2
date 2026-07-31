@@ -9,6 +9,7 @@ import { REACT_APP_API_URL } from '../config';
 import ConfirmDialog from '../components/ConfirmDialog';
 import UserCreationWizard from '../components/UserCreationWizard';
 import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW, BREAKPOINT } from '../theme';
+import { ALL_SECTIONS } from '../constants/sections';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -29,17 +30,6 @@ interface AppUser {
   createdAt: string;
 }
 
-// Secciones disponibles con sus labels en español
-const SECTIONS: { key: string; label: string }[] = [
-  { key: 'DASHBOARD',         label: 'Dashboard' },
-  { key: 'POS',               label: 'Punto de Venta' },
-  { key: 'SALES_HISTORY',     label: 'Historial de Ventas' },
-  { key: 'INVENTORY',         label: 'Inventario' },
-  { key: 'TRANSACTIONS',      label: 'Transacciones' },
-  { key: 'SALARY_PAYMENTS',   label: 'Pagos de Salario' },
-  { key: 'SUPPLIER_PAYMENTS', label: 'Pagos a Proveedores' },
-  { key: 'CATALOG',           label: 'Catalogo' },
-];
 
 const ROLES = ['ENCARGADO', 'CONTADOR', 'SOCIO'];
 
@@ -406,7 +396,7 @@ export default function UsersScreen() {
               Secciones habilitadas (sin seleccion = acceso completo):
             </Text>
             <View style={styles.storeSelector}>
-              {SECTIONS.map(s => (
+              {ALL_SECTIONS.map(s => (
                 <TouchableOpacity
                   key={s.key}
                   style={[styles.storeChip, permSelected.includes(s.key) && styles.storeChipActive]}

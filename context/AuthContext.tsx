@@ -416,7 +416,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     storeIds:    freshStoreIds,
                     firstLogin:  freshFirstLogin,
                   }));
-                } catch { /* red: usar permisos cacheados */ }
+                } catch (err) { console.error('[initializeAuth] re-fetch permisos falló:', err); }
               }
             }
           } catch (tokenError) {

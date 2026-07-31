@@ -10,7 +10,7 @@ export interface SectionDef {
 
 export const ALL_SECTIONS: SectionDef[] = [
   { key: 'POS',               label: 'Ventas',              icon: 'cart-outline',           screen: 'sales'        },
-  { key: 'SALES_HISTORY',     label: 'Historial de ventas', icon: 'receipt-text-outline',   screen: 'salesHistory', screenLabel: 'Mis ventas' },
+  { key: 'SALES_HISTORY',     label: 'Historial de ventas', icon: 'history',                screen: 'salesHistory', screenLabel: 'Mis ventas' },
   { key: 'INVENTORY',         label: 'Inventario',          icon: 'package-variant',        screen: 'inventory'    },
   { key: 'TRANSACTIONS',      label: 'Operaciones',         icon: 'clipboard-text-outline', screen: 'operaciones'  },
   { key: 'BANK_DEPOSITS',     label: 'Depósitos bancarios', icon: 'bank-outline',           screen: 'operaciones'  },

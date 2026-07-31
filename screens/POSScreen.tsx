@@ -168,14 +168,15 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
     if (!storeId) return;
     setLoading(true);
     try {
-      const [catRes, stockRes] = await Promise.all([
-        axios.get<Category[]>(`${API}/api/v2/stores/${storeId}/categories`),
-        axios.get<StockItem[]>(`${API}/api/v2/stores/${storeId}/stock`),
-      ]);
-      setCategories(catRes.data);
+      const stockRes = await axios.get<StockItem[]>(`${API}/api/v2/stores/${storeId}/stock`);
       setStock(stockRes.data.filter(s => s.productActive));
-    } catch { toast('Error al cargar catálogo', 'err'); }
+    } catch { toast('Error al cargar productos', 'err'); }
     finally { setLoading(false); }
+    // Categorías separadas — 403 CATALOG no bloquea el POS
+    try {
+      const catRes = await axios.get<Category[]>(`${API}/api/v2/stores/${storeId}/categories`);
+      setCategories(catRes.data);
+    } catch { setCategories([]); }
   }, [storeId]);
 
   useEffect(() => { loadShift(); }, [loadShift]);

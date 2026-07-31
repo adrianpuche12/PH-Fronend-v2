@@ -8,6 +8,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import axios from 'axios';
 import { REACT_APP_API_URL } from '../config';
 import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, BREAKPOINT } from '../theme';
+import { ALL_SECTIONS } from '../constants/sections';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -29,18 +30,6 @@ const ROLES = [
   { value: 'EXTERNO',   label: 'Externo'   },
 ];
 
-const SECTIONS = [
-  { key: 'POS',               label: 'Ventas',               icon: 'cart-outline' },
-  { key: 'SALES_HISTORY',     label: 'Historial de ventas',  icon: 'receipt-text-outline' },
-  { key: 'INVENTORY',         label: 'Inventario',           icon: 'package-variant' },
-  { key: 'TRANSACTIONS',      label: 'Operaciones',          icon: 'clipboard-text-outline' },
-  { key: 'BANK_DEPOSITS',     label: 'Depósitos bancarios',  icon: 'bank-outline' },
-  { key: 'SALARY_PAYMENTS',   label: 'Pagos de salarios',    icon: 'account-cash-outline' },
-  { key: 'SUPPLIER_PAYMENTS', label: 'Pagos a proveedores',  icon: 'truck-delivery-outline' },
-  { key: 'CATALOG',           label: 'Catálogo',             icon: 'tag-outline' },
-  { key: 'FORMS',             label: 'Formularios',          icon: 'form-select' },
-  { key: 'DASHBOARD',         label: 'Dashboard',            icon: 'view-dashboard-outline' },
-];
 
 const STEP_LABELS = ['Datos', 'Locales', 'Secciones', 'Confirmar'];
 const TOTAL_STEPS = 4;
@@ -176,7 +165,7 @@ export default function UserCreationWizard({ visible, stores, onClose, onCreated
 
   const sectionsSummary = allSections
     ? 'Todas las secciones'
-    : SECTIONS.filter(s => selectedSections.includes(s.key)).map(s => s.label).join(', ') || 'Ninguna';
+    : ALL_SECTIONS.filter(s => selectedSections.includes(s.key)).map(s => s.label).join(', ') || 'Ninguna';
 
   const roleLabel = ROLES.find(r => r.value === role)?.label ?? role;
 
@@ -373,7 +362,7 @@ export default function UserCreationWizard({ visible, stores, onClose, onCreated
 
                 {!allSections && (
                   <View style={wiz.checkList}>
-                    {SECTIONS.map(s => (
+                    {ALL_SECTIONS.map(s => (
                       <CheckRow
                         key={s.key}
                         label={s.label}

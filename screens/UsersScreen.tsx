@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Modal, useWindowDimensions,
+  ActivityIndicator, Modal, Switch, useWindowDimensions,
 } from 'react-native';
 import { Button, TextInput, Snackbar, IconButton } from 'react-native-paper';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import axios from 'axios';
 import { REACT_APP_API_URL } from '../config';
 import ConfirmDialog from '../components/ConfirmDialog';
 import UserCreationWizard from '../components/UserCreationWizard';
 import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW, BREAKPOINT } from '../theme';
-import { ALL_SECTIONS } from '../constants/sections';
+import { ALL_SECTIONS, SECTION_GROUPS } from '../constants/sections';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -389,29 +390,67 @@ export default function UsersScreen() {
       {/* ── Modal permisos ── */}
       <Modal visible={!!permModal} transparent animationType="fade" onRequestClose={() => setPermModal(null)}>
         <View style={styles.overlay}>
-          <View style={styles.modal}>
-            <Text style={styles.modalTitle}>Permisos de acceso</Text>
-            <Text style={styles.modalSub}>{permModal?.fullName}</Text>
-            <Text style={styles.fieldLabel}>
-              Secciones habilitadas (sin seleccion = acceso completo):
-            </Text>
-            <View style={styles.storeSelector}>
-              {ALL_SECTIONS.map(s => (
-                <TouchableOpacity
-                  key={s.key}
-                  style={[styles.storeChip, permSelected.includes(s.key) && styles.storeChipActive]}
-                  onPress={() => togglePerm(s.key)}
-                >
-                  <Text style={[styles.storeChipText, permSelected.includes(s.key) && styles.storeChipTextActive]}>
-                    {s.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+          <View style={styles.permModalOuter}>
+            {/* Header */}
+            <View style={styles.permHeader}>
+              <Text style={styles.modalTitle}>Permisos de acceso</Text>
+              <View style={styles.permUserBadge}>
+                <View style={styles.permUserDot} />
+                <Text style={styles.permUserName}>{permModal?.fullName}</Text>
+              </View>
             </View>
-            {permSelected.length === 0 && (
-              <Text style={styles.roleNote}>Sin restricciones — el usuario puede ver todas las secciones.</Text>
-            )}
-            <View style={styles.modalActions}>
+
+            {/* Nota informativa */}
+            <View style={styles.permInfoNote}>
+              <MaterialCommunityIcons name="information-outline" size={14} color={COLOR.inkMute} />
+              <Text style={styles.permInfoText}>
+                Sin secciones activas el usuario tiene{' '}
+                <Text style={{ fontWeight: FONT_WEIGHT.bold as any }}>acceso completo</Text>.
+                Activá solo lo que querés habilitar.
+              </Text>
+            </View>
+
+            {/* Filas de toggle agrupadas */}
+            <ScrollView style={styles.permScroll} showsVerticalScrollIndicator={false}>
+              {SECTION_GROUPS.map(group => (
+                <View key={group}>
+                  <Text style={styles.permGroupLabel}>{group}</Text>
+                  {ALL_SECTIONS.filter(s => s.group === group).map(s => {
+                    const isOn = permSelected.includes(s.key);
+                    return (
+                      <TouchableOpacity
+                        key={s.key}
+                        style={[styles.permRow, isOn && styles.permRowOn]}
+                        onPress={() => togglePerm(s.key)}
+                        activeOpacity={0.8}
+                      >
+                        <View style={[styles.permIcon, isOn && styles.permIconOn]}>
+                          <MaterialCommunityIcons
+                            name={s.icon as any}
+                            size={18}
+                            color={isOn ? COLOR.brandDeep : COLOR.inkMute}
+                          />
+                        </View>
+                        <View style={styles.permInfo}>
+                          <Text style={styles.permName}>{s.label}</Text>
+                          <Text style={styles.permDesc}>{s.description}</Text>
+                        </View>
+                        <Switch
+                          value={isOn}
+                          onValueChange={() => togglePerm(s.key)}
+                          trackColor={{ false: COLOR.border2, true: COLOR.brand }}
+                          thumbColor={COLOR.surface}
+                          ios_backgroundColor={COLOR.border2}
+                        />
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              ))}
+            </ScrollView>
+
+            {/* Acciones */}
+            <View style={[styles.modalActions, { paddingHorizontal: SPACE.s5, paddingBottom: SPACE.s5 }]}>
               <Button mode="outlined" onPress={() => setPermModal(null)} style={{ flex: 1 }}>Cancelar</Button>
               <Button mode="contained" onPress={handleSavePermissions} loading={savingPerm} buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ flex: 1 }}>Guardar</Button>
             </View>
@@ -564,6 +603,24 @@ const styles = StyleSheet.create({
   storeChipTextActive: { color: COLOR.ink, fontWeight: FONT_WEIGHT.bold as any },
 
   roleNote:       { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, backgroundColor: COLOR.bgAlt, borderRadius: RADIUS.r2, padding: SPACE.s2, marginBottom: SPACE.s1 },
+
+  // ── Modal permisos (sin padding externo) ──
+  permModalOuter:  { backgroundColor: COLOR.surface, borderRadius: RADIUS.r4, width: '92%', maxWidth: 480, overflow: 'hidden' },
+  permHeader:      { padding: SPACE.s5, borderBottomWidth: 1, borderBottomColor: COLOR.border },
+  permUserBadge:   { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, backgroundColor: COLOR.brandTint, borderRadius: RADIUS.full, paddingVertical: 4, paddingHorizontal: SPACE.s3, alignSelf: 'flex-start', borderWidth: 1, borderColor: COLOR.border2 },
+  permUserDot:     { width: 8, height: 8, borderRadius: 4, backgroundColor: COLOR.brand },
+  permUserName:    { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.brandDeep },
+  permInfoNote:    { flexDirection: 'row', alignItems: 'flex-start', gap: SPACE.s2, margin: SPACE.s3, backgroundColor: COLOR.bg, borderRadius: RADIUS.r2, padding: SPACE.s3, borderWidth: 1, borderColor: COLOR.border },
+  permInfoText:    { flex: 1, fontSize: FONT_SIZE.caption, color: COLOR.inkMute, lineHeight: 18 },
+  permScroll:      { maxHeight: 360 },
+  permGroupLabel:  { fontSize: 10.5, fontWeight: FONT_WEIGHT.bold as any, letterSpacing: 0.7, textTransform: 'uppercase', color: COLOR.inkMute, paddingHorizontal: SPACE.s5, paddingTop: SPACE.s3, paddingBottom: SPACE.s1 } as any,
+  permRow:         { flexDirection: 'row', alignItems: 'center', gap: SPACE.s3, paddingVertical: 11, paddingHorizontal: SPACE.s5, borderLeftWidth: 3, borderLeftColor: 'transparent' },
+  permRowOn:       { backgroundColor: COLOR.brandTint, borderLeftColor: COLOR.brand },
+  permIcon:        { width: 36, height: 36, borderRadius: 9, backgroundColor: COLOR.bgAlt, alignItems: 'center', justifyContent: 'center' },
+  permIconOn:      { backgroundColor: 'rgba(245,196,48,.15)' },
+  permInfo:        { flex: 1 },
+  permName:        { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink },
+  permDesc:        { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, marginTop: 2, lineHeight: 16 },
 
   mobileCard:       { backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border, paddingHorizontal: SPACE.s4, paddingVertical: SPACE.s3, gap: SPACE.s2 },
   mobileCardTop:    { flexDirection: 'row', alignItems: 'center', gap: SPACE.s3 },

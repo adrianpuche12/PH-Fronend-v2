@@ -18,7 +18,7 @@ export const ALL_SECTIONS: SectionDef[] = [
   { key: 'POS',               label: 'Ventas',              icon: 'cart-outline',           group: 'Ventas',      screen: 'sales',        description: 'Registrar ventas, cobrar a clientes y gestionar turnos' },
   { key: 'SALES_HISTORY',     label: 'Historial de ventas', icon: 'history',                group: 'Ventas',      screen: 'salesHistory', screenLabel: 'Mis ventas', description: 'Ver todas las ventas registradas en el local' },
   { key: 'INVENTORY',         label: 'Inventario',          icon: 'package-variant',        group: 'Inventario',  screen: 'inventory',    description: 'Consultar y controlar el stock de productos'           },
-  { key: 'CATALOG',           label: 'Catálogo',            icon: 'tag-outline',            group: 'Inventario',  description: 'Gestionar el catálogo de productos y categorías'      },
+  { key: 'CATALOG',           label: 'Catálogo',            icon: 'tag-outline',            group: 'Inventario',  screen: 'inventory',    description: 'Gestionar el catálogo de productos y categorías'      },
   { key: 'TRANSACTIONS',      label: 'Operaciones',         icon: 'clipboard-text-outline', group: 'Operaciones', screen: 'operaciones',  description: 'Registrar movimientos de caja, ingresos y egresos'    },
   { key: 'BANK_DEPOSITS',     label: 'Depósitos bancarios', icon: 'bank-outline',           group: 'Operaciones', screen: 'operaciones',  description: 'Registrar depósitos realizados en cuenta bancaria'    },
   { key: 'SALARY_PAYMENTS',   label: 'Pagos de salarios',   icon: 'account-cash-outline',   group: 'Operaciones', screen: 'operaciones',  description: 'Gestionar y registrar pagos del personal del local'   },

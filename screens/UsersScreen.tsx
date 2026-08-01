@@ -94,6 +94,7 @@ export default function UsersScreen() {
 
   // ConfirmDialog
   const [confirmDlg, setConfirmDlg] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
   const askConfirm = (title: string, message: string, onConfirm: () => void) =>
     setConfirmDlg({ title, message, onConfirm });
 
@@ -121,12 +122,12 @@ export default function UsersScreen() {
       'Suspender usuario',
       `Suspender a "${user.fullName}"? No podra iniciar sesion hasta que se reactive.`,
       async () => {
+        setConfirmLoading(true);
         try {
           await axios.put(`${API}/api/v2/users/${user.id}/suspend`);
           setSnackbar(`${user.fullName} suspendido`);
-          loadAll();
         } catch (e: any) { setSnackbar(e.response?.data?.error || 'Error'); }
-        finally { setConfirmDlg(null); }
+        finally { setConfirmLoading(false); setConfirmDlg(null); loadAll(); }
       }
     );
   };
@@ -136,12 +137,12 @@ export default function UsersScreen() {
       'Activar usuario',
       `Reactivar el acceso de "${user.fullName}"?`,
       async () => {
+        setConfirmLoading(true);
         try {
           await axios.put(`${API}/api/v2/users/${user.id}/activate`);
           setSnackbar(`${user.fullName} activado`);
-          loadAll();
         } catch (e: any) { setSnackbar(e.response?.data?.error || 'Error'); }
-        finally { setConfirmDlg(null); }
+        finally { setConfirmLoading(false); setConfirmDlg(null); loadAll(); }
       }
     );
   };
@@ -236,12 +237,12 @@ export default function UsersScreen() {
       'Eliminar usuario',
       `Eliminar permanentemente a "${user.fullName}"? Esta accion no se puede deshacer.`,
       async () => {
+        setConfirmLoading(true);
         try {
           await axios.delete(`${API}/api/v2/users/${user.id}`);
           setSnackbar('Usuario eliminado');
-          loadAll();
         } catch (e: any) { setSnackbar(e.response?.data?.error || 'Error al eliminar'); }
-        finally { setConfirmDlg(null); }
+        finally { setConfirmLoading(false); setConfirmDlg(null); loadAll(); }
       }
     );
   };
@@ -553,8 +554,9 @@ export default function UsersScreen() {
         title={confirmDlg?.title ?? ''}
         message={confirmDlg?.message ?? ''}
         confirmLabel="Si, confirmar"
+        loading={confirmLoading}
         onConfirm={() => confirmDlg?.onConfirm()}
-        onCancel={() => setConfirmDlg(null)}
+        onCancel={() => { if (!confirmLoading) setConfirmDlg(null); }}
       />
       <Snackbar visible={!!snackbar} onDismiss={() => setSnackbar('')} duration={3000}>{snackbar}</Snackbar>
     </View>

@@ -161,7 +161,7 @@ const UserSidebar = ({
         )}
       </View>
 
-      {/* Local activo + botón cambiar */}
+      {/* Local activo + botón cambiar — expandido */}
       {!collapsed && storeName && (
         <TouchableOpacity
           style={styles.storeRow}
@@ -171,8 +171,18 @@ const UserSidebar = ({
           <MaterialCommunityIcons name="store-outline" size={14} color={COLOR.brandDeep} />
           <Text style={styles.storeRowName} numberOfLines={1}>{storeName}</Text>
           {showChangeStore && (
-            <MaterialCommunityIcons name="swap-horizontal" size={14} color={COLOR.brandDeep} />
+            <View style={styles.storeSwapBadge}>
+              <MaterialCommunityIcons name="swap-horizontal" size={13} color={COLOR.brandDeep} />
+              <Text style={styles.storeSwapText}>Cambiar</Text>
+            </View>
           )}
+        </TouchableOpacity>
+      )}
+
+      {/* Local activo + botón cambiar — colapsado */}
+      {collapsed && showChangeStore && storeName && (
+        <TouchableOpacity style={styles.storeRowCollapsed} onPress={onChangeStore} activeOpacity={0.7}>
+          <MaterialCommunityIcons name="swap-horizontal" size={18} color={COLOR.brandDeep} />
         </TouchableOpacity>
       )}
 
@@ -448,6 +458,9 @@ const styles = StyleSheet.create({
 
   storeRow:        { flexDirection: 'row', alignItems: 'center', gap: SPACE.s2, paddingHorizontal: SPACE.s4, paddingVertical: SPACE.s2, backgroundColor: COLOR.brandTint, borderBottomWidth: 1, borderBottomColor: COLOR.border },
   storeRowName:    { flex: 1, fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.inkMute },
+  storeSwapBadge:  { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: COLOR.brandTint2, borderRadius: RADIUS.full, paddingHorizontal: SPACE.s2, paddingVertical: 2, borderWidth: 1, borderColor: COLOR.brandDark },
+  storeSwapText:   { fontSize: 10, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.brandDeep },
+  storeRowCollapsed: { alignItems: 'center', justifyContent: 'center', paddingVertical: SPACE.s2, borderBottomWidth: 1, borderBottomColor: COLOR.border, backgroundColor: COLOR.brandTint },
 
   togglePin: {
     width: 26, height: 26, borderRadius: RADIUS.full,

@@ -41,6 +41,7 @@ interface AppUser {
 
 
 const ROLES = ['ENCARGADO', 'CONTADOR', 'SOCIO'];
+const ALL_SECTION_KEYS = ALL_SECTIONS.map(s => s.key);
 
 const roleLabel = (r: string) => ({
   ENCARGADO: 'Encargado',
@@ -178,7 +179,9 @@ export default function UsersScreen() {
 
   const openPermModal = (user: AppUser) => {
     setPermModal(user);
-    setPermSelected(user.permissions ?? []);
+    // permissions vacío = acceso completo → mostrar todos ON para que el admin pueda desactivar
+    const perms = user.permissions ?? [];
+    setPermSelected(perms.length === 0 ? [...ALL_SECTION_KEYS] : perms);
   };
 
   const togglePerm = (key: string) => {
@@ -190,8 +193,10 @@ export default function UsersScreen() {
   const handleSavePermissions = async () => {
     if (!permModal) return;
     setSavingPerm(true);
+    // Si todas las secciones están activas → enviar [] (backend: sin restricciones = acceso completo)
+    const toSend = permSelected.length === ALL_SECTION_KEYS.length ? [] : permSelected;
     try {
-      await axios.put(`${API}/api/v2/users/${permModal.id}/permissions`, { permissions: permSelected });
+      await axios.put(`${API}/api/v2/users/${permModal.id}/permissions`, { permissions: toSend });
       setSnackbar('Permisos actualizados');
       setPermModal(null);
       loadAll();
@@ -412,9 +417,8 @@ export default function UsersScreen() {
             <View style={styles.permInfoNote}>
               <MaterialCommunityIcons name="information-outline" size={14} color={COLOR.inkMute} />
               <Text style={styles.permInfoText}>
-                Sin secciones activas el usuario tiene{' '}
+                Desactivá las secciones que no querés habilitar. Si todas están activas, el usuario tiene{' '}
                 <Text style={{ fontWeight: FONT_WEIGHT.bold as any }}>acceso completo</Text>.
-                Activá solo lo que querés habilitar.
               </Text>
             </View>
 

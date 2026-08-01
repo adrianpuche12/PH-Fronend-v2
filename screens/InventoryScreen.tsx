@@ -256,8 +256,9 @@ const InventoryScreen = () => {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 900;
 
-  const { roles } = useAuth();
+  const { roles, permissions } = useAuth();
   const isAdmin = roles.includes('admin');
+  const hasCatalog = isAdmin || permissions.includes('CATALOG');
 
   const { stores, selectedStore, setSelectedStore } = useStore();
   const storeId = selectedStore?.id ?? null;
@@ -707,7 +708,7 @@ const InventoryScreen = () => {
                 <Text style={styles.adjustBtnText}>{isAdmin ? 'Ajustar' : 'Agregar'}</Text>
               </TouchableOpacity>
             )}
-            {isAdmin && (
+            {hasCatalog && (
               <View style={{ flexDirection: 'row' }}>
                 <IconButton icon="pencil" size={18} iconColor={COLOR.ink2} onPress={() => openEditProduct(item)} style={styles.actionIcon} />
                 <IconButton
@@ -732,8 +733,8 @@ const InventoryScreen = () => {
               <Text style={styles.adjustBtnText}>{isAdmin ? 'Ajustar' : 'Agregar'}</Text>
             </TouchableOpacity>
           )}
-          {isAdmin && <IconButton icon="pencil" size={18} iconColor={COLOR.ink2} onPress={() => openEditProduct(item)} style={styles.actionIcon} />}
-          {isAdmin && (
+          {hasCatalog && <IconButton icon="pencil" size={18} iconColor={COLOR.ink2} onPress={() => openEditProduct(item)} style={styles.actionIcon} />}
+          {hasCatalog && (
             <IconButton
               icon={item.productActive ? 'toggle-switch' : 'toggle-switch-off'}
               size={18}
@@ -742,7 +743,7 @@ const InventoryScreen = () => {
               style={styles.actionIcon}
             />
           )}
-          {isAdmin && <IconButton icon="trash-can" size={18} iconColor={COLOR.expense} onPress={() => handleDeleteProduct(item)} style={styles.actionIcon} />}
+          {hasCatalog && <IconButton icon="trash-can" size={18} iconColor={COLOR.expense} onPress={() => handleDeleteProduct(item)} style={styles.actionIcon} />}
         </View>
       )}
     </View>
@@ -778,7 +779,7 @@ const InventoryScreen = () => {
                 <MaterialCommunityIcons name={topExpanded ? 'eye-off-outline' : 'eye-outline'} size={20} color={COLOR.ink2} />
               </TouchableOpacity>
             )}
-            {activeView === 'stock' && isAdmin && (
+            {activeView === 'stock' && hasCatalog && (
               <TouchableOpacity onPress={openCreateProduct} style={styles.addBtn}>
                 <MaterialCommunityIcons name="plus" size={18} color={COLOR.inkOnBrand} />
                 {width >= BREAKPOINT.tablet && <Text style={styles.addBtnText}>Nuevo</Text>}
@@ -883,7 +884,7 @@ const InventoryScreen = () => {
                   onDelete={handleDeleteCat}
                   onNewChild={(parentId) => openNewCat(parentId)}
                   onToggle={handleToggleCat}
-                  isAdmin={isAdmin}
+                  isAdmin={hasCatalog}
                 />
               )}
             </View>

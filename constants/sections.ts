@@ -28,3 +28,6 @@ export const ALL_SECTIONS: SectionDef[] = [
 
 // Order of screens in the user sidebar
 export const USER_SCREEN_ORDER: UserScreen[] = ['sales', 'inventory', 'salesHistory', 'operaciones'];
+
+// Sections that map to a real user screen — safe to assign as user permissions
+export const ASSIGNABLE_SECTIONS = ALL_SECTIONS.filter(s => s.screen !== undefined);

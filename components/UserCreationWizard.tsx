@@ -8,7 +8,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import axios from 'axios';
 import { REACT_APP_API_URL } from '../config';
 import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, BREAKPOINT } from '../theme';
-import { ALL_SECTIONS, SECTION_GROUPS } from '../constants/sections';
+import { ALL_SECTIONS, SECTION_GROUPS, ASSIGNABLE_SECTIONS } from '../constants/sections';
 
 // ─── Toggle visual (sin Switch nativo — no respeta trackColor en web) ────────
 
@@ -380,31 +380,35 @@ export default function UserCreationWizard({ visible, stores, onClose, onCreated
 
                 {!allSections && (
                   <View style={wiz.sectionList}>
-                    {SECTION_GROUPS.map(group => (
-                      <View key={group}>
-                        <Text style={wiz.sectionGroupLabel}>{group}</Text>
-                        {ALL_SECTIONS.filter(s => s.group === group).map(s => {
-                          const isOn = selectedSections.includes(s.key);
-                          return (
-                            <TouchableOpacity
-                              key={s.key}
-                              style={[wiz.sectionRow, isOn && wiz.sectionRowOn]}
-                              onPress={() => toggleSection(s.key)}
-                              activeOpacity={0.8}
-                            >
-                              <View style={[wiz.sectionIcon, isOn && wiz.sectionIconOn]}>
-                                <MaterialCommunityIcons name={s.icon as any} size={18} color={isOn ? COLOR.brandDeep : COLOR.inkMute} />
-                              </View>
-                              <View style={wiz.sectionInfo}>
-                                <Text style={wiz.sectionName}>{s.label}</Text>
-                                <Text style={wiz.sectionDesc}>{s.description}</Text>
-                              </View>
-                              <ToggleSwitch value={isOn} />
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    ))}
+                    {SECTION_GROUPS.map(group => {
+                      const groupSections = ASSIGNABLE_SECTIONS.filter(s => s.group === group);
+                      if (groupSections.length === 0) return null;
+                      return (
+                        <View key={group}>
+                          <Text style={wiz.sectionGroupLabel}>{group}</Text>
+                          {groupSections.map(s => {
+                            const isOn = selectedSections.includes(s.key);
+                            return (
+                              <TouchableOpacity
+                                key={s.key}
+                                style={[wiz.sectionRow, isOn && wiz.sectionRowOn]}
+                                onPress={() => toggleSection(s.key)}
+                                activeOpacity={0.8}
+                              >
+                                <View style={[wiz.sectionIcon, isOn && wiz.sectionIconOn]}>
+                                  <MaterialCommunityIcons name={s.icon as any} size={18} color={isOn ? COLOR.brandDeep : COLOR.inkMute} />
+                                </View>
+                                <View style={wiz.sectionInfo}>
+                                  <Text style={wiz.sectionName}>{s.label}</Text>
+                                  <Text style={wiz.sectionDesc}>{s.description}</Text>
+                                </View>
+                                <ToggleSwitch value={isOn} />
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      );
+                    })}
                   </View>
                 )}
               </View>

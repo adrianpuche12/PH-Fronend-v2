@@ -10,7 +10,7 @@ import { REACT_APP_API_URL } from '../config';
 import ConfirmDialog from '../components/ConfirmDialog';
 import UserCreationWizard from '../components/UserCreationWizard';
 import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW, BREAKPOINT } from '../theme';
-import { ALL_SECTIONS, SECTION_GROUPS } from '../constants/sections';
+import { ALL_SECTIONS, SECTION_GROUPS, ASSIGNABLE_SECTIONS } from '../constants/sections';
 
 // ─── Toggle visual (sin Switch nativo — no respeta trackColor en web) ────────
 
@@ -41,7 +41,7 @@ interface AppUser {
 
 
 const ROLES = ['ENCARGADO', 'CONTADOR', 'SOCIO'];
-const ALL_SECTION_KEYS = ALL_SECTIONS.map(s => s.key);
+const ALL_SECTION_KEYS = ASSIGNABLE_SECTIONS.map(s => s.key);
 
 const roleLabel = (r: string) => ({
   ENCARGADO: 'Encargado',
@@ -180,8 +180,9 @@ export default function UsersScreen() {
 
   const openPermModal = (user: AppUser) => {
     setPermModal(user);
-    // permissions vacío = acceso completo → mostrar todos ON para que el admin pueda desactivar
-    const perms = user.permissions ?? [];
+    // Filtrar permisos obsoletos (ej. DASHBOARD, CATALOG) que ya no tienen pantalla de usuario
+    const perms = (user.permissions ?? []).filter(p => ALL_SECTION_KEYS.includes(p));
+    // permissions vacío (o solo permisos sin pantalla) = acceso completo → mostrar todos ON
     setPermSelected(perms.length === 0 ? [...ALL_SECTION_KEYS] : perms);
   };
 
@@ -425,35 +426,39 @@ export default function UsersScreen() {
 
             {/* Filas de toggle agrupadas */}
             <ScrollView style={styles.permScroll} showsVerticalScrollIndicator={false}>
-              {SECTION_GROUPS.map(group => (
-                <View key={group}>
-                  <Text style={styles.permGroupLabel}>{group}</Text>
-                  {ALL_SECTIONS.filter(s => s.group === group).map(s => {
-                    const isOn = permSelected.includes(s.key);
-                    return (
-                      <TouchableOpacity
-                        key={s.key}
-                        style={[styles.permRow, isOn && styles.permRowOn]}
-                        onPress={() => togglePerm(s.key)}
-                        activeOpacity={0.8}
-                      >
-                        <View style={[styles.permIcon, isOn && styles.permIconOn]}>
-                          <MaterialCommunityIcons
-                            name={s.icon as any}
-                            size={18}
-                            color={isOn ? COLOR.brandDeep : COLOR.inkMute}
-                          />
-                        </View>
-                        <View style={styles.permInfo}>
-                          <Text style={styles.permName}>{s.label}</Text>
-                          <Text style={styles.permDesc}>{s.description}</Text>
-                        </View>
-                        <ToggleSwitch value={isOn} />
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              ))}
+              {SECTION_GROUPS.map(group => {
+                const groupSections = ASSIGNABLE_SECTIONS.filter(s => s.group === group);
+                if (groupSections.length === 0) return null;
+                return (
+                  <View key={group}>
+                    <Text style={styles.permGroupLabel}>{group}</Text>
+                    {groupSections.map(s => {
+                      const isOn = permSelected.includes(s.key);
+                      return (
+                        <TouchableOpacity
+                          key={s.key}
+                          style={[styles.permRow, isOn && styles.permRowOn]}
+                          onPress={() => togglePerm(s.key)}
+                          activeOpacity={0.8}
+                        >
+                          <View style={[styles.permIcon, isOn && styles.permIconOn]}>
+                            <MaterialCommunityIcons
+                              name={s.icon as any}
+                              size={18}
+                              color={isOn ? COLOR.brandDeep : COLOR.inkMute}
+                            />
+                          </View>
+                          <View style={styles.permInfo}>
+                            <Text style={styles.permName}>{s.label}</Text>
+                            <Text style={styles.permDesc}>{s.description}</Text>
+                          </View>
+                          <ToggleSwitch value={isOn} />
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                );
+              })}
             </ScrollView>
 
             {/* Acciones */}

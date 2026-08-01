@@ -584,7 +584,7 @@ const styles = StyleSheet.create({
   cellRole:       { width: 100 },
   cellStore:      { width: 100 },
   cellStatus:     { width: 100 },
-  cellActions:    { flexDirection: 'row', alignItems: 'center', width: 200 },
+  cellActions:    { flexDirection: 'row', alignItems: 'center', width: 240 },
   colHeader:      { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.inkMute } as any,
 
   userName:       { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },

@@ -72,21 +72,26 @@ const UserHomeDashboard = ({
         showsVerticalScrollIndicator={false}
       >
         <Text style={home.title}>Seleccioná un local</Text>
-        <Text style={home.subtitle}>Elegí el local en el que querés trabajar</Text>
+        <Text style={home.subtitle}>Elegí el local en el que querés trabajar hoy</Text>
 
         <View style={[home.grid, isDesktop && home.gridDesktop]}>
           {stores.map(store => (
             <TouchableOpacity
               key={store.id}
-              style={home.card}
+              style={[home.card, isDesktop && home.cardDesktop]}
               onPress={() => onSelect(store)}
               activeOpacity={0.8}
             >
               <View style={home.cardIcon}>
-                <MaterialCommunityIcons name="store-outline" size={28} color={COLOR.brand} />
+                <MaterialCommunityIcons name="store-outline" size={26} color={COLOR.brandDark} />
               </View>
-              <Text style={home.cardName}>{store.name}</Text>
-              <MaterialCommunityIcons name="chevron-right" size={20} color={COLOR.inkMute} />
+              <View style={home.cardInfo}>
+                <Text style={home.cardName}>{store.name}</Text>
+                <Text style={home.cardCaption}>Toca para acceder</Text>
+              </View>
+              <View style={home.cardChevron}>
+                <MaterialCommunityIcons name="chevron-right" size={16} color={COLOR.inkMute} />
+              </View>
             </TouchableOpacity>
           ))}
         </View>
@@ -442,9 +447,13 @@ const home = StyleSheet.create({
   grid:        { gap: SPACE.s3 },
   gridDesktop: { flexDirection: 'row', flexWrap: 'wrap' },
 
-  card:        { flexDirection: 'row', alignItems: 'center', gap: SPACE.s3, backgroundColor: COLOR.surface, borderRadius: RADIUS.r3, padding: SPACE.s4, borderWidth: 1, borderColor: COLOR.border, elevation: 1 },
-  cardIcon:    { width: 48, height: 48, borderRadius: RADIUS.r2, backgroundColor: COLOR.brandTint, justifyContent: 'center', alignItems: 'center' },
-  cardName:    { flex: 1, fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
+  card:        { flexDirection: 'row', alignItems: 'center', gap: SPACE.s3, backgroundColor: COLOR.surface, borderRadius: RADIUS.r3, padding: SPACE.s4, borderWidth: 1.5, borderColor: COLOR.border, elevation: 1 },
+  cardDesktop: { width: '48%' },
+  cardIcon:    { width: 52, height: 52, borderRadius: RADIUS.r2, backgroundColor: COLOR.bgAlt, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: COLOR.border },
+  cardInfo:    { flex: 1 },
+  cardName:    { fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink, marginBottom: 3 },
+  cardCaption: { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.medium as any },
+  cardChevron: { width: 28, height: 28, borderRadius: RADIUS.full, backgroundColor: COLOR.bgAlt, justifyContent: 'center', alignItems: 'center' },
 });
 
 // ─── Estilos — UserDashboard principal ────────────────────────────────────────

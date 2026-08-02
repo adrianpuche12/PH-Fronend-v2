@@ -73,6 +73,7 @@ interface Transaction {
   totalShiftExpenses?: number;
   declaredCashAmount?: number;
   cashDifference?: number;
+  shiftNotes?: string | null;
   depositStatus?: string;
   bankDepositId?: number;
   closingShiftId?: number;
@@ -1520,6 +1521,17 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
                       {isOk ? '—' : `${diff > 0 ? '+' : ''}L ${Math.abs(diff).toFixed(2)}`}
                     </Text>
                   </View>
+
+                  {/* Observaciones del cajero */}
+                  {item.shiftNotes && (
+                    <View style={{ marginTop: 8, padding: 8, backgroundColor: '#FFFBEB', borderRadius: 6, borderLeftWidth: 3, borderLeftColor: COLOR.brand }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+                        <MaterialCommunityIcons name="comment-text-outline" size={13} color={COLOR.ink2} />
+                        <Text style={[styles.closingDetailSection, { marginTop: 0, fontSize: 10 }]}>OBSERVACIONES</Text>
+                      </View>
+                      <Text style={[styles.closingDetailValue, { fontWeight: 'normal' as any }]}>{item.shiftNotes}</Text>
+                    </View>
+                  )}
                 </View>
               )}
             </View>

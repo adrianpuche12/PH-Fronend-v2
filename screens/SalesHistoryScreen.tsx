@@ -29,6 +29,7 @@ interface ShiftRecord {
   totalShiftExpenses: number | null;
   declaredCashAmount: number | null;
   cashDifference: number | null;
+  notes: string | null;
 }
 
 interface ProductSummaryItem {
@@ -329,6 +330,17 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
                         )}
                       </>
                     )}
+
+                    {/* Observaciones del cajero al cierre */}
+                    {shift.notes && (
+                      <View style={styles.notesBox}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                          <MaterialCommunityIcons name="comment-text-outline" size={14} color={COLOR.ink2} />
+                          <Text style={styles.notesLabel}>Observaciones</Text>
+                        </View>
+                        <Text style={styles.notesText}>{shift.notes}</Text>
+                      </View>
+                    )}
                   </View>
                 )}
               </View>
@@ -420,4 +432,7 @@ const styles = StyleSheet.create({
   recLine:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   recLabelHist:   { fontSize: FONT_SIZE.label, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.medium as any },
   recValueHist:   { fontSize: FONT_SIZE.label, color: COLOR.ink, fontWeight: FONT_WEIGHT.semibold as any },
+  notesBox:       { marginTop: SPACE.s3, padding: SPACE.s3, backgroundColor: '#FFFBEB', borderRadius: RADIUS.r2, borderLeftWidth: 3, borderLeftColor: COLOR.brand },
+  notesLabel:     { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink2, textTransform: 'uppercase', letterSpacing: 0.5 } as any,
+  notesText:      { fontSize: FONT_SIZE.body, color: COLOR.ink, lineHeight: 20 },
 });

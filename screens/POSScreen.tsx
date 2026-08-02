@@ -142,6 +142,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
 
   // Reconciliación de caja al cierre
   const [declaredCash, setDeclaredCash]         = useState('');
+  const [closingNotes, setClosingNotes]         = useState('');
   interface ClosingResult {
     openingCashAmount: number; totalCashSales: number;
     totalShiftExpenses: number; expectedCashAmount: number;
@@ -509,6 +510,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
     setClosingModal(true);
     setClosingDone(false);
     setDeclaredCash('');
+    setClosingNotes('');
     setClosingResult(null);
     try {
       const res = await axios.get<DailySummary>(`${API}/api/v2/shifts/${shift.id}/summary`);
@@ -533,6 +535,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
       const res = await axios.post(`${API}/api/v2/shifts/${shift.id}/closing`, {
         username: userName ?? 'empleada',
         declaredCashAmount: declared,
+        notes: closingNotes.trim() || null,
       });
       setClosingResult(res.data);
       setClosingDone(true);
@@ -1288,6 +1291,28 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                   )}
                 </View>
 
+                {/* Input: observaciones opcionales */}
+                <View style={styles.notesBox}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACE.s2, marginBottom: SPACE.s2 }}>
+                    <MaterialCommunityIcons name="comment-text-outline" size={16} color={COLOR.ink2} />
+                    <Text style={styles.notesLabel}>Observaciones <Text style={{ color: COLOR.inkMute, fontWeight: 'normal' as any }}>(opcional)</Text></Text>
+                  </View>
+                  <RNTextInput
+                    style={styles.notesInput}
+                    placeholder="Ej: el pollo de ayer estaba muy tajado, no se pudo vender"
+                    placeholderTextColor={COLOR.inkDisabled}
+                    value={closingNotes}
+                    onChangeText={setClosingNotes}
+                    multiline
+                    numberOfLines={3}
+                    maxLength={500}
+                    textAlignVertical="top"
+                  />
+                  {closingNotes.length > 400 && (
+                    <Text style={{ fontSize: 10, color: COLOR.inkMute, textAlign: 'right', marginTop: 2 }}>{closingNotes.length}/500</Text>
+                  )}
+                </View>
+
                 {/* Input: efectivo real en mano */}
                 <View style={styles.cashInputBox}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACE.s2, marginBottom: SPACE.s2 }}>
@@ -1334,7 +1359,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                 <Text style={styles.closingWarn}>Esta acción no se puede deshacer</Text>
 
                 <View style={styles.modalActions}>
-                  <Button mode="outlined" onPress={() => { setClosingModal(false); setDeclaredCash(''); setClosingModalError(''); }} style={{ flex: 1 }}>Cancelar</Button>
+                  <Button mode="outlined" onPress={() => { setClosingModal(false); setDeclaredCash(''); setClosingNotes(''); setClosingModalError(''); }} style={{ flex: 1 }}>Cancelar</Button>
                   <Button
                     mode="contained"
                     buttonColor={COLOR.brand}
@@ -1825,6 +1850,9 @@ const styles = StyleSheet.create({
   expenseCardAction: { padding: 4 },
 
   // Input efectivo real
+  notesBox:       { backgroundColor: COLOR.bg, borderRadius: RADIUS.r3, padding: SPACE.s3, marginTop: SPACE.s3, borderWidth: 1, borderColor: COLOR.border },
+  notesLabel:     { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink },
+  notesInput:     { borderWidth: 1.5, borderColor: COLOR.border2, borderRadius: RADIUS.r2, padding: SPACE.s2, fontSize: FONT_SIZE.body, color: COLOR.ink, minHeight: 72, outlineStyle: 'none' } as any,
   cashInputBox:   { backgroundColor: COLOR.bg, borderRadius: RADIUS.r3, padding: SPACE.s3, marginTop: SPACE.s3, borderWidth: 1, borderColor: COLOR.border },
   cashInputLabel: { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink },
   cashInputRow:   { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: COLOR.income, borderRadius: RADIUS.r2, overflow: 'hidden' },

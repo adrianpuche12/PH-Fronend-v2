@@ -73,12 +73,10 @@ const CheckRow = ({
 }: { label: string; icon: string; checked: boolean; onToggle: () => void }) => (
   <TouchableOpacity style={[chk.row, checked && chk.rowActive]} onPress={onToggle} activeOpacity={0.8}>
     <View style={[chk.icon, checked && chk.iconActive]}>
-      <MaterialCommunityIcons name={icon} size={18} color={checked ? COLOR.inkOnBrand : COLOR.ink2} />
+      <MaterialCommunityIcons name={icon} size={18} color={checked ? COLOR.brandDeep : COLOR.ink2} />
     </View>
     <Text style={[chk.label, checked && chk.labelActive]}>{label}</Text>
-    <View style={[chk.box, checked && chk.boxActive]}>
-      {checked && <MaterialCommunityIcons name="check" size={14} color="#fff" />}
-    </View>
+    <ToggleSwitch value={checked} />
   </TouchableOpacity>
 );
 
@@ -584,11 +582,9 @@ const chk = StyleSheet.create({
   row:          { flexDirection: 'row', alignItems: 'center', gap: SPACE.s3, padding: SPACE.s3, borderRadius: RADIUS.r2, borderWidth: 1, borderColor: COLOR.border, backgroundColor: COLOR.surface },
   rowActive:    { borderColor: COLOR.brand, backgroundColor: COLOR.brandTint },
   icon:         { width: 36, height: 36, borderRadius: RADIUS.r2, backgroundColor: COLOR.bg, justifyContent: 'center', alignItems: 'center' },
-  iconActive:   { backgroundColor: COLOR.brand },
+  iconActive:   { backgroundColor: 'rgba(245,196,48,.15)' },
   label:        { flex: 1, fontSize: FONT_SIZE.body, color: COLOR.ink2, fontWeight: FONT_WEIGHT.medium as any },
   labelActive:  { color: COLOR.ink, fontWeight: FONT_WEIGHT.bold as any },
-  box:          { width: 22, height: 22, borderRadius: 4, borderWidth: 2, borderColor: COLOR.border2, justifyContent: 'center', alignItems: 'center' },
-  boxActive:    { backgroundColor: COLOR.brand, borderColor: COLOR.brand },
 });
 
 // Summary row styles

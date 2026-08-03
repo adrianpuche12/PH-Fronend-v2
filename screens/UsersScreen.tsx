@@ -20,14 +20,6 @@ const ToggleSwitch = ({ value }: { value: boolean }) => (
   </View>
 );
 
-// ─── Toggle visual (sin Switch nativo — no respeta trackColor en web) ────────
-
-const ToggleSwitch = ({ value }: { value: boolean }) => (
-  <View style={{ width: 44, height: 24, borderRadius: 12, backgroundColor: value ? COLOR.brandDark : COLOR.border2, padding: 2, justifyContent: 'center' }}>
-    <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: COLOR.surface, alignSelf: value ? 'flex-end' : 'flex-start', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.18, shadowRadius: 2, elevation: 2 }} />
-  </View>
-);
-
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
 interface Store { id: number; name: string; active: boolean; }

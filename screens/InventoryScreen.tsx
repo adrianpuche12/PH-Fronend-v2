@@ -13,6 +13,7 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import { useAuth } from '../context/AuthContext';
 import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW, CONTROL, BREAKPOINT } from '../theme';
 import { formatHnl } from '../utils/format';
+import { getApiErrorMessage } from '../utils/apiError';
 import StoreDropdown from '../components/StoreDropdown';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -329,7 +330,7 @@ const InventoryScreen = () => {
       ]);
       setStock(stockRes.data);
       setSummary(summaryRes.data);
-    } catch { setSnackbar('Error al cargar inventario'); }
+    } catch (err) { setSnackbar(getApiErrorMessage(err, 'Error al cargar inventario')); }
     finally { setLoading(false); }
 
     // Categorías se cargan por separado — usuarios con solo INVENTORY

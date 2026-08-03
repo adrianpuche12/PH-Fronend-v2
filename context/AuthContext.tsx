@@ -447,6 +447,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const interceptor = axios.interceptors.response.use(
       response => response,
       async error => {
+        // Cuenta suspendida desde cualquier endpoint — logout inmediato
+        if (error.response?.status === 403 &&
+            error.response?.data?.error === 'ACCOUNT_SUSPENDED') {
+          await logout();
+          return Promise.reject(error);
+        }
+
         const originalRequest = error.config;
         if (
           error.response?.status === 401 &&

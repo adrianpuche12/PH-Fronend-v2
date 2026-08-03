@@ -13,6 +13,7 @@ import { REACT_APP_API_URL } from '../config';
 import { useStore } from '../context/StoreContext';
 import { useAuth } from '../context/AuthContext';
 import { formatHnl } from '../utils/format';
+import { getApiErrorMessage } from '../utils/apiError';
 import StoreDropdown from '../components/StoreDropdown';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -171,7 +172,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
     try {
       const stockRes = await axios.get<StockItem[]>(`${API}/api/v2/stores/${storeId}/stock`);
       setStock(stockRes.data.filter(s => s.productActive));
-    } catch { toast('Error al cargar productos', 'err'); }
+    } catch (err) { toast(getApiErrorMessage(err, 'Error al cargar productos'), 'err'); }
     finally { setLoading(false); }
     // Categorías separadas — 403 CATALOG no bloquea el POS
     try {

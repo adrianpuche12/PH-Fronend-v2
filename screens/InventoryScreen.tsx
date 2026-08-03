@@ -259,7 +259,7 @@ const InventoryScreen = () => {
 
   const { roles, permissions } = useAuth();
   const isAdmin = roles.includes('admin');
-  const hasCatalog = isAdmin || permissions.includes('CATALOG');
+  const hasCatalog = isAdmin || permissions.length === 0 || permissions.includes('CATALOG');
 
   const { stores, selectedStore, setSelectedStore } = useStore();
   const storeId = selectedStore?.id ?? null;

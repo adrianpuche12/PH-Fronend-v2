@@ -1210,6 +1210,19 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
   return `${REACT_APP_API_URL}/${imagePath}`;
 };
 
+  const getDateLabel = (dateStr: string): string => {
+    const todayStr  = new Date().toISOString().split('T')[0];
+    const yest      = new Date(); yest.setDate(yest.getDate() - 1);
+    const yesterdayStr = yest.toISOString().split('T')[0];
+    if (dateStr === todayStr)     return 'Hoy';
+    if (dateStr === yesterdayStr) return 'Ayer';
+    const MONTHS_ES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    try {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      return `${d} de ${MONTHS_ES[m - 1]} de ${y}`;
+    } catch { return dateStr; }
+  };
+
   const renderTransaction = (item: DisplayItem, index: number) => {
     // ── Card agrupado para cierres depositados ──
     if (item.type === 'DEPOSIT_GROUP') {
@@ -1775,7 +1788,25 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
             <ThemedText style={styles.noDataText}>No hay transacciones para mostrar</ThemedText>
           ) : (
             <>
-              {paginatedTransactions.map((item, index) => renderTransaction(item, index))}
+              {paginatedTransactions.map((item, index) => {
+                const currDate = item.date ? String(item.date).split('T')[0] : null;
+                const prevDate = index > 0 && paginatedTransactions[index - 1].date
+                  ? String(paginatedTransactions[index - 1].date).split('T')[0]
+                  : null;
+                const showSep = currDate && currDate !== prevDate;
+                return (
+                  <React.Fragment key={`frag-${item.id}-${index}`}>
+                    {showSep && (
+                      <View style={styles.dateSeparator}>
+                        <View style={styles.dateSeparatorLine} />
+                        <Text style={styles.dateSeparatorText}>{getDateLabel(currDate!)}</Text>
+                        <View style={styles.dateSeparatorLine} />
+                      </View>
+                    )}
+                    {renderTransaction(item, index)}
+                  </React.Fragment>
+                );
+              })}
             </>
           )}
         </ScrollView>
@@ -1934,6 +1965,25 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
 };
 
 const styles = StyleSheet.create({
+  dateSeparator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  dateSeparatorLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E0E0E0',
+  },
+  dateSeparatorText: {
+    marginHorizontal: 12,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#888',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   container: {
     flex: 1,
     padding: 0,

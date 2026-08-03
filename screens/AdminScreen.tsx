@@ -1461,6 +1461,11 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
             <View style={styles.closingDetailWrap}>
               {/* Toggle */}
               <TouchableOpacity style={styles.closingDetailToggle} onPress={() => toggleClosingDetail(item.id)}>
+                <MaterialCommunityIcons name="cash" size={14} color={COLOR.income} />
+                <Text style={[styles.closingDetailToggleText, { color: COLOR.income, fontWeight: FONT_WEIGHT.bold as any }]}>
+                  {`Efectivo: L ${(item.declaredCashAmount ?? 0).toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                </Text>
+                <Text style={[styles.closingDetailToggleText, { color: COLOR.inkMute, marginHorizontal: 4 }]}>·</Text>
                 <MaterialCommunityIcons
                   name={isOk ? 'check-circle-outline' : diff < 0 ? 'alert-circle-outline' : 'information-outline'}
                   size={14} color={diffColor}

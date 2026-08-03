@@ -320,15 +320,18 @@ export default function UserCreationWizard({ visible, stores, onClose, onCreated
                 </TouchableOpacity>
 
                 {!allStores && (
-                  <View style={wiz.checkList}>
+                  <View style={wiz.storeSelector}>
                     {stores.filter(s => s.active).map(store => (
-                      <CheckRow
+                      <TouchableOpacity
                         key={store.id}
-                        label={store.name}
-                        icon="store-outline"
-                        checked={selectedStores.includes(store.id)}
-                        onToggle={() => toggleStore(store.id)}
-                      />
+                        style={[wiz.storeChip, selectedStores.includes(store.id) && wiz.storeChipActive]}
+                        onPress={() => toggleStore(store.id)}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[wiz.storeChipText, selectedStores.includes(store.id) && wiz.storeChipTextActive]}>
+                          {store.name}
+                        </Text>
+                      </TouchableOpacity>
                     ))}
                     {stores.filter(s => s.active).length === 0 && (
                       <Text style={wiz.empty}>No hay locales activos registrados</Text>
@@ -536,6 +539,12 @@ const wiz = StyleSheet.create({
   toggleCardDesc:  { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, marginTop: 2 },
 
   checkList:   { gap: SPACE.s2 },
+
+  storeSelector:       { flexDirection: 'row', flexWrap: 'wrap', gap: SPACE.s2 },
+  storeChip:           { paddingHorizontal: SPACE.s4, paddingVertical: SPACE.s2, borderRadius: RADIUS.full, backgroundColor: COLOR.bg, borderWidth: 1, borderColor: COLOR.border },
+  storeChipActive:     { backgroundColor: COLOR.brand, borderColor: COLOR.brandDark },
+  storeChipText:       { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink2 },
+  storeChipTextActive: { color: COLOR.ink, fontWeight: FONT_WEIGHT.bold as any },
   empty:       { fontSize: FONT_SIZE.body, color: COLOR.inkMute, textAlign: 'center', paddingVertical: SPACE.s4 },
 
   sectionList:       { gap: 0 },

@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW } from '../theme';
+import { getApiErrorMessage } from '../utils/apiError';
 import { formatHnl, formatDate, formatTime } from '../utils/format';
 import axios from 'axios';
 import { REACT_APP_API_URL } from '../config';
@@ -100,8 +101,8 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
       setHasMore(res.data.length === PAGE_SIZE);
       setExpanded({});
       setSummaries({});
-    } catch {
-      setError('No se pudo cargar el historial de turnos.');
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'No se pudo cargar el historial de turnos.'));
     } finally { setLoading(false); }
   }, [selectedStore, usernameFilter, dateFrom, dateTo]);
 
@@ -211,6 +212,13 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
                       <View style={[styles.statusBadge, isClosed ? styles.statusClosed : styles.statusOpen]}>
                         <Text style={styles.statusText}>{isClosed ? 'Cerrado' : 'Abierto'}</Text>
                       </View>
+                      {/* Indicador de observación */}
+                      {shift.notes && (
+                        <View style={styles.notesBadge}>
+                          <MaterialCommunityIcons name="comment-text" size={11} color={COLOR.brand} />
+                          <Text style={styles.notesBadgeText}>Obs.</Text>
+                        </View>
+                      )}
                       {/* Badge de diferencia de caja — solo en turnos cerrados con reconciliación */}
                       {isClosed && shift.cashDifference != null && (() => {
                         const diff = shift.cashDifference;
@@ -404,6 +412,9 @@ const styles = StyleSheet.create({
   statusOpen:     { backgroundColor: COLOR.incomeTint },
   statusClosed:   { backgroundColor: COLOR.surface2 },
   statusText:     { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink2 },
+
+  notesBadge:     { flexDirection: 'row', alignItems: 'center', gap: 2, borderRadius: RADIUS.r2, paddingHorizontal: SPACE.s2, paddingVertical: 3, backgroundColor: COLOR.brandTint ?? COLOR.surface2 },
+  notesBadgeText: { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.medium as any, color: COLOR.brand },
 
   detail:         { borderTopWidth: 1, borderTopColor: COLOR.border, padding: SPACE.s4, backgroundColor: COLOR.bgAlt },
 

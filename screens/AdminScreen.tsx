@@ -30,6 +30,8 @@ import ImageViewer from '../components/ImageViewer';
 import StoreDropdown from '../components/StoreDropdown';
 import DateRangePicker from '../components/DateRangePicker';
 import ImageButton from '../components/ImageButton';
+import ImagePicker from '../components/ImagePicker';
+import { ImageService } from '../utils/ImageService';
 import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW } from '../theme';
 
 const TRANSACTION_LABELS: Record<Transaction['type'], string> = {
@@ -442,6 +444,18 @@ const AdminScreen = () => {
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
   const [deletingInProgress, setDeletingInProgress] = useState(false);
+
+  // Estados para editar/borrar depósito bancario (DEPOSIT_GROUP)
+  const [depositEditModalVisible, setDepositEditModalVisible] = useState(false);
+  const [editingDepositGroup, setEditingDepositGroup] = useState<DepositGroup | null>(null);
+  const [depositEditDate, setDepositEditDate] = useState('');
+  const [depositEditAmount, setDepositEditAmount] = useState('');
+  const [depositEditNotes, setDepositEditNotes] = useState('');
+  const [depositEditImage, setDepositEditImage] = useState<{uri: string; name: string; type: string} | null>(null);
+  const [depositEditSaving, setDepositEditSaving] = useState(false);
+  const [depositEditDatePickerVisible, setDepositEditDatePickerVisible] = useState(false);
+  const [depositDeleteModalVisible, setDepositDeleteModalVisible] = useState(false);
+  const [depositGroupToDelete, setDepositGroupToDelete] = useState<DepositGroup | null>(null);
 
   const { width: screenWidth } = useWindowDimensions();
   const isLargeScreen = screenWidth >= 768;
@@ -865,6 +879,88 @@ const AdminScreen = () => {
     setEditingTransaction(null);
   };
 
+  // ── Depósito bancario: editar ──────────────────────────────────────────────
+  const handleEditDepositGroup = (item: DepositGroup) => {
+    setEditingDepositGroup(item);
+    setDepositEditDate(item.date?.split('T')[0] ?? '');
+    setDepositEditAmount((item.amount ?? 0).toFixed(2));
+    setDepositEditNotes('');
+    setDepositEditImage(null);
+    setDepositEditModalVisible(true);
+  };
+
+  const handleSaveDepositEdit = async () => {
+    if (!editingDepositGroup) return;
+    if (!depositEditImage) {
+      Alert.alert('Error', 'El comprobante bancario es obligatorio.');
+      return;
+    }
+    setDepositEditSaving(true);
+    try {
+      const uploadResult = await ImageService.uploadImage(
+        depositEditImage.uri,
+        ImageService.generateFileName('DEP'),
+        'comprobantes'
+      );
+      if (!uploadResult.success) {
+        Alert.alert('Error', 'No se pudo subir el comprobante.');
+        return;
+      }
+      const payload: Record<string, any> = { imageUri: uploadResult.imageUri };
+      if (depositEditDate) payload.depositDate = depositEditDate;
+      if (depositEditAmount) payload.declaredAmount = parseFloat(depositEditAmount.replace(/,/g, ''));
+      if (depositEditNotes) payload.notes = depositEditNotes;
+
+      const res = await fetch(`${REACT_APP_API_URL}/api/v2/deposits/${editingDepositGroup.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        setSnackbarMessage('Depósito bancario actualizado correctamente.');
+        setSnackbarVisible(true);
+        setDepositEditModalVisible(false);
+        setEditingDepositGroup(null);
+        fetchData(startDate, endDate, selectedStore);
+      } else {
+        Alert.alert('Error', 'No se pudo actualizar el depósito.');
+      }
+    } catch {
+      Alert.alert('Error', 'Ocurrió un error al actualizar el depósito.');
+    } finally {
+      setDepositEditSaving(false);
+    }
+  };
+
+  // ── Depósito bancario: eliminar ────────────────────────────────────────────
+  const handleDeleteDepositGroup = (item: DepositGroup) => {
+    setDepositGroupToDelete(item);
+    setDepositDeleteModalVisible(true);
+  };
+
+  const confirmDeleteDepositGroup = async () => {
+    if (!depositGroupToDelete) return;
+    setDeletingInProgress(true);
+    try {
+      const res = await fetch(`${REACT_APP_API_URL}/api/v2/deposits/${depositGroupToDelete.id}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        setSnackbarMessage('Depósito bancario eliminado correctamente.');
+        setSnackbarVisible(true);
+        fetchData(startDate, endDate, selectedStore);
+      } else {
+        Alert.alert('Error', 'No se pudo eliminar el depósito.');
+      }
+    } catch {
+      Alert.alert('Error', 'Ocurrió un error al eliminar el depósito.');
+    } finally {
+      setDeletingInProgress(false);
+      setDepositDeleteModalVisible(false);
+      setDepositGroupToDelete(null);
+    }
+  };
+
   // Render del modal de edición para cada tipo
   // Render del modal de edición para cada tipo
 const renderEditFields = () => {
@@ -1283,8 +1379,8 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
                 ) : (
                   <View style={{ width: 36 }} />
                 )}
-                <View style={{ width: 36 }} />
-                <View style={{ width: 36 }} />
+                <IconButton icon="pencil" size={16} onPress={() => handleEditDepositGroup(item)} iconColor={COLOR.info} style={{ margin: 0 }} />
+                <IconButton icon="delete" size={16} onPress={() => handleDeleteDepositGroup(item)} iconColor={COLOR.expense} style={{ margin: 0 }} />
               </View>
             </View>
           </View>
@@ -1903,6 +1999,124 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
               </Button>
               <Button
                 onPress={confirmDelete}
+                mode="contained"
+                style={styles.modalButton}
+                buttonColor={COLOR.expense}
+                textColor={COLOR.white}
+                disabled={deletingInProgress}
+                loading={deletingInProgress}
+              >
+                {deletingInProgress ? 'Eliminando...' : 'Eliminar'}
+              </Button>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal de edición para depósito bancario (DEPOSIT_GROUP) */}
+      <Modal
+        visible={depositEditModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => { setDepositEditModalVisible(false); setEditingDepositGroup(null); }}
+      >
+        <View style={styles.modalOverlay}>
+          <ScrollView contentContainerStyle={styles.modalContainer} keyboardShouldPersistTaps="handled">
+            <ThemedText style={styles.modalTitle}>Editar Depósito Bancario</ThemedText>
+            <TextInput
+              label="Fecha de depósito"
+              value={depositEditDate}
+              style={styles.modalInput}
+              showSoftInputOnFocus={false}
+              onFocus={() => setDepositEditDatePickerVisible(true)}
+              right={<TextInput.Icon icon="calendar" onPress={() => setDepositEditDatePickerVisible(true)} />}
+            />
+            <TextInput
+              label="Monto declarado"
+              value={depositEditAmount}
+              onChangeText={(v) => setDepositEditAmount(formatAmountInput(v))}
+              keyboardType="numeric"
+              style={styles.modalInput}
+            />
+            <TextInput
+              label="Notas (opcional)"
+              value={depositEditNotes}
+              onChangeText={setDepositEditNotes}
+              style={styles.modalInput}
+              multiline
+            />
+            <ImagePicker
+              onImageSelected={(img) => setDepositEditImage(img)}
+              initialImage={null}
+              required={true}
+            />
+            <View style={styles.modalButtonContainer}>
+              <Button
+                onPress={() => { setDepositEditModalVisible(false); setEditingDepositGroup(null); }}
+                mode="outlined"
+                style={styles.modalButton}
+                textColor={COLOR.ink2}
+                disabled={depositEditSaving}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onPress={handleSaveDepositEdit}
+                mode="contained"
+                style={styles.modalButton}
+                buttonColor={COLOR.brand}
+                textColor={COLOR.inkOnBrand}
+                disabled={depositEditSaving}
+                loading={depositEditSaving}
+              >
+                {depositEditSaving ? 'Guardando...' : 'Guardar'}
+              </Button>
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* DatePicker para el modal de edición de depósito bancario */}
+      <DatePickerModal
+        locale="es"
+        mode="single"
+        visible={depositEditDatePickerVisible}
+        onDismiss={() => setDepositEditDatePickerVisible(false)}
+        date={(() => { try { return depositEditDate ? parseISO(depositEditDate) : new Date(); } catch { return new Date(); } })()}
+        onConfirm={({ date }) => {
+          if (date) setDepositEditDate(format(date, 'yyyy-MM-dd'));
+          setDepositEditDatePickerVisible(false);
+        }}
+        label="Fecha de depósito"
+        saveLabel="Confirmar"
+        animationType="fade"
+      />
+
+      {/* Modal de confirmación de eliminación para depósito bancario */}
+      <Modal
+        visible={depositDeleteModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setDepositDeleteModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <ThemedText style={styles.modalTitle}>Eliminar Depósito Bancario</ThemedText>
+            <Text style={styles.confirmationText}>
+              ¿Estás seguro? Esta acción eliminará el depósito y todos los cierres de turno asociados de forma permanente.
+            </Text>
+            <View style={styles.modalButtonContainer}>
+              <Button
+                onPress={() => setDepositDeleteModalVisible(false)}
+                mode="outlined"
+                style={styles.modalButton}
+                textColor={COLOR.ink2}
+                disabled={deletingInProgress}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onPress={confirmDeleteDepositGroup}
                 mode="contained"
                 style={styles.modalButton}
                 buttonColor={COLOR.expense}

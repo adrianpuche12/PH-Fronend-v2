@@ -79,6 +79,7 @@ interface Transaction {
   shiftNotes?: string | null;
   depositStatus?: string;
   bankDepositId?: number;
+  bankDeclaredAmount?: number;
   closingShiftId?: number;
 }
 
@@ -654,9 +655,12 @@ const AdminScreen = () => {
       if (tx.type === 'CLOSING' && tx.depositStatus === 'DEPOSITED' && tx.bankDepositId != null) {
         const gid = tx.bankDepositId;
         const sName = tx.store?.name ?? tx.storeName ?? '—';
+        // bankDeclaredAmount: monto real declarado en el banco (BankDeposit.declaredAmount)
+        // Es el mismo para todos los cierres del mismo depósito, por eso no se acumula
+        const hasBankDeclared = tx.bankDeclaredAmount != null;
         if (groups.has(gid)) {
           const g = groups.get(gid)!;
-          g.amount += tx.declaredCashAmount ?? tx.amount;
+          if (!hasBankDeclared) g.amount += tx.declaredCashAmount ?? tx.amount;
           g.closingCount += 1;
           if (!g.storeNames.includes(sName)) g.storeNames.push(sName);
           if (tx.periodStart && (!g.periodStart || tx.periodStart < g.periodStart)) g.periodStart = tx.periodStart;
@@ -665,7 +669,7 @@ const AdminScreen = () => {
           const g: DepositGroup = {
             type: 'DEPOSIT_GROUP',
             id: gid,
-            amount: tx.declaredCashAmount ?? tx.amount,
+            amount: tx.bankDeclaredAmount ?? tx.declaredCashAmount ?? tx.amount,
             date: tx.date,
             imageUri: tx.imageUri,
             storeNames: [sName],

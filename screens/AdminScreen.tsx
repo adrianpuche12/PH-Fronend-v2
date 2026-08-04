@@ -42,12 +42,13 @@ const TRANSACTION_LABELS: Record<Transaction['type'], string> = {
   CLOSING: 'Cierre',
   GASTO_ADMIN: 'Gasto Administrativo',
   gasto_admin: 'Gasto Administrativo',
+  DEPOSIT_GROUP: 'Depósito Bancario',
 };
 
 // Actualizamos la interfaz para incluir los nuevos tipos
 interface Transaction {
   id: number;
-  type: 'CLOSING' | 'SUPPLIER' | 'SALARY' | 'GASTO_ADMIN' | 'income' | 'expense' | 'gasto_admin';
+  type: 'CLOSING' | 'SUPPLIER' | 'SALARY' | 'GASTO_ADMIN' | 'income' | 'expense' | 'gasto_admin' | 'DEPOSIT_GROUP';
   amount: number;
   date?: string;
   description?: string;
@@ -613,7 +614,11 @@ const AdminScreen = () => {
     const formattedDate = format(date, 'yyyy-MM-dd');
 
     if (dateEditField === 'date') {
-      setNewDate(formattedDate);
+      if (editingTransaction?.type === 'DEPOSIT_GROUP') {
+        setDepositEditDate(formattedDate);
+      } else {
+        setNewDate(formattedDate);
+      }
     } else if (dateEditField === 'periodStart') {
       setNewPeriodStart(formattedDate);
     } else if (dateEditField === 'periodEnd') {
@@ -780,6 +785,13 @@ const AdminScreen = () => {
 
   const handleSaveEdit = async () => {
     if (!editingTransaction) return;
+
+    // ── Caso especial: edición de depósito bancario ──
+    if (editingTransaction.type === 'DEPOSIT_GROUP') {
+      await handleSaveDepositEdit();
+      return;
+    }
+
     const parsedAmount = parseFloat(newAmount.replace(/,/g, ''));
     if (isNaN(parsedAmount)) {
       Alert.alert('Error', 'Por favor ingrese un monto válido.');
@@ -879,14 +891,16 @@ const AdminScreen = () => {
     setEditingTransaction(null);
   };
 
-  // ── Depósito bancario: editar ──────────────────────────────────────────────
+  // ── Depósito bancario: editar (usa el modal existente que funciona en web) ──
   const handleEditDepositGroup = (item: DepositGroup) => {
     setEditingDepositGroup(item);
     setDepositEditDate(item.date?.split('T')[0] ?? '');
-    setDepositEditAmount((item.amount ?? 0).toFixed(2));
+    setDepositEditAmount(item.amount?.toString() ?? '0');
     setDepositEditNotes('');
     setDepositEditImage(null);
-    setDepositEditModalVisible(true);
+    // Reutiliza el modal de edición existente con un Transaction ficticio
+    setEditingTransaction({ type: 'DEPOSIT_GROUP', id: item.id, amount: item.amount } as any);
+    setEditModalVisible(true);
   };
 
   const handleSaveDepositEdit = async () => {
@@ -919,7 +933,8 @@ const AdminScreen = () => {
       if (res.ok) {
         setSnackbarMessage('Depósito bancario actualizado correctamente.');
         setSnackbarVisible(true);
-        setDepositEditModalVisible(false);
+        setEditModalVisible(false);
+        setEditingTransaction(null);
         setEditingDepositGroup(null);
         fetchData(startDate, endDate, selectedStore);
       } else {
@@ -985,6 +1000,62 @@ const renderEditFields = () => {
   );
 
   switch (editingTransaction.type) {
+    case 'DEPOSIT_GROUP':
+      return (
+        <>
+          <TextInput
+            label="Fecha de depósito"
+            value={depositEditDate}
+            style={styles.modalInput}
+            showSoftInputOnFocus={false}
+            onFocus={() => {
+              setDateEditField('date');
+              setDatePickerEditVisible(true);
+            }}
+            right={<TextInput.Icon icon="calendar" onPress={() => {
+              setDateEditField('date');
+              setDatePickerEditVisible(true);
+            }} />}
+          />
+          <TextInput
+            label="Monto declarado"
+            value={depositEditAmount}
+            onChangeText={setDepositEditAmount}
+            keyboardType="numeric"
+            style={styles.modalInput}
+          />
+          <TextInput
+            label="Notas (opcional)"
+            value={depositEditNotes}
+            onChangeText={setDepositEditNotes}
+            style={styles.modalInput}
+            multiline
+          />
+          <View style={{ marginBottom: SPACE.s3 }}>
+            <Text style={{ fontSize: 13, color: COLOR.ink2, marginBottom: 6 }}>Comprobante (opcional)</Text>
+            {depositEditImage ? (
+              <View style={{ alignItems: 'center', gap: 8 }}>
+                <Image source={{ uri: depositEditImage.uri }} style={{ width: 100, height: 100, borderRadius: 8, borderWidth: 1, borderColor: COLOR.border }} />
+                <Button mode="outlined" onPress={() => setDepositEditImage(null)} textColor={COLOR.expense}>Quitar imagen</Button>
+              </View>
+            ) : (
+              <Button
+                mode="outlined"
+                icon="camera"
+                onPress={async () => {
+                  const result = await ImageService.selectImage();
+                  if (!result.canceled && result.assets?.[0]) {
+                    const a = result.assets[0];
+                    setDepositEditImage({ uri: a.uri, name: a.name || ImageService.generateFileName('DEP'), type: a.mimeType || 'image/jpeg' });
+                  }
+                }}
+              >
+                Seleccionar comprobante
+              </Button>
+            )}
+          </View>
+        </>
+      );
     case 'CLOSING':
       return (
         <>
@@ -2012,102 +2083,6 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
           </View>
         </View>
       </Modal>
-
-      {/* Modal de edición para depósito bancario (DEPOSIT_GROUP) */}
-      <Modal
-        visible={depositEditModalVisible}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => { setDepositEditModalVisible(false); setEditingDepositGroup(null); }}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <ThemedText style={styles.modalTitle}>Editar Depósito Bancario</ThemedText>
-            <TextInput
-              label="Fecha de depósito"
-              value={depositEditDate}
-              style={styles.modalInput}
-              showSoftInputOnFocus={false}
-              right={<TextInput.Icon icon="calendar" onPress={() => setDepositEditDatePickerVisible(true)} />}
-            />
-            <TextInput
-              label="Monto declarado"
-              value={depositEditAmount}
-              onChangeText={(v) => setDepositEditAmount(formatAmountInput(v))}
-              keyboardType="numeric"
-              style={styles.modalInput}
-            />
-            <TextInput
-              label="Notas (opcional)"
-              value={depositEditNotes}
-              onChangeText={setDepositEditNotes}
-              style={styles.modalInput}
-              multiline
-            />
-            <View style={{ marginBottom: SPACE.s3 }}>
-              <Text style={{ fontSize: 13, color: COLOR.ink2, marginBottom: 6 }}>Comprobante (opcional)</Text>
-              {depositEditImage ? (
-                <View style={{ alignItems: 'center', gap: 8 }}>
-                  <Image source={{ uri: depositEditImage.uri }} style={{ width: 120, height: 120, borderRadius: 8, borderWidth: 1, borderColor: COLOR.border }} />
-                  <Button mode="outlined" onPress={() => setDepositEditImage(null)} textColor={COLOR.expense}>Quitar imagen</Button>
-                </View>
-              ) : (
-                <Button
-                  mode="outlined"
-                  icon="camera"
-                  onPress={async () => {
-                    const result = await ImageService.selectImage();
-                    if (!result.canceled && result.assets?.[0]) {
-                      const a = result.assets[0];
-                      setDepositEditImage({ uri: a.uri, name: a.name || ImageService.generateFileName('DEP'), type: a.mimeType || 'image/jpeg' });
-                    }
-                  }}
-                >
-                  Seleccionar comprobante
-                </Button>
-              )}
-            </View>
-            <View style={styles.modalButtonContainer}>
-              <Button
-                onPress={() => { setDepositEditModalVisible(false); setEditingDepositGroup(null); }}
-                mode="outlined"
-                style={styles.modalButton}
-                textColor={COLOR.ink2}
-                disabled={depositEditSaving}
-              >
-                Cancelar
-              </Button>
-              <Button
-                onPress={handleSaveDepositEdit}
-                mode="contained"
-                style={styles.modalButton}
-                buttonColor={COLOR.brand}
-                textColor={COLOR.inkOnBrand}
-                disabled={depositEditSaving}
-                loading={depositEditSaving}
-              >
-                {depositEditSaving ? 'Guardando...' : 'Guardar'}
-              </Button>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* DatePicker para el modal de edición de depósito bancario */}
-      <DatePickerModal
-        locale="es"
-        mode="single"
-        visible={depositEditDatePickerVisible}
-        onDismiss={() => setDepositEditDatePickerVisible(false)}
-        date={(() => { try { return depositEditDate ? parseISO(depositEditDate) : new Date(); } catch { return new Date(); } })()}
-        onConfirm={({ date }) => {
-          if (date) setDepositEditDate(format(date, 'yyyy-MM-dd'));
-          setDepositEditDatePickerVisible(false);
-        }}
-        label="Fecha de depósito"
-        saveLabel="Confirmar"
-        animationType="fade"
-      />
 
       {/* Modal de confirmación de eliminación para depósito bancario */}
       <Modal

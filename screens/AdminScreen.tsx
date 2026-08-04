@@ -891,25 +891,25 @@ const AdminScreen = () => {
 
   const handleSaveDepositEdit = async () => {
     if (!editingDepositGroup) return;
-    if (!depositEditImage) {
-      Alert.alert('Error', 'El comprobante bancario es obligatorio.');
-      return;
-    }
     setDepositEditSaving(true);
     try {
-      const uploadResult = await ImageService.uploadImage(
-        depositEditImage.uri,
-        ImageService.generateFileName('DEP'),
-        'comprobantes'
-      );
-      if (!uploadResult.success) {
-        Alert.alert('Error', 'No se pudo subir el comprobante.');
-        return;
-      }
-      const payload: Record<string, any> = { imageUri: uploadResult.imageUri };
+      const payload: Record<string, any> = {};
       if (depositEditDate) payload.depositDate = depositEditDate;
       if (depositEditAmount) payload.declaredAmount = parseFloat(depositEditAmount.replace(/,/g, ''));
       if (depositEditNotes) payload.notes = depositEditNotes;
+      if (depositEditImage) {
+        const uploadResult = await ImageService.uploadImage(
+          depositEditImage.uri,
+          ImageService.generateFileName('DEP'),
+          'comprobantes'
+        );
+        if (!uploadResult.success) {
+          Alert.alert('Error', 'No se pudo subir el comprobante.');
+          setDepositEditSaving(false);
+          return;
+        }
+        payload.imageUri = uploadResult.imageUri;
+      }
 
       const res = await fetch(`${REACT_APP_API_URL}/api/v2/deposits/${editingDepositGroup.id}`, {
         method: 'PUT',
@@ -2028,7 +2028,6 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
               value={depositEditDate}
               style={styles.modalInput}
               showSoftInputOnFocus={false}
-              onFocus={() => setDepositEditDatePickerVisible(true)}
               right={<TextInput.Icon icon="calendar" onPress={() => setDepositEditDatePickerVisible(true)} />}
             />
             <TextInput
@@ -2048,7 +2047,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
             <ImagePicker
               onImageSelected={(img) => setDepositEditImage(img)}
               initialImage={null}
-              required={true}
+              required={false}
             />
             <View style={styles.modalButtonContainer}>
               <Button

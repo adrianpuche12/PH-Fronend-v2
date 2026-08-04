@@ -2044,11 +2044,29 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
               style={styles.modalInput}
               multiline
             />
-            <ImagePicker
-              onImageSelected={(img) => setDepositEditImage(img)}
-              initialImage={null}
-              required={false}
-            />
+            <View style={{ marginBottom: SPACE.s3 }}>
+              <Text style={{ fontSize: 13, color: COLOR.ink2, marginBottom: 6 }}>Comprobante (opcional)</Text>
+              {depositEditImage ? (
+                <View style={{ alignItems: 'center', gap: 8 }}>
+                  <Image source={{ uri: depositEditImage.uri }} style={{ width: 120, height: 120, borderRadius: 8, borderWidth: 1, borderColor: COLOR.border }} />
+                  <Button mode="outlined" onPress={() => setDepositEditImage(null)} textColor={COLOR.expense}>Quitar imagen</Button>
+                </View>
+              ) : (
+                <Button
+                  mode="outlined"
+                  icon="camera"
+                  onPress={async () => {
+                    const result = await ImageService.selectImage();
+                    if (!result.canceled && result.assets?.[0]) {
+                      const a = result.assets[0];
+                      setDepositEditImage({ uri: a.uri, name: a.name || ImageService.generateFileName('DEP'), type: a.mimeType || 'image/jpeg' });
+                    }
+                  }}
+                >
+                  Seleccionar comprobante
+                </Button>
+              )}
+            </View>
             <View style={styles.modalButtonContainer}>
               <Button
                 onPress={() => { setDepositEditModalVisible(false); setEditingDepositGroup(null); }}

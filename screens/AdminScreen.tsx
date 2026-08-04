@@ -441,6 +441,7 @@ const AdminScreen = () => {
   // Estados para la eliminación (modal)
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
+  const [deletingInProgress, setDeletingInProgress] = useState(false);
 
   const { width: screenWidth } = useWindowDimensions();
   const isLargeScreen = screenWidth >= 768;
@@ -706,6 +707,7 @@ const AdminScreen = () => {
 
   const confirmDelete = async () => {
     if (!transactionToDelete) return;
+    setDeletingInProgress(true);
     try {
       let url = '';
       if (transactionToDelete.type === 'income' || transactionToDelete.type === 'expense' || transactionToDelete.type === 'gasto_admin') {
@@ -729,6 +731,7 @@ const AdminScreen = () => {
       console.error('Error al eliminar la transacción:', error);
       Alert.alert('Error', 'Ocurrió un error al eliminar la transacción.');
     } finally {
+      setDeletingInProgress(false);
       setShowDeleteConfirmation(false);
       setTransactionToDelete(null);
     }
@@ -1889,11 +1892,25 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
               ¿Estás seguro de que deseas eliminar esta transacción?
             </Text>
             <View style={styles.modalButtonContainer}>
-              <Button onPress={() => setShowDeleteConfirmation(false)} mode="outlined" style={styles.modalButton} textColor={COLOR.ink2}>
+              <Button
+                onPress={() => setShowDeleteConfirmation(false)}
+                mode="outlined"
+                style={styles.modalButton}
+                textColor={COLOR.ink2}
+                disabled={deletingInProgress}
+              >
                 Cancelar
               </Button>
-              <Button onPress={confirmDelete} mode="contained" style={styles.modalButton} buttonColor={COLOR.expense} textColor={COLOR.white}>
-                Eliminar
+              <Button
+                onPress={confirmDelete}
+                mode="contained"
+                style={styles.modalButton}
+                buttonColor={COLOR.expense}
+                textColor={COLOR.white}
+                disabled={deletingInProgress}
+                loading={deletingInProgress}
+              >
+                {deletingInProgress ? 'Eliminando...' : 'Eliminar'}
               </Button>
             </View>
           </View>

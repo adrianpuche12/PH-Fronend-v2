@@ -2021,7 +2021,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
         onRequestClose={() => { setDepositEditModalVisible(false); setEditingDepositGroup(null); }}
       >
         <View style={styles.modalOverlay}>
-          <ScrollView contentContainerStyle={styles.modalContainer} keyboardShouldPersistTaps="handled">
+          <View style={styles.modalContainer}>
             <ThemedText style={styles.modalTitle}>Editar Depósito Bancario</ThemedText>
             <TextInput
               label="Fecha de depósito"
@@ -2071,7 +2071,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
                 {depositEditSaving ? 'Guardando...' : 'Guardar'}
               </Button>
             </View>
-          </ScrollView>
+          </View>
         </View>
       </Modal>
 

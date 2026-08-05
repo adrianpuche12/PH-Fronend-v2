@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW } from '../theme';
+import { getApiErrorMessage } from '../utils/apiError';
 import { formatHnl, formatDate, formatTime } from '../utils/format';
 import axios from 'axios';
 import { REACT_APP_API_URL } from '../config';
@@ -29,6 +30,7 @@ interface ShiftRecord {
   totalShiftExpenses: number | null;
   declaredCashAmount: number | null;
   cashDifference: number | null;
+  notes: string | null;
 }
 
 interface ProductSummaryItem {
@@ -99,8 +101,8 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
       setHasMore(res.data.length === PAGE_SIZE);
       setExpanded({});
       setSummaries({});
-    } catch {
-      setError('No se pudo cargar el historial de turnos.');
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'No se pudo cargar el historial de turnos.'));
     } finally { setLoading(false); }
   }, [selectedStore, usernameFilter, dateFrom, dateTo]);
 
@@ -210,6 +212,20 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
                       <View style={[styles.statusBadge, isClosed ? styles.statusClosed : styles.statusOpen]}>
                         <Text style={styles.statusText}>{isClosed ? 'Cerrado' : 'Abierto'}</Text>
                       </View>
+                      {/* Indicador de observación */}
+                      {shift.notes && (
+                        <View style={styles.notesBadge}>
+                          <MaterialCommunityIcons name="comment-text" size={11} color={COLOR.brand} />
+                          <Text style={styles.notesBadgeText}>Obs.</Text>
+                        </View>
+                      )}
+                      {/* Efectivo a depositar — siempre visible en cierres */}
+                      {isClosed && shift.declaredCashAmount != null && (
+                        <View style={[styles.diffBadge, { backgroundColor: COLOR.income + '20', borderColor: COLOR.income }]}>
+                          <MaterialCommunityIcons name="cash" size={12} color={COLOR.income} />
+                          <Text style={[styles.diffBadgeText, { color: COLOR.income }]}>{formatHnl(shift.declaredCashAmount)}</Text>
+                        </View>
+                      )}
                       {/* Badge de diferencia de caja — solo en turnos cerrados con reconciliación */}
                       {isClosed && shift.cashDifference != null && (() => {
                         const diff = shift.cashDifference;
@@ -329,6 +345,17 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
                         )}
                       </>
                     )}
+
+                    {/* Observaciones del cajero al cierre */}
+                    {shift.notes && (
+                      <View style={styles.notesBox}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                          <MaterialCommunityIcons name="comment-text-outline" size={14} color={COLOR.ink2} />
+                          <Text style={styles.notesLabel}>Observaciones</Text>
+                        </View>
+                        <Text style={styles.notesText}>{shift.notes}</Text>
+                      </View>
+                    )}
                   </View>
                 )}
               </View>
@@ -393,6 +420,9 @@ const styles = StyleSheet.create({
   statusClosed:   { backgroundColor: COLOR.surface2 },
   statusText:     { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink2 },
 
+  notesBadge:     { flexDirection: 'row', alignItems: 'center', gap: 2, borderRadius: RADIUS.r2, paddingHorizontal: SPACE.s2, paddingVertical: 3, backgroundColor: COLOR.brandTint ?? COLOR.surface2 },
+  notesBadgeText: { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.medium as any, color: COLOR.brand },
+
   detail:         { borderTopWidth: 1, borderTopColor: COLOR.border, padding: SPACE.s4, backgroundColor: COLOR.bgAlt },
 
   detailHeader:   { flexDirection: 'row', paddingBottom: SPACE.s2, borderBottomWidth: 1, borderBottomColor: COLOR.border, marginBottom: SPACE.s1 },
@@ -420,4 +450,7 @@ const styles = StyleSheet.create({
   recLine:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   recLabelHist:   { fontSize: FONT_SIZE.label, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.medium as any },
   recValueHist:   { fontSize: FONT_SIZE.label, color: COLOR.ink, fontWeight: FONT_WEIGHT.semibold as any },
+  notesBox:       { marginTop: SPACE.s3, padding: SPACE.s3, backgroundColor: '#FFFBEB', borderRadius: RADIUS.r2, borderLeftWidth: 3, borderLeftColor: COLOR.brand },
+  notesLabel:     { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink2, textTransform: 'uppercase', letterSpacing: 0.5 } as any,
+  notesText:      { fontSize: FONT_SIZE.body, color: COLOR.ink, lineHeight: 20 },
 });

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, View, Text, StyleSheet, TouchableOpacity, useWindowDimensions, Modal, Image } from 'react-native';
+import { Animated, View, Text, StyleSheet, TouchableOpacity, useWindowDimensions, Modal, Image, ScrollView } from 'react-native';
 import { ActivityIndicator, IconButton } from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import axios from 'axios';
@@ -8,33 +8,119 @@ import { UIPreferencesProvider, useUIPreferences } from '../context/UIPreference
 import { useAuth } from '../context/AuthContext';
 import { REACT_APP_API_URL } from '../config';
 import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, BREAKPOINT, CONTROL } from '../theme';
+import { ALL_SECTIONS, USER_SCREEN_ORDER, UserScreen } from '../constants/sections';
 import POSScreen from './POSScreen';
 import InventoryScreen from './InventoryScreen';
 import SalesHistoryScreen from './SalesHistoryScreen';
 import DynamicFormScreen from './DynamicFormScreen';
 
-type UserScreen = 'sales' | 'inventory' | 'salesHistory' | 'operaciones';
+interface UserMenuItem { key: UserScreen; label: string; icon: string; permission: string[] }
+interface AccessibleStore { id: number; name: string }
 
-interface UserMenuItem { key: UserScreen; label: string; icon: string; permission?: string }
+const MENU_ALL: UserMenuItem[] = USER_SCREEN_ORDER.map(screenKey => {
+  const sections = ALL_SECTIONS.filter(s => s.screen === screenKey);
+  const first = sections[0];
+  return {
+    key: screenKey,
+    label: first.screenLabel ?? first.label,
+    icon: first.icon,
+    permission: sections.map(s => s.key),
+  };
+});
 
-const MENU_ALL: UserMenuItem[] = [
-  { key: 'sales',        label: 'Ventas',      icon: 'cart-outline',          permission: 'POS' },
-  { key: 'inventory',    label: 'Inventario',  icon: 'package-variant',       permission: 'INVENTORY' },
-  { key: 'salesHistory', label: 'Mis ventas',  icon: 'receipt-text-outline',  permission: 'SALES_HISTORY' },
-  { key: 'operaciones',  label: 'Operaciones', icon: 'clipboard-text-outline' },
-];
+const hasPermission = (permissions: string[], sectionPerms: string[]): boolean => {
+  if (permissions.length === 0) return true;
+  return sectionPerms.some(p => permissions.includes(p));
+};
 
-const hasPermission = (permissions: string[], section?: string) =>
-  !section || permissions.length === 0 || permissions.includes(section);
+// ─── UserHomeDashboard — selector de locales ──────────────────────────────────
+
+const UserHomeDashboard = ({
+  stores,
+  userName,
+  onSelect,
+  onLogout,
+}: {
+  stores: AccessibleStore[];
+  userName: string | null;
+  onSelect: (s: AccessibleStore) => void;
+  onLogout: () => void;
+}) => {
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= BREAKPOINT.desktop;
+
+  return (
+    <View style={home.root}>
+      {/* Header */}
+      <View style={home.header}>
+        <Image
+          source={require('../assets/images/logo_proyecto_Humberto.jpg')}
+          style={home.logo}
+        />
+        <View style={{ flex: 1 }}>
+          <Text style={home.brand}>Pollos Hermanos</Text>
+          <Text style={home.user}>{userName ?? 'Usuario'}</Text>
+        </View>
+        <TouchableOpacity onPress={onLogout} style={home.logoutBtn} activeOpacity={0.7}>
+          <MaterialCommunityIcons name="logout" size={18} color={COLOR.expense} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Body */}
+      <ScrollView
+        contentContainerStyle={[home.body, isDesktop && home.bodyDesktop]}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={home.title}>Seleccioná un local</Text>
+        <Text style={home.subtitle}>Elegí el local en el que querés trabajar hoy</Text>
+
+        <View style={[home.grid, isDesktop && home.gridDesktop]}>
+          {stores.map(store => (
+            <TouchableOpacity
+              key={store.id}
+              style={[home.card, isDesktop && home.cardDesktop]}
+              onPress={() => onSelect(store)}
+              activeOpacity={0.8}
+            >
+              <View style={home.cardIcon}>
+                <MaterialCommunityIcons name="store-outline" size={26} color={COLOR.brandDark} />
+              </View>
+              <View style={home.cardInfo}>
+                <Text style={home.cardName}>{store.name}</Text>
+                <Text style={home.cardCaption}>Toca para acceder</Text>
+              </View>
+              <View style={home.cardChevron}>
+                <MaterialCommunityIcons name="chevron-right" size={16} color={COLOR.inkMute} />
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
+    </View>
+  );
+};
 
 // ─── Sidebar del usuario ──────────────────────────────────────────────────────
 
 const SIDEBAR_W_EXPANDED  = 220;
 const SIDEBAR_W_COLLAPSED = 64;
 
-const UserSidebar = ({ active, onSelect, onClose, isDesktop }: {
-  active: UserScreen; onSelect: (s: UserScreen) => void;
-  onClose: () => void; isDesktop: boolean;
+const UserSidebar = ({
+  active,
+  onSelect,
+  onClose,
+  isDesktop,
+  storeName,
+  showChangeStore,
+  onChangeStore,
+}: {
+  active: UserScreen;
+  onSelect: (s: UserScreen) => void;
+  onClose: () => void;
+  isDesktop: boolean;
+  storeName?: string;
+  showChangeStore?: boolean;
+  onChangeStore?: () => void;
 }) => {
   const { logout, userName, permissions } = useAuth();
   const { sidebarCollapsed, toggleSidebar } = useUIPreferences();
@@ -80,6 +166,31 @@ const UserSidebar = ({ active, onSelect, onClose, isDesktop }: {
         )}
       </View>
 
+      {/* Local activo + botón cambiar — expandido */}
+      {!collapsed && storeName && (
+        <TouchableOpacity
+          style={styles.storeRow}
+          onPress={showChangeStore ? onChangeStore : undefined}
+          activeOpacity={showChangeStore ? 0.7 : 1}
+        >
+          <MaterialCommunityIcons name="store-outline" size={14} color={COLOR.brandDeep} />
+          <Text style={styles.storeRowName} numberOfLines={1}>{storeName}</Text>
+          {showChangeStore && (
+            <View style={styles.storeSwapBadge}>
+              <MaterialCommunityIcons name="swap-horizontal" size={13} color={COLOR.brandDeep} />
+              <Text style={styles.storeSwapText}>Cambiar</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      )}
+
+      {/* Local activo + botón cambiar — colapsado */}
+      {collapsed && showChangeStore && storeName && (
+        <TouchableOpacity style={styles.storeRowCollapsed} onPress={onChangeStore} activeOpacity={0.7}>
+          <MaterialCommunityIcons name="swap-horizontal" size={18} color={COLOR.brandDeep} />
+        </TouchableOpacity>
+      )}
+
       <View style={styles.menuScroll}>
         {menu.map(item => (
           <TouchableOpacity
@@ -119,43 +230,96 @@ const UserContent = () => {
   const { width } = useWindowDimensions();
   const isDesktop = width >= BREAKPOINT.desktop;
   const { userName, logout, permissions } = useAuth();
-  const { stores, setSelectedStore } = useStore();
+  const { setSelectedStore } = useStore();
+
+  const [myStores, setMyStores]         = useState<AccessibleStore[]>([]);
+  const [activeStore, setActiveStore]   = useState<AccessibleStore | null>(null);
+  const [loading, setLoading]           = useState(true);
+  const [drawerOpen, setDrawerOpen]     = useState(false);
 
   const filteredMenu = MENU_ALL.filter(item => hasPermission(permissions, item.permission));
-  const defaultScreen = filteredMenu[0]?.key ?? 'sales';
+  const [active, setActive] = useState<UserScreen>(filteredMenu[0]?.key ?? 'sales');
 
-  const [active, setActive]         = useState<UserScreen>(defaultScreen);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [ready, setReady]           = useState(false);
-
+  // Cargar locales accesibles del usuario
   useEffect(() => {
-    if (!userName || stores.length === 0) return;
-    axios.get(`${REACT_APP_API_URL}/api/v2/users/by-username/${userName}`)
+    if (!userName) return;
+    axios.get<AccessibleStore[]>(`${REACT_APP_API_URL}/api/v2/users/accessible-stores`)
       .then(res => {
-        const store = stores.find(s => s.id === res.data.storeId);
-        if (store) setSelectedStore(store);
-        else if (stores[0]) setSelectedStore(stores[0]);
+        const stores = res.data ?? [];
+        setMyStores(stores);
+        if (stores.length === 1) {
+          setActiveStore(stores[0]);
+          setSelectedStore({ id: stores[0].id, name: stores[0].name, active: true });
+        }
       })
       .catch((err: any) => {
-        // Si la cuenta fue suspendida mientras la sesión estaba activa → forzar logout
         if (err?.response?.status === 403 &&
             err?.response?.data?.error === 'ACCOUNT_SUSPENDED') {
           logout();
           return;
         }
-        if (stores[0]) setSelectedStore(stores[0]);
+        // Continuar con stores vacío
       })
-      .finally(() => setReady(true));
-  }, [userName, stores]);
+      .finally(() => setLoading(false));
+  }, [userName]);
+
+  const handleStoreSelect = (store: AccessibleStore) => {
+    setActiveStore(store);
+    setSelectedStore({ id: store.id, name: store.name, active: true });
+    setActive(filteredMenu[0]?.key ?? 'sales');
+  };
+
+  const handleChangeStore = () => {
+    setActiveStore(null);
+  };
 
   const screenTitle = filteredMenu.find(m => m.key === active)?.label ?? '';
 
-  if (!ready) return <ActivityIndicator size="large" color={COLOR.brand} style={{ flex: 1, marginTop: 60 }} />;
+  // Estados de carga
+  if (loading) {
+    return <ActivityIndicator size="large" color={COLOR.brand} style={{ flex: 1, marginTop: 60 }} />;
+  }
 
+  // Sin secciones habilitadas
+  if (filteredMenu.length === 0) {
+    return (
+      <View style={styles.noAccessContainer}>
+        <MaterialCommunityIcons name="lock-outline" size={48} color={COLOR.inkMute} />
+        <Text style={styles.noAccessTitle}>Sin acceso habilitado</Text>
+        <Text style={styles.noAccessText}>No tenés secciones habilitadas. Contactá al encargado del sistema.</Text>
+        <TouchableOpacity style={styles.noAccessLogout} onPress={logout} activeOpacity={0.7}>
+          <MaterialCommunityIcons name="logout" size={16} color={COLOR.expense} />
+          <Text style={styles.noAccessLogoutText}>Cerrar sesión</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // Selector de locales (múltiples locales, ninguno seleccionado)
+  if (myStores.length > 1 && activeStore === null) {
+    return (
+      <UserHomeDashboard
+        stores={myStores}
+        userName={userName}
+        onSelect={handleStoreSelect}
+        onLogout={logout}
+      />
+    );
+  }
+
+  // Vista de secciones (1 local o local ya seleccionado)
   return (
     <View style={styles.container}>
       {isDesktop && (
-        <UserSidebar active={active} onSelect={setActive} onClose={() => {}} isDesktop />
+        <UserSidebar
+          active={active}
+          onSelect={setActive}
+          onClose={() => {}}
+          isDesktop
+          storeName={activeStore?.name}
+          showChangeStore={myStores.length > 1}
+          onChangeStore={handleChangeStore}
+        />
       )}
 
       <View style={styles.content}>
@@ -170,6 +334,11 @@ const UserContent = () => {
               <MaterialCommunityIcons name="menu" size={26} color={COLOR.ink} />
             </TouchableOpacity>
             <Text style={styles.topbarTitle}>{screenTitle}</Text>
+            {myStores.length > 1 && (
+              <TouchableOpacity onPress={handleChangeStore} style={styles.changeStoreBtn} activeOpacity={0.7}>
+                <MaterialCommunityIcons name="swap-horizontal" size={20} color={COLOR.brandDeep} />
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -197,6 +366,19 @@ const UserContent = () => {
                   <MaterialCommunityIcons name="close" size={20} color={COLOR.inkOnBrand} />
                 </TouchableOpacity>
               </View>
+
+              {/* Local activo */}
+              {activeStore && (
+                <View style={styles.mobileDrawerStore}>
+                  <MaterialCommunityIcons name="store-outline" size={14} color={COLOR.brandDeep} />
+                  <Text style={styles.mobileDrawerStoreName} numberOfLines={1}>{activeStore.name}</Text>
+                  {myStores.length > 1 && (
+                    <TouchableOpacity onPress={() => { setDrawerOpen(false); handleChangeStore(); }} activeOpacity={0.7}>
+                      <Text style={styles.mobileDrawerStoreChange}>Cambiar</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
 
               {/* Menú */}
               <View style={{ flex: 1, paddingTop: SPACE.s3 }}>
@@ -247,7 +429,34 @@ const UserDashboard = () => (
 
 export default UserDashboard;
 
-// ─── Estilos ──────────────────────────────────────────────────────────────────
+// ─── Estilos — UserHomeDashboard ──────────────────────────────────────────────
+
+const home = StyleSheet.create({
+  root:        { flex: 1, backgroundColor: COLOR.bg },
+  header:      { flexDirection: 'row', alignItems: 'center', gap: SPACE.s3, padding: SPACE.s4, paddingTop: SPACE.s5, backgroundColor: COLOR.brand, borderBottomWidth: 1, borderBottomColor: COLOR.brandDark },
+  logo:        { width: 40, height: 40, borderRadius: RADIUS.full, borderWidth: 2, borderColor: COLOR.brandDeep },
+  brand:       { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
+  user:        { fontSize: FONT_SIZE.caption, color: COLOR.inkOnBrand, marginTop: 2 },
+  logoutBtn:   { padding: SPACE.s2 },
+
+  body:        { padding: SPACE.s5, paddingTop: SPACE.s6 },
+  bodyDesktop: { maxWidth: 720, alignSelf: 'center', width: '100%' },
+  title:       { fontSize: FONT_SIZE.h1, fontWeight: FONT_WEIGHT.black as any, color: COLOR.ink, marginBottom: SPACE.s1 },
+  subtitle:    { fontSize: FONT_SIZE.body, color: COLOR.inkMute, marginBottom: SPACE.s5 },
+
+  grid:        { gap: SPACE.s3 },
+  gridDesktop: { flexDirection: 'row', flexWrap: 'wrap' },
+
+  card:        { flexDirection: 'row', alignItems: 'center', gap: SPACE.s3, backgroundColor: COLOR.surface, borderRadius: RADIUS.r3, padding: SPACE.s4, borderWidth: 1.5, borderColor: COLOR.border, elevation: 1 },
+  cardDesktop: { width: '48%' },
+  cardIcon:    { width: 52, height: 52, borderRadius: RADIUS.r2, backgroundColor: COLOR.bgAlt, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: COLOR.border },
+  cardInfo:    { flex: 1 },
+  cardName:    { fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink, marginBottom: 3 },
+  cardCaption: { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, fontWeight: FONT_WEIGHT.medium as any },
+  cardChevron: { width: 28, height: 28, borderRadius: RADIUS.full, backgroundColor: COLOR.bgAlt, justifyContent: 'center', alignItems: 'center' },
+});
+
+// ─── Estilos — UserDashboard principal ────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container:       { flex: 1, flexDirection: 'row', backgroundColor: COLOR.bg },
@@ -255,6 +464,12 @@ const styles = StyleSheet.create({
 
   sidebar:         { backgroundColor: COLOR.surface, borderRightWidth: 1, borderRightColor: COLOR.border, flexDirection: 'column', overflow: 'hidden' },
   sidebarHeader:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: SPACE.s3, borderBottomWidth: 1, borderBottomColor: COLOR.brandDark, backgroundColor: COLOR.brand, position: 'relative', minHeight: 56 },
+
+  storeRow:        { flexDirection: 'row', alignItems: 'center', gap: SPACE.s2, paddingHorizontal: SPACE.s4, paddingVertical: SPACE.s2, backgroundColor: COLOR.brandTint, borderBottomWidth: 1, borderBottomColor: COLOR.border },
+  storeRowName:    { flex: 1, fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.inkMute },
+  storeSwapBadge:  { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: COLOR.brandTint2, borderRadius: RADIUS.full, paddingHorizontal: SPACE.s2, paddingVertical: 2, borderWidth: 1, borderColor: COLOR.brandDark },
+  storeSwapText:   { fontSize: 10, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.brandDeep },
+  storeRowCollapsed: { alignItems: 'center', justifyContent: 'center', paddingVertical: SPACE.s2, borderBottomWidth: 1, borderBottomColor: COLOR.border, backgroundColor: COLOR.brandTint },
 
   togglePin: {
     width: 26, height: 26, borderRadius: RADIUS.full,
@@ -280,7 +495,8 @@ const styles = StyleSheet.create({
 
   topbar:          { flexDirection: 'row', alignItems: 'center', backgroundColor: COLOR.brand, paddingHorizontal: SPACE.s4, height: CONTROL.appBarH, gap: SPACE.s3, borderBottomWidth: 1, borderBottomColor: COLOR.brandDark },
   menuBtn:         { padding: SPACE.s1 },
-  topbarTitle:     { fontSize: FONT_SIZE.h2, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
+  topbarTitle:     { flex: 1, fontSize: FONT_SIZE.h2, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
+  changeStoreBtn:  { padding: SPACE.s1 },
 
   drawerOverlay:   { flex: 1, flexDirection: 'row' },
   drawerBg:        { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)' },
@@ -291,6 +507,9 @@ const styles = StyleSheet.create({
   mobileDrawerBrand:    { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
   mobileDrawerUser:     { fontSize: FONT_SIZE.caption, color: COLOR.inkOnBrand, marginTop: 2, fontWeight: FONT_WEIGHT.medium as any },
   mobileDrawerClose:    { width: 32, height: 32, borderRadius: RADIUS.full, backgroundColor: 'rgba(0,0,0,0.15)', justifyContent: 'center', alignItems: 'center' },
+  mobileDrawerStore:    { flexDirection: 'row', alignItems: 'center', gap: SPACE.s2, paddingHorizontal: SPACE.s4, paddingVertical: SPACE.s2, backgroundColor: COLOR.brandTint, borderBottomWidth: 1, borderBottomColor: COLOR.border },
+  mobileDrawerStoreName:{ flex: 1, fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.inkMute },
+  mobileDrawerStoreChange: { fontSize: FONT_SIZE.caption, color: COLOR.brandDeep, fontWeight: FONT_WEIGHT.bold as any },
   mobileDrawerItem:     { flexDirection: 'row', alignItems: 'center', gap: SPACE.s3, marginHorizontal: SPACE.s3, marginBottom: SPACE.s1, paddingHorizontal: SPACE.s3, paddingVertical: SPACE.s3, borderRadius: RADIUS.r2 },
   mobileDrawerItemActive: { backgroundColor: COLOR.brandTint },
   mobileDrawerIconWrap: { width: 36, height: 36, borderRadius: RADIUS.r2, backgroundColor: COLOR.bg, justifyContent: 'center', alignItems: 'center' },
@@ -299,4 +518,11 @@ const styles = StyleSheet.create({
   mobileDrawerLabelActive: { color: COLOR.ink, fontWeight: FONT_WEIGHT.bold as any },
   mobileDrawerLogout:   { flexDirection: 'row', alignItems: 'center', gap: SPACE.s3, padding: SPACE.s4, borderTopWidth: 1, borderTopColor: COLOR.border, marginTop: SPACE.s2 },
   mobileDrawerLogoutText: { fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.expense },
+
+  // Sin acceso
+  noAccessContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: SPACE.s6, gap: SPACE.s3 },
+  noAccessTitle:     { fontSize: FONT_SIZE.h2, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink, textAlign: 'center' },
+  noAccessText:      { fontSize: FONT_SIZE.body, color: COLOR.inkMute, textAlign: 'center', lineHeight: 22 },
+  noAccessLogout:    { flexDirection: 'row', alignItems: 'center', gap: SPACE.s2, marginTop: SPACE.s3, padding: SPACE.s3, borderRadius: RADIUS.r2, borderWidth: 1, borderColor: COLOR.expense },
+  noAccessLogoutText:{ fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.expense },
 });

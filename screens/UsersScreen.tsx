@@ -4,10 +4,21 @@ import {
   ActivityIndicator, Modal, useWindowDimensions,
 } from 'react-native';
 import { Button, TextInput, Snackbar, IconButton } from 'react-native-paper';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import axios from 'axios';
 import { REACT_APP_API_URL } from '../config';
 import ConfirmDialog from '../components/ConfirmDialog';
+import UserCreationWizard from '../components/UserCreationWizard';
 import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW, BREAKPOINT } from '../theme';
+import { ALL_SECTIONS, SECTION_GROUPS, ASSIGNABLE_SECTIONS } from '../constants/sections';
+
+// ─── Toggle visual (sin Switch nativo — no respeta trackColor en web) ────────
+
+const ToggleSwitch = ({ value }: { value: boolean }) => (
+  <View style={{ width: 44, height: 24, borderRadius: 12, backgroundColor: value ? COLOR.brandDark : COLOR.border2, padding: 2, justifyContent: 'center' }}>
+    <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: COLOR.surface, alignSelf: value ? 'flex-end' : 'flex-start', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.18, shadowRadius: 2, elevation: 2 }} />
+  </View>
+);
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -28,29 +39,9 @@ interface AppUser {
   createdAt: string;
 }
 
-interface UserForm {
-  fullName: string;
-  username: string;
-  email: string;
-  role: string;
-  storeId: string;
-}
-
-const EMPTY_FORM: UserForm = { fullName: '', username: '', email: '', role: 'ENCARGADO', storeId: '' };
-
-// Secciones disponibles con sus labels en español
-const SECTIONS: { key: string; label: string }[] = [
-  { key: 'DASHBOARD',         label: 'Dashboard' },
-  { key: 'POS',               label: 'Punto de Venta' },
-  { key: 'SALES_HISTORY',     label: 'Historial de Ventas' },
-  { key: 'INVENTORY',         label: 'Inventario' },
-  { key: 'TRANSACTIONS',      label: 'Transacciones' },
-  { key: 'SALARY_PAYMENTS',   label: 'Pagos de Salario' },
-  { key: 'SUPPLIER_PAYMENTS', label: 'Pagos a Proveedores' },
-  { key: 'CATALOG',           label: 'Catalogo' },
-];
 
 const ROLES = ['ENCARGADO', 'CONTADOR', 'SOCIO'];
+const ALL_SECTION_KEYS = ASSIGNABLE_SECTIONS.map(s => s.key);
 
 const roleLabel = (r: string) => ({
   ENCARGADO: 'Encargado',
@@ -73,10 +64,8 @@ export default function UsersScreen() {
   const [loading, setLoading]   = useState(false);
   const [snackbar, setSnackbar] = useState('');
 
-  // Modal crear usuario
+  // Wizard de creación de usuario
   const [createModal, setCreateModal] = useState(false);
-  const [form, setForm]               = useState<UserForm>(EMPTY_FORM);
-  const [saving, setSaving]           = useState(false);
 
   // Modal reasignar local
   const [reassignModal, setReassignModal]     = useState<AppUser | null>(null);
@@ -105,6 +94,7 @@ export default function UsersScreen() {
 
   // ConfirmDialog
   const [confirmDlg, setConfirmDlg] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
   const askConfirm = (title: string, message: string, onConfirm: () => void) =>
     setConfirmDlg({ title, message, onConfirm });
 
@@ -125,40 +115,6 @@ export default function UsersScreen() {
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
-  // ── Crear usuario ──────────────────────────────────────────────────────────
-
-  const handleCreate = async () => {
-    if (!form.fullName.trim() || !form.username.trim() || !form.email.trim()) {
-      setSnackbar('Completa nombre, usuario y email'); return;
-    }
-    if (!form.email.includes('@')) {
-      setSnackbar('Email invalido'); return;
-    }
-    if (form.role === 'ENCARGADO' && !form.storeId) {
-      setSnackbar('El encargado debe tener un local asignado'); return;
-    }
-    setSaving(true);
-    try {
-      const res = await axios.post(`${API}/api/v2/users`, {
-        fullName: form.fullName.trim(),
-        username: form.username.trim().toLowerCase(),
-        email:    form.email.trim().toLowerCase(),
-        role:     form.role,
-        storeId:  form.storeId ? Number(form.storeId) : undefined,
-      });
-      setCreateModal(false);
-      setForm(EMPTY_FORM);
-      loadAll();
-      setTempPwdModal({
-        fullName: res.data.fullName,
-        username: res.data.username,
-        password: res.data.tempPassword,
-      });
-    } catch (e: any) {
-      setSnackbar(e.response?.data?.error || 'Error al crear usuario');
-    } finally { setSaving(false); }
-  };
-
   // ── Suspender / Activar ────────────────────────────────────────────────────
 
   const handleSuspend = (user: AppUser) => {
@@ -166,12 +122,12 @@ export default function UsersScreen() {
       'Suspender usuario',
       `Suspender a "${user.fullName}"? No podra iniciar sesion hasta que se reactive.`,
       async () => {
+        setConfirmLoading(true);
         try {
           await axios.put(`${API}/api/v2/users/${user.id}/suspend`);
           setSnackbar(`${user.fullName} suspendido`);
-          loadAll();
         } catch (e: any) { setSnackbar(e.response?.data?.error || 'Error'); }
-        finally { setConfirmDlg(null); }
+        finally { setConfirmLoading(false); setConfirmDlg(null); loadAll(); }
       }
     );
   };
@@ -181,12 +137,12 @@ export default function UsersScreen() {
       'Activar usuario',
       `Reactivar el acceso de "${user.fullName}"?`,
       async () => {
+        setConfirmLoading(true);
         try {
           await axios.put(`${API}/api/v2/users/${user.id}/activate`);
           setSnackbar(`${user.fullName} activado`);
-          loadAll();
         } catch (e: any) { setSnackbar(e.response?.data?.error || 'Error'); }
-        finally { setConfirmDlg(null); }
+        finally { setConfirmLoading(false); setConfirmDlg(null); loadAll(); }
       }
     );
   };
@@ -224,7 +180,10 @@ export default function UsersScreen() {
 
   const openPermModal = (user: AppUser) => {
     setPermModal(user);
-    setPermSelected(user.permissions ?? []);
+    // Filtrar permisos obsoletos (ej. DASHBOARD, CATALOG) que ya no tienen pantalla de usuario
+    const perms = (user.permissions ?? []).filter(p => ALL_SECTION_KEYS.includes(p));
+    // permissions vacío (o solo permisos sin pantalla) = acceso completo → mostrar todos ON
+    setPermSelected(perms.length === 0 ? [...ALL_SECTION_KEYS] : perms);
   };
 
   const togglePerm = (key: string) => {
@@ -236,8 +195,10 @@ export default function UsersScreen() {
   const handleSavePermissions = async () => {
     if (!permModal) return;
     setSavingPerm(true);
+    // Si todas las secciones están activas → enviar [] (backend: sin restricciones = acceso completo)
+    const toSend = permSelected.length === ALL_SECTION_KEYS.length ? [] : permSelected;
     try {
-      await axios.put(`${API}/api/v2/users/${permModal.id}/permissions`, { permissions: permSelected });
+      await axios.put(`${API}/api/v2/users/${permModal.id}/permissions`, { permissions: toSend });
       setSnackbar('Permisos actualizados');
       setPermModal(null);
       loadAll();
@@ -277,12 +238,12 @@ export default function UsersScreen() {
       'Eliminar usuario',
       `Eliminar permanentemente a "${user.fullName}"? Esta accion no se puede deshacer.`,
       async () => {
+        setConfirmLoading(true);
         try {
           await axios.delete(`${API}/api/v2/users/${user.id}`);
           setSnackbar('Usuario eliminado');
-          loadAll();
         } catch (e: any) { setSnackbar(e.response?.data?.error || 'Error al eliminar'); }
-        finally { setConfirmDlg(null); }
+        finally { setConfirmLoading(false); setConfirmDlg(null); loadAll(); }
       }
     );
   };
@@ -381,63 +342,16 @@ export default function UsersScreen() {
         </ScrollView>
       )}
 
-      {/* ── Modal crear usuario ── */}
-      <Modal visible={createModal} transparent animationType="fade" onRequestClose={() => setCreateModal(false)}>
-        <View style={styles.overlay}>
-          <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 16 }}>
-            <View style={[styles.modal, { width: '100%', maxWidth: 460 }]}>
-              <Text style={styles.modalTitle}>Nuevo usuario</Text>
-
-              <TextInput label="Nombre completo *" value={form.fullName} onChangeText={v => setForm({ ...form, fullName: v })} mode="outlined" style={styles.input} />
-              <TextInput label="Username *" value={form.username} onChangeText={v => setForm({ ...form, username: v.toLowerCase().replace(/\s+/g, '.') })} mode="outlined" style={styles.input} autoCapitalize="none" />
-              <TextInput label="Email *" value={form.email} onChangeText={v => setForm({ ...form, email: v.toLowerCase() })} mode="outlined" style={styles.input} autoCapitalize="none" keyboardType="email-address" />
-
-              {/* Selector de rol */}
-              <Text style={styles.fieldLabel}>Rol *</Text>
-              <View style={[styles.storeSelector, { marginBottom: SPACE.s3 }]}>
-                {ROLES.map(r => (
-                  <TouchableOpacity
-                    key={r}
-                    style={[styles.storeChip, form.role === r && styles.storeChipActive]}
-                    onPress={() => setForm({ ...form, role: r })}
-                  >
-                    <Text style={[styles.storeChipText, form.role === r && styles.storeChipTextActive]}>
-                      {roleLabel(r)}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {/* Selector de local (requerido solo para ENCARGADO) */}
-              <Text style={styles.fieldLabel}>
-                Local principal {form.role === 'ENCARGADO' ? '*' : '(opcional)'}
-              </Text>
-              <View style={styles.storeSelector}>
-                {stores.map(s => (
-                  <TouchableOpacity
-                    key={s.id}
-                    style={[styles.storeChip, form.storeId === String(s.id) && styles.storeChipActive]}
-                    onPress={() => setForm({ ...form, storeId: form.storeId === String(s.id) ? '' : String(s.id) })}
-                  >
-                    <Text style={[styles.storeChipText, form.storeId === String(s.id) && styles.storeChipTextActive]}>
-                      {s.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <Text style={styles.roleNote}>
-                Se generara una contrasena temporal. Podras copiarla y enviarsela al usuario por WhatsApp.
-              </Text>
-
-              <View style={styles.modalActions}>
-                <Button mode="outlined" onPress={() => { setCreateModal(false); setForm(EMPTY_FORM); }} style={{ flex: 1 }}>Cancelar</Button>
-                <Button mode="contained" onPress={handleCreate} loading={saving} buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ flex: 1 }}>Crear</Button>
-              </View>
-            </View>
-          </ScrollView>
-        </View>
-      </Modal>
+      {/* ── Wizard de creación de usuario ── */}
+      <UserCreationWizard
+        visible={createModal}
+        stores={stores}
+        onClose={() => setCreateModal(false)}
+        onCreated={(fullName, username, tempPassword) => {
+          loadAll();
+          setTempPwdModal({ fullName, username, password: tempPassword });
+        }}
+      />
 
       {/* ── Modal reasignar local ── */}
       <Modal visible={!!reassignModal} transparent animationType="fade" onRequestClose={() => setReassignModal(null)}>
@@ -491,29 +405,64 @@ export default function UsersScreen() {
       {/* ── Modal permisos ── */}
       <Modal visible={!!permModal} transparent animationType="fade" onRequestClose={() => setPermModal(null)}>
         <View style={styles.overlay}>
-          <View style={styles.modal}>
-            <Text style={styles.modalTitle}>Permisos de acceso</Text>
-            <Text style={styles.modalSub}>{permModal?.fullName}</Text>
-            <Text style={styles.fieldLabel}>
-              Secciones habilitadas (sin seleccion = acceso completo):
-            </Text>
-            <View style={styles.storeSelector}>
-              {SECTIONS.map(s => (
-                <TouchableOpacity
-                  key={s.key}
-                  style={[styles.storeChip, permSelected.includes(s.key) && styles.storeChipActive]}
-                  onPress={() => togglePerm(s.key)}
-                >
-                  <Text style={[styles.storeChipText, permSelected.includes(s.key) && styles.storeChipTextActive]}>
-                    {s.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+          <View style={styles.permModalOuter}>
+            {/* Header */}
+            <View style={styles.permHeader}>
+              <Text style={styles.modalTitle}>Permisos de acceso</Text>
+              <View style={styles.permUserBadge}>
+                <View style={styles.permUserDot} />
+                <Text style={styles.permUserName}>{permModal?.fullName}</Text>
+              </View>
             </View>
-            {permSelected.length === 0 && (
-              <Text style={styles.roleNote}>Sin restricciones — el usuario puede ver todas las secciones.</Text>
-            )}
-            <View style={styles.modalActions}>
+
+            {/* Nota informativa */}
+            <View style={styles.permInfoNote}>
+              <MaterialCommunityIcons name="information-outline" size={14} color={COLOR.inkMute} />
+              <Text style={styles.permInfoText}>
+                Desactivá las secciones que no querés habilitar. Si todas están activas, el usuario tiene{' '}
+                <Text style={{ fontWeight: FONT_WEIGHT.bold as any }}>acceso completo</Text>.
+              </Text>
+            </View>
+
+            {/* Filas de toggle agrupadas */}
+            <ScrollView style={styles.permScroll} showsVerticalScrollIndicator={false}>
+              {SECTION_GROUPS.map(group => {
+                const groupSections = ASSIGNABLE_SECTIONS.filter(s => s.group === group);
+                if (groupSections.length === 0) return null;
+                return (
+                  <View key={group}>
+                    <Text style={styles.permGroupLabel}>{group}</Text>
+                    {groupSections.map(s => {
+                      const isOn = permSelected.includes(s.key);
+                      return (
+                        <TouchableOpacity
+                          key={s.key}
+                          style={[styles.permRow, isOn && styles.permRowOn]}
+                          onPress={() => togglePerm(s.key)}
+                          activeOpacity={0.8}
+                        >
+                          <View style={[styles.permIcon, isOn && styles.permIconOn]}>
+                            <MaterialCommunityIcons
+                              name={s.icon as any}
+                              size={18}
+                              color={isOn ? COLOR.brandDeep : COLOR.inkMute}
+                            />
+                          </View>
+                          <View style={styles.permInfo}>
+                            <Text style={styles.permName}>{s.label}</Text>
+                            <Text style={styles.permDesc}>{s.description}</Text>
+                          </View>
+                          <ToggleSwitch value={isOn} />
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                );
+              })}
+            </ScrollView>
+
+            {/* Acciones */}
+            <View style={[styles.modalActions, { paddingHorizontal: SPACE.s5, paddingBottom: SPACE.s5 }]}>
               <Button mode="outlined" onPress={() => setPermModal(null)} style={{ flex: 1 }}>Cancelar</Button>
               <Button mode="contained" onPress={handleSavePermissions} loading={savingPerm} buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ flex: 1 }}>Guardar</Button>
             </View>
@@ -610,8 +559,9 @@ export default function UsersScreen() {
         title={confirmDlg?.title ?? ''}
         message={confirmDlg?.message ?? ''}
         confirmLabel="Si, confirmar"
+        loading={confirmLoading}
         onConfirm={() => confirmDlg?.onConfirm()}
-        onCancel={() => setConfirmDlg(null)}
+        onCancel={() => { if (!confirmLoading) setConfirmDlg(null); }}
       />
       <Snackbar visible={!!snackbar} onDismiss={() => setSnackbar('')} duration={3000}>{snackbar}</Snackbar>
     </View>
@@ -639,7 +589,7 @@ const styles = StyleSheet.create({
   cellRole:       { width: 100 },
   cellStore:      { width: 100 },
   cellStatus:     { width: 100 },
-  cellActions:    { flexDirection: 'row', alignItems: 'center', width: 200 },
+  cellActions:    { flexDirection: 'row', alignItems: 'center', width: 240 },
   colHeader:      { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.inkMute } as any,
 
   userName:       { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
@@ -666,6 +616,24 @@ const styles = StyleSheet.create({
   storeChipTextActive: { color: COLOR.ink, fontWeight: FONT_WEIGHT.bold as any },
 
   roleNote:       { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, backgroundColor: COLOR.bgAlt, borderRadius: RADIUS.r2, padding: SPACE.s2, marginBottom: SPACE.s1 },
+
+  // ── Modal permisos (sin padding externo) ──
+  permModalOuter:  { backgroundColor: COLOR.surface, borderRadius: RADIUS.r4, width: '92%', maxWidth: 480, overflow: 'hidden' },
+  permHeader:      { padding: SPACE.s5, borderBottomWidth: 1, borderBottomColor: COLOR.border },
+  permUserBadge:   { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, backgroundColor: COLOR.brandTint, borderRadius: RADIUS.full, paddingVertical: 4, paddingHorizontal: SPACE.s3, alignSelf: 'flex-start', borderWidth: 1, borderColor: COLOR.border2 },
+  permUserDot:     { width: 8, height: 8, borderRadius: 4, backgroundColor: COLOR.brand },
+  permUserName:    { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.brandDeep },
+  permInfoNote:    { flexDirection: 'row', alignItems: 'flex-start', gap: SPACE.s2, margin: SPACE.s3, backgroundColor: COLOR.bg, borderRadius: RADIUS.r2, padding: SPACE.s3, borderWidth: 1, borderColor: COLOR.border },
+  permInfoText:    { flex: 1, fontSize: FONT_SIZE.caption, color: COLOR.inkMute, lineHeight: 18 },
+  permScroll:      { maxHeight: 360 },
+  permGroupLabel:  { fontSize: 10.5, fontWeight: FONT_WEIGHT.bold as any, letterSpacing: 0.7, textTransform: 'uppercase', color: COLOR.inkMute, paddingHorizontal: SPACE.s5, paddingTop: SPACE.s3, paddingBottom: SPACE.s1 } as any,
+  permRow:         { flexDirection: 'row', alignItems: 'center', gap: SPACE.s3, paddingVertical: 11, paddingHorizontal: SPACE.s5, borderLeftWidth: 3, borderLeftColor: 'transparent' },
+  permRowOn:       { backgroundColor: COLOR.brandTint, borderLeftColor: COLOR.brand },
+  permIcon:        { width: 36, height: 36, borderRadius: 9, backgroundColor: COLOR.bgAlt, alignItems: 'center', justifyContent: 'center' },
+  permIconOn:      { backgroundColor: 'rgba(245,196,48,.15)' },
+  permInfo:        { flex: 1 },
+  permName:        { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink },
+  permDesc:        { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, marginTop: 2, lineHeight: 16 },
 
   mobileCard:       { backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border, paddingHorizontal: SPACE.s4, paddingVertical: SPACE.s3, gap: SPACE.s2 },
   mobileCardTop:    { flexDirection: 'row', alignItems: 'center', gap: SPACE.s3 },

@@ -30,6 +30,8 @@ import ImageViewer from '../components/ImageViewer';
 import StoreDropdown from '../components/StoreDropdown';
 import DateRangePicker from '../components/DateRangePicker';
 import ImageButton from '../components/ImageButton';
+import ImagePicker from '../components/ImagePicker';
+import { ImageService } from '../utils/ImageService';
 import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW } from '../theme';
 
 const TRANSACTION_LABELS: Record<Transaction['type'], string> = {
@@ -40,12 +42,13 @@ const TRANSACTION_LABELS: Record<Transaction['type'], string> = {
   CLOSING: 'Cierre',
   GASTO_ADMIN: 'Gasto Administrativo',
   gasto_admin: 'Gasto Administrativo',
+  DEPOSIT_GROUP: 'Depósito Bancario',
 };
 
 // Actualizamos la interfaz para incluir los nuevos tipos
 interface Transaction {
   id: number;
-  type: 'CLOSING' | 'SUPPLIER' | 'SALARY' | 'GASTO_ADMIN' | 'income' | 'expense' | 'gasto_admin';
+  type: 'CLOSING' | 'SUPPLIER' | 'SALARY' | 'GASTO_ADMIN' | 'income' | 'expense' | 'gasto_admin' | 'DEPOSIT_GROUP';
   amount: number;
   date?: string;
   description?: string;
@@ -73,8 +76,10 @@ interface Transaction {
   totalShiftExpenses?: number;
   declaredCashAmount?: number;
   cashDifference?: number;
+  shiftNotes?: string | null;
   depositStatus?: string;
   bankDepositId?: number;
+  bankDeclaredAmount?: number;
   closingShiftId?: number;
 }
 
@@ -440,6 +445,19 @@ const AdminScreen = () => {
   // Estados para la eliminación (modal)
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
+  const [deletingInProgress, setDeletingInProgress] = useState(false);
+
+  // Estados para editar/borrar depósito bancario (DEPOSIT_GROUP)
+  const [depositEditModalVisible, setDepositEditModalVisible] = useState(false);
+  const [editingDepositGroup, setEditingDepositGroup] = useState<DepositGroup | null>(null);
+  const [depositEditDate, setDepositEditDate] = useState('');
+  const [depositEditAmount, setDepositEditAmount] = useState('');
+  const [depositEditNotes, setDepositEditNotes] = useState('');
+  const [depositEditImage, setDepositEditImage] = useState<{uri: string; name: string; type: string} | null>(null);
+  const [depositEditSaving, setDepositEditSaving] = useState(false);
+  const [depositEditDatePickerVisible, setDepositEditDatePickerVisible] = useState(false);
+  const [depositDeleteModalVisible, setDepositDeleteModalVisible] = useState(false);
+  const [depositGroupToDelete, setDepositGroupToDelete] = useState<DepositGroup | null>(null);
 
   const { width: screenWidth } = useWindowDimensions();
   const isLargeScreen = screenWidth >= 768;
@@ -597,7 +615,11 @@ const AdminScreen = () => {
     const formattedDate = format(date, 'yyyy-MM-dd');
 
     if (dateEditField === 'date') {
-      setNewDate(formattedDate);
+      if (editingTransaction?.type === 'DEPOSIT_GROUP') {
+        setDepositEditDate(formattedDate);
+      } else {
+        setNewDate(formattedDate);
+      }
     } else if (dateEditField === 'periodStart') {
       setNewPeriodStart(formattedDate);
     } else if (dateEditField === 'periodEnd') {
@@ -633,9 +655,12 @@ const AdminScreen = () => {
       if (tx.type === 'CLOSING' && tx.depositStatus === 'DEPOSITED' && tx.bankDepositId != null) {
         const gid = tx.bankDepositId;
         const sName = tx.store?.name ?? tx.storeName ?? '—';
+        // bankDeclaredAmount: monto real declarado en el banco (BankDeposit.declaredAmount)
+        // Es el mismo para todos los cierres del mismo depósito, por eso no se acumula
+        const hasBankDeclared = tx.bankDeclaredAmount != null;
         if (groups.has(gid)) {
           const g = groups.get(gid)!;
-          g.amount += tx.declaredCashAmount ?? tx.amount;
+          if (!hasBankDeclared) g.amount += tx.declaredCashAmount ?? tx.amount;
           g.closingCount += 1;
           if (!g.storeNames.includes(sName)) g.storeNames.push(sName);
           if (tx.periodStart && (!g.periodStart || tx.periodStart < g.periodStart)) g.periodStart = tx.periodStart;
@@ -644,7 +669,7 @@ const AdminScreen = () => {
           const g: DepositGroup = {
             type: 'DEPOSIT_GROUP',
             id: gid,
-            amount: tx.declaredCashAmount ?? tx.amount,
+            amount: tx.bankDeclaredAmount ?? tx.declaredCashAmount ?? tx.amount,
             date: tx.date,
             imageUri: tx.imageUri,
             storeNames: [sName],
@@ -705,6 +730,7 @@ const AdminScreen = () => {
 
   const confirmDelete = async () => {
     if (!transactionToDelete) return;
+    setDeletingInProgress(true);
     try {
       let url = '';
       if (transactionToDelete.type === 'income' || transactionToDelete.type === 'expense' || transactionToDelete.type === 'gasto_admin') {
@@ -728,6 +754,7 @@ const AdminScreen = () => {
       console.error('Error al eliminar la transacción:', error);
       Alert.alert('Error', 'Ocurrió un error al eliminar la transacción.');
     } finally {
+      setDeletingInProgress(false);
       setShowDeleteConfirmation(false);
       setTransactionToDelete(null);
     }
@@ -762,6 +789,13 @@ const AdminScreen = () => {
 
   const handleSaveEdit = async () => {
     if (!editingTransaction) return;
+
+    // ── Caso especial: edición de depósito bancario ──
+    if (editingTransaction.type === 'DEPOSIT_GROUP') {
+      await handleSaveDepositEdit();
+      return;
+    }
+
     const parsedAmount = parseFloat(newAmount.replace(/,/g, ''));
     if (isNaN(parsedAmount)) {
       Alert.alert('Error', 'Por favor ingrese un monto válido.');
@@ -861,6 +895,91 @@ const AdminScreen = () => {
     setEditingTransaction(null);
   };
 
+  // ── Depósito bancario: editar (usa el modal existente que funciona en web) ──
+  const handleEditDepositGroup = (item: DepositGroup) => {
+    setEditingDepositGroup(item);
+    setDepositEditDate(item.date?.split('T')[0] ?? '');
+    setDepositEditAmount(item.amount?.toString() ?? '0');
+    setDepositEditNotes('');
+    setDepositEditImage(null);
+    // Reutiliza el modal de edición existente con un Transaction ficticio
+    setEditingTransaction({ type: 'DEPOSIT_GROUP', id: item.id, amount: item.amount } as any);
+    setEditModalVisible(true);
+  };
+
+  const handleSaveDepositEdit = async () => {
+    if (!editingDepositGroup) return;
+    setDepositEditSaving(true);
+    try {
+      const payload: Record<string, any> = {};
+      if (depositEditDate) payload.depositDate = depositEditDate;
+      if (depositEditAmount) payload.declaredAmount = parseFloat(depositEditAmount.replace(/,/g, ''));
+      if (depositEditNotes) payload.notes = depositEditNotes;
+      if (depositEditImage) {
+        const uploadResult = await ImageService.uploadImage(
+          depositEditImage.uri,
+          ImageService.generateFileName('DEP'),
+          'comprobantes'
+        );
+        if (!uploadResult.success) {
+          Alert.alert('Error', 'No se pudo subir el comprobante.');
+          setDepositEditSaving(false);
+          return;
+        }
+        payload.imageUri = uploadResult.imageUri;
+      }
+
+      const res = await fetch(`${REACT_APP_API_URL}/api/v2/deposits/${editingDepositGroup.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        setSnackbarMessage('Depósito bancario actualizado correctamente.');
+        setSnackbarVisible(true);
+        setEditModalVisible(false);
+        setEditingTransaction(null);
+        setEditingDepositGroup(null);
+        fetchData(startDate, endDate, selectedStore);
+      } else {
+        Alert.alert('Error', 'No se pudo actualizar el depósito.');
+      }
+    } catch {
+      Alert.alert('Error', 'Ocurrió un error al actualizar el depósito.');
+    } finally {
+      setDepositEditSaving(false);
+    }
+  };
+
+  // ── Depósito bancario: eliminar ────────────────────────────────────────────
+  const handleDeleteDepositGroup = (item: DepositGroup) => {
+    setDepositGroupToDelete(item);
+    setDepositDeleteModalVisible(true);
+  };
+
+  const confirmDeleteDepositGroup = async () => {
+    if (!depositGroupToDelete) return;
+    setDeletingInProgress(true);
+    try {
+      const res = await fetch(`${REACT_APP_API_URL}/api/v2/deposits/${depositGroupToDelete.id}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        setSnackbarMessage('Depósito bancario eliminado correctamente.');
+        setSnackbarVisible(true);
+        fetchData(startDate, endDate, selectedStore);
+      } else {
+        Alert.alert('Error', 'No se pudo eliminar el depósito.');
+      }
+    } catch {
+      Alert.alert('Error', 'Ocurrió un error al eliminar el depósito.');
+    } finally {
+      setDeletingInProgress(false);
+      setDepositDeleteModalVisible(false);
+      setDepositGroupToDelete(null);
+    }
+  };
+
   // Render del modal de edición para cada tipo
   // Render del modal de edición para cada tipo
 const renderEditFields = () => {
@@ -885,6 +1004,62 @@ const renderEditFields = () => {
   );
 
   switch (editingTransaction.type) {
+    case 'DEPOSIT_GROUP':
+      return (
+        <>
+          <TextInput
+            label="Fecha de depósito"
+            value={depositEditDate}
+            style={styles.modalInput}
+            showSoftInputOnFocus={false}
+            onFocus={() => {
+              setDateEditField('date');
+              setDatePickerEditVisible(true);
+            }}
+            right={<TextInput.Icon icon="calendar" onPress={() => {
+              setDateEditField('date');
+              setDatePickerEditVisible(true);
+            }} />}
+          />
+          <TextInput
+            label="Monto declarado"
+            value={depositEditAmount}
+            onChangeText={setDepositEditAmount}
+            keyboardType="numeric"
+            style={styles.modalInput}
+          />
+          <TextInput
+            label="Notas (opcional)"
+            value={depositEditNotes}
+            onChangeText={setDepositEditNotes}
+            style={styles.modalInput}
+            multiline
+          />
+          <View style={{ marginBottom: SPACE.s3 }}>
+            <Text style={{ fontSize: 13, color: COLOR.ink2, marginBottom: 6 }}>Comprobante (opcional)</Text>
+            {depositEditImage ? (
+              <View style={{ alignItems: 'center', gap: 8 }}>
+                <Image source={{ uri: depositEditImage.uri }} style={{ width: 100, height: 100, borderRadius: 8, borderWidth: 1, borderColor: COLOR.border }} />
+                <Button mode="outlined" onPress={() => setDepositEditImage(null)} textColor={COLOR.expense}>Quitar imagen</Button>
+              </View>
+            ) : (
+              <Button
+                mode="outlined"
+                icon="camera"
+                onPress={async () => {
+                  const result = await ImageService.selectImage();
+                  if (!result.canceled && result.assets?.[0]) {
+                    const a = result.assets[0];
+                    setDepositEditImage({ uri: a.uri, name: a.name || ImageService.generateFileName('DEP'), type: a.mimeType || 'image/jpeg' });
+                  }
+                }}
+              >
+                Seleccionar comprobante
+              </Button>
+            )}
+          </View>
+        </>
+      );
     case 'CLOSING':
       return (
         <>
@@ -1209,6 +1384,19 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
   return `${REACT_APP_API_URL}/${imagePath}`;
 };
 
+  const getDateLabel = (dateStr: string): string => {
+    const todayStr  = new Date().toISOString().split('T')[0];
+    const yest      = new Date(); yest.setDate(yest.getDate() - 1);
+    const yesterdayStr = yest.toISOString().split('T')[0];
+    if (dateStr === todayStr)     return 'Hoy';
+    if (dateStr === yesterdayStr) return 'Ayer';
+    const MONTHS_ES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    try {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      return `${d} de ${MONTHS_ES[m - 1]} de ${y}`;
+    } catch { return dateStr; }
+  };
+
   const renderTransaction = (item: DisplayItem, index: number) => {
     // ── Card agrupado para cierres depositados ──
     if (item.type === 'DEPOSIT_GROUP') {
@@ -1266,8 +1454,8 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
                 ) : (
                   <View style={{ width: 36 }} />
                 )}
-                <View style={{ width: 36 }} />
-                <View style={{ width: 36 }} />
+                <IconButton icon="pencil" size={16} onPress={() => handleEditDepositGroup(item)} iconColor={COLOR.info} style={{ margin: 0 }} />
+                <IconButton icon="delete" size={16} onPress={() => handleDeleteDepositGroup(item)} iconColor={COLOR.expense} style={{ margin: 0 }} />
               </View>
             </View>
           </View>
@@ -1447,6 +1635,11 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
             <View style={styles.closingDetailWrap}>
               {/* Toggle */}
               <TouchableOpacity style={styles.closingDetailToggle} onPress={() => toggleClosingDetail(item.id)}>
+                <MaterialCommunityIcons name="cash" size={14} color={COLOR.income} />
+                <Text style={[styles.closingDetailToggleText, { color: COLOR.income, fontWeight: FONT_WEIGHT.bold as any }]}>
+                  {`Efectivo: L ${(item.declaredCashAmount ?? 0).toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                </Text>
+                <Text style={[styles.closingDetailToggleText, { color: COLOR.inkMute, marginHorizontal: 4 }]}>·</Text>
                 <MaterialCommunityIcons
                   name={isOk ? 'check-circle-outline' : diff < 0 ? 'alert-circle-outline' : 'information-outline'}
                   size={14} color={diffColor}
@@ -1520,6 +1713,17 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
                       {isOk ? '—' : `${diff > 0 ? '+' : ''}L ${Math.abs(diff).toFixed(2)}`}
                     </Text>
                   </View>
+
+                  {/* Observaciones del cajero */}
+                  {item.shiftNotes && (
+                    <View style={{ marginTop: 8, padding: 8, backgroundColor: '#FFFBEB', borderRadius: 6, borderLeftWidth: 3, borderLeftColor: COLOR.brand }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+                        <MaterialCommunityIcons name="comment-text-outline" size={13} color={COLOR.ink2} />
+                        <Text style={[styles.closingDetailSection, { marginTop: 0, fontSize: 10 }]}>OBSERVACIONES</Text>
+                      </View>
+                      <Text style={[styles.closingDetailValue, { fontWeight: 'normal' as any }]}>{item.shiftNotes}</Text>
+                    </View>
+                  )}
                 </View>
               )}
             </View>
@@ -1763,7 +1967,25 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
             <ThemedText style={styles.noDataText}>No hay transacciones para mostrar</ThemedText>
           ) : (
             <>
-              {paginatedTransactions.map((item, index) => renderTransaction(item, index))}
+              {paginatedTransactions.map((item, index) => {
+                const currDate = item.date ? String(item.date).split('T')[0] : null;
+                const prevDate = index > 0 && paginatedTransactions[index - 1].date
+                  ? String(paginatedTransactions[index - 1].date).split('T')[0]
+                  : null;
+                const showSep = currDate && currDate !== prevDate;
+                return (
+                  <React.Fragment key={`frag-${item.id}-${index}`}>
+                    {showSep && (
+                      <View style={styles.dateSeparator}>
+                        <View style={styles.dateSeparatorLine} />
+                        <Text style={styles.dateSeparatorText}>{getDateLabel(currDate!)}</Text>
+                        <View style={styles.dateSeparatorLine} />
+                      </View>
+                    )}
+                    {renderTransaction(item, index)}
+                  </React.Fragment>
+                );
+              })}
             </>
           )}
         </ScrollView>
@@ -1841,11 +2063,64 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
               ¿Estás seguro de que deseas eliminar esta transacción?
             </Text>
             <View style={styles.modalButtonContainer}>
-              <Button onPress={() => setShowDeleteConfirmation(false)} mode="outlined" style={styles.modalButton} textColor={COLOR.ink2}>
+              <Button
+                onPress={() => setShowDeleteConfirmation(false)}
+                mode="outlined"
+                style={styles.modalButton}
+                textColor={COLOR.ink2}
+                disabled={deletingInProgress}
+              >
                 Cancelar
               </Button>
-              <Button onPress={confirmDelete} mode="contained" style={styles.modalButton} buttonColor={COLOR.expense} textColor={COLOR.white}>
-                Eliminar
+              <Button
+                onPress={confirmDelete}
+                mode="contained"
+                style={styles.modalButton}
+                buttonColor={COLOR.expense}
+                textColor={COLOR.white}
+                disabled={deletingInProgress}
+                loading={deletingInProgress}
+              >
+                {deletingInProgress ? 'Eliminando...' : 'Eliminar'}
+              </Button>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal de confirmación de eliminación para depósito bancario */}
+      <Modal
+        visible={depositDeleteModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setDepositDeleteModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <ThemedText style={styles.modalTitle}>Eliminar Depósito Bancario</ThemedText>
+            <Text style={styles.confirmationText}>
+              ¿Estás seguro? Esta acción eliminará el depósito y todos los cierres de turno asociados de forma permanente.
+            </Text>
+            <View style={styles.modalButtonContainer}>
+              <Button
+                onPress={() => setDepositDeleteModalVisible(false)}
+                mode="outlined"
+                style={styles.modalButton}
+                textColor={COLOR.ink2}
+                disabled={deletingInProgress}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onPress={confirmDeleteDepositGroup}
+                mode="contained"
+                style={styles.modalButton}
+                buttonColor={COLOR.expense}
+                textColor={COLOR.white}
+                disabled={deletingInProgress}
+                loading={deletingInProgress}
+              >
+                {deletingInProgress ? 'Eliminando...' : 'Eliminar'}
               </Button>
             </View>
           </View>
@@ -1922,6 +2197,25 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
 };
 
 const styles = StyleSheet.create({
+  dateSeparator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  dateSeparatorLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E0E0E0',
+  },
+  dateSeparatorText: {
+    marginHorizontal: 12,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#888',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   container: {
     flex: 1,
     padding: 0,

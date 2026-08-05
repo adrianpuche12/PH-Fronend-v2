@@ -174,6 +174,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ['roles', JSON.stringify(isAdmin ? ['admin'] : ['user'])],
       ]);
 
+      // Read permissions/storeIds from storage — not overwritten by this refresh,
+      // and not available in `prev` when called from initializeAuth (initial state is empty).
+      const storedPerms   = await Storage.getItem('permissions');
+      const storedStoreIds = await Storage.getItem('storeIds');
+
       setAxiosAuthHeader(access_token);
       setAuthState(prev => ({
         ...prev,
@@ -183,6 +188,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         roles: isAdmin ? ['admin'] : ['user'],
         userName,
         userId,
+        permissions: storedPerms   ? JSON.parse(storedPerms)   : prev.permissions,
+        storeIds:    storedStoreIds ? JSON.parse(storedStoreIds) : prev.storeIds,
         loading: false,
         error: null
       }));
@@ -373,6 +380,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               } catch (e) {
               }
 
+              // Set state from cache first so the app renders immediately
               setAuthState({
                 accessToken,
                 refreshToken,
@@ -386,6 +394,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 loading: false,
                 error: null,
               });
+
+              // Re-fetch profile to pick up permission changes made by admin
+              const isAdmin = roles.includes('admin');
+              if (!isAdmin && storageMap.userName) {
+                try {
+                  const profileResp = await axios.get(
+                    `${REACT_APP_API_URL}/api/v2/users/by-username/${encodeURIComponent(storageMap.userName.toLowerCase())}`
+                  );
+                  const freshPermissions: string[] = profileResp.data?.permissions ?? [];
+                  const freshStoreIds: number[]    = profileResp.data?.storeIds     ?? [];
+                  const freshFirstLogin: boolean   = profileResp.data?.firstLogin   ?? false;
+                  await Storage.multiSet([
+                    ['permissions', JSON.stringify(freshPermissions)],
+                    ['storeIds',    JSON.stringify(freshStoreIds)],
+                    ['firstLogin',  String(freshFirstLogin)],
+                  ]);
+                  setAuthState(prev => ({
+                    ...prev,
+                    permissions: freshPermissions,
+                    storeIds:    freshStoreIds,
+                    firstLogin:  freshFirstLogin,
+                  }));
+                } catch (err) { console.error('[initializeAuth] re-fetch permisos falló:', err); }
+              }
             }
           } catch (tokenError) {
             setAuthState(prev => ({
@@ -415,6 +447,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const interceptor = axios.interceptors.response.use(
       response => response,
       async error => {
+        // Cuenta suspendida desde cualquier endpoint — logout inmediato
+        if (error.response?.status === 403 &&
+            error.response?.data?.error === 'ACCOUNT_SUSPENDED') {
+          await logout();
+          return Promise.reject(error);
+        }
+
         const originalRequest = error.config;
         if (
           error.response?.status === 401 &&

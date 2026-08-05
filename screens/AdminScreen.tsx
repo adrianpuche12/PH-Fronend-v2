@@ -1400,6 +1400,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
   const renderTransaction = (item: DisplayItem, index: number) => {
     // ── Card agrupado para cierres depositados ──
     if (item.type === 'DEPOSIT_GROUP') {
+      const dg = item as DepositGroup;
       const fmtD = (d?: string) => {
         if (!d) return '—';
         try { return format(parseISO(d), 'dd MMM yyyy'); } catch { return String(d).split('T')[0]; }
@@ -1421,11 +1422,11 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
                 <Text style={styles.txMeta}>{fmtD(item.date)}</Text>
               )}
               <Text style={styles.txMeta} numberOfLines={1}>
-                {item.closingCount} cierre{item.closingCount !== 1 ? 's' : ''} · {item.storeNames.join(', ')}
+                {dg.closingCount} cierre{dg.closingCount !== 1 ? 's' : ''} · {dg.storeNames.join(', ')}
               </Text>
-              {item.periodStart && (
+              {dg.periodStart && (
                 <Text style={styles.txMeta} numberOfLines={1}>
-                  Periodo {fmtD(item.periodStart)}{item.periodEnd ? ` al ${fmtD(item.periodEnd)}` : ''}
+                  Periodo {fmtD(dg.periodStart)}{dg.periodEnd ? ` al ${fmtD(dg.periodEnd)}` : ''}
                 </Text>
               )}
               <View style={[styles.depositBadge, styles.depositBadgeDone]}>
@@ -1434,11 +1435,11 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
               </View>
             </View>
             {isLargeScreen && (
-              <Text style={styles.txStore} numberOfLines={1}>{item.storeNames.join(', ')}</Text>
+              <Text style={styles.txStore} numberOfLines={1}>{dg.storeNames.join(', ')}</Text>
             )}
             {isLargeScreen && (
               <View style={styles.txDateWrap}>
-                <Text style={styles.txDate}>{fmtD(item.date)}</Text>
+                <Text style={styles.txDate}>{fmtD(dg.date)}</Text>
               </View>
             )}
             <View style={{ alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
@@ -1454,8 +1455,8 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
                 ) : (
                   <View style={{ width: 36 }} />
                 )}
-                <IconButton icon="pencil" size={16} onPress={() => handleEditDepositGroup(item)} iconColor={COLOR.info} style={{ margin: 0 }} />
-                <IconButton icon="delete" size={16} onPress={() => handleDeleteDepositGroup(item)} iconColor={COLOR.expense} style={{ margin: 0 }} />
+                <IconButton icon="pencil" size={16} onPress={() => handleEditDepositGroup(dg)} iconColor={COLOR.info} style={{ margin: 0 }} />
+                <IconButton icon="delete" size={16} onPress={() => handleDeleteDepositGroup(dg)} iconColor={COLOR.expense} style={{ margin: 0 }} />
               </View>
             </View>
           </View>

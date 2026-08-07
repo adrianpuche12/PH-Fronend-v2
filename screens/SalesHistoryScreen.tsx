@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, useWindowDimensions, RefreshControl,
+  ActivityIndicator, useWindowDimensions, RefreshControl, Modal,
 } from 'react-native';
+import { TextInput, IconButton } from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW } from '../theme';
 import { getApiErrorMessage } from '../utils/apiError';
@@ -77,6 +78,59 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
   const [summaries, setSummaries]     = useState<Record<number, ShiftSummary>>({});
   const [loadingSum, setLoadingSum]   = useState<Record<number, boolean>>({});
   const [error, setError]             = useState('');
+
+  // ── Modal editar cierre ──────────────────────────────────────────────────
+  const [editingShift, setEditingShift]   = useState<ShiftRecord | null>(null);
+  const [editForm, setEditForm]           = useState<Record<string, string>>({});
+  const [editSaving, setEditSaving]       = useState(false);
+  const [editError, setEditError]         = useState('');
+
+  const openEdit = (shift: ShiftRecord) => {
+    const toLocal = (iso: string | null) => {
+      if (!iso) return '';
+      return iso.replace('T', ' ').substring(0, 16);
+    };
+    setEditForm({
+      username:            shift.username ?? '',
+      openedAt:            toLocal(shift.openedAt),
+      closedAt:            toLocal(shift.closedAt),
+      openingCashAmount:   shift.openingCashAmount?.toString() ?? '',
+      totalCashSales:      shift.totalCashSales?.toString() ?? '',
+      totalCardSales:      shift.totalCardSales?.toString() ?? '',
+      totalShiftExpenses:  shift.totalShiftExpenses?.toString() ?? '',
+      declaredCashAmount:  shift.declaredCashAmount?.toString() ?? '',
+      notes:               shift.notes ?? '',
+    });
+    setEditError('');
+    setEditingShift(shift);
+  };
+
+  const handleEditSave = async () => {
+    if (!editingShift) return;
+    setEditSaving(true);
+    setEditError('');
+    const parseNum = (v: string) => v.trim() === '' ? null : parseFloat(v.replace(',', '.'));
+    const parseDate = (v: string) => v.trim() === '' ? null : v.trim().replace(' ', 'T');
+    try {
+      const payload: Record<string, unknown> = {
+        username:           editForm.username.trim() || null,
+        openedAt:           parseDate(editForm.openedAt),
+        closedAt:           parseDate(editForm.closedAt),
+        openingCashAmount:  parseNum(editForm.openingCashAmount),
+        totalCashSales:     parseNum(editForm.totalCashSales),
+        totalCardSales:     parseNum(editForm.totalCardSales),
+        totalShiftExpenses: parseNum(editForm.totalShiftExpenses),
+        declaredCashAmount: parseNum(editForm.declaredCashAmount),
+        notes:              editForm.notes.trim() || null,
+      };
+      await axios.put(`${API}/api/v2/shifts/${editingShift.id}/edit`, payload);
+      setEditingShift(null);
+      setSummaries(prev => { const next = { ...prev }; delete next[editingShift.id]; return next; });
+      loadShifts();
+    } catch (e: any) {
+      setEditError(e.response?.data?.error || 'No se pudo guardar los cambios.');
+    } finally { setEditSaving(false); }
+  };
 
   // ── Cargar turnos del local (primera página) ─────────────────────────────
 
@@ -248,7 +302,13 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
                       {' · '}{shift.username}
                     </Text>
                   </View>
-                  <MaterialCommunityIcons name={isOpen ? 'chevron-up' : 'chevron-down'} size={18} color={COLOR.inkMute} />
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    {!usernameFilter && isClosed && (
+                      <IconButton icon="pencil" size={16} iconColor={COLOR.info} style={{ margin: 0 }}
+                        onPress={() => openEdit(shift)} />
+                    )}
+                    <MaterialCommunityIcons name={isOpen ? 'chevron-up' : 'chevron-down'} size={18} color={COLOR.inkMute} />
+                  </View>
                 </TouchableOpacity>
 
                 {/* ── Detalle expandible ── */}
@@ -380,6 +440,82 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
           )}
         </ScrollView>
       )}
+
+      {/* ── Modal editar cierre ── */}
+      <Modal visible={!!editingShift} transparent animationType="fade" onRequestClose={() => setEditingShift(null)}>
+        <View style={styles.editOverlay}>
+          <View style={styles.editModal}>
+            <Text style={styles.editTitle}>Editar cierre</Text>
+            <Text style={styles.editCode}>{editingShift?.code}</Text>
+            <ScrollView style={{ maxHeight: 480 }} keyboardShouldPersistTaps="handled">
+
+              <TextInput label="Usuario" value={editForm.username ?? ''}
+                onChangeText={v => setEditForm(p => ({ ...p, username: v }))}
+                mode="outlined" style={styles.editInput} autoCapitalize="none"
+                activeOutlineColor={COLOR.brand} />
+
+              <TextInput label="Apertura (YYYY-MM-DD HH:mm)" value={editForm.openedAt ?? ''}
+                onChangeText={v => setEditForm(p => ({ ...p, openedAt: v }))}
+                mode="outlined" style={styles.editInput} autoCapitalize="none"
+                activeOutlineColor={COLOR.brand} />
+
+              <TextInput label="Cierre (YYYY-MM-DD HH:mm)" value={editForm.closedAt ?? ''}
+                onChangeText={v => setEditForm(p => ({ ...p, closedAt: v }))}
+                mode="outlined" style={styles.editInput} autoCapitalize="none"
+                activeOutlineColor={COLOR.brand} />
+
+              <TextInput label="Fondo inicial" value={editForm.openingCashAmount ?? ''}
+                onChangeText={v => setEditForm(p => ({ ...p, openingCashAmount: v }))}
+                mode="outlined" style={styles.editInput} keyboardType="decimal-pad"
+                activeOutlineColor={COLOR.brand} />
+
+              <TextInput label="Ventas efectivo" value={editForm.totalCashSales ?? ''}
+                onChangeText={v => setEditForm(p => ({ ...p, totalCashSales: v }))}
+                mode="outlined" style={styles.editInput} keyboardType="decimal-pad"
+                activeOutlineColor={COLOR.brand} />
+
+              <TextInput label="Ventas tarjeta" value={editForm.totalCardSales ?? ''}
+                onChangeText={v => setEditForm(p => ({ ...p, totalCardSales: v }))}
+                mode="outlined" style={styles.editInput} keyboardType="decimal-pad"
+                activeOutlineColor={COLOR.brand} />
+
+              <TextInput label="Egresos del turno" value={editForm.totalShiftExpenses ?? ''}
+                onChangeText={v => setEditForm(p => ({ ...p, totalShiftExpenses: v }))}
+                mode="outlined" style={styles.editInput} keyboardType="decimal-pad"
+                activeOutlineColor={COLOR.brand} />
+
+              <TextInput label="Efectivo contado" value={editForm.declaredCashAmount ?? ''}
+                onChangeText={v => setEditForm(p => ({ ...p, declaredCashAmount: v }))}
+                mode="outlined" style={styles.editInput} keyboardType="decimal-pad"
+                activeOutlineColor={COLOR.brand} />
+
+              <TextInput label="Notas" value={editForm.notes ?? ''}
+                onChangeText={v => setEditForm(p => ({ ...p, notes: v }))}
+                mode="outlined" style={styles.editInput} multiline numberOfLines={3}
+                activeOutlineColor={COLOR.brand} />
+
+              {!!editError && (
+                <View style={styles.editErrorBanner}>
+                  <MaterialCommunityIcons name="alert-circle-outline" size={16} color={COLOR.expense} />
+                  <Text style={styles.editErrorText}>{editError}</Text>
+                </View>
+              )}
+            </ScrollView>
+
+            <View style={styles.editActions}>
+              <TouchableOpacity style={styles.editCancelBtn} onPress={() => setEditingShift(null)} disabled={editSaving}>
+                <Text style={styles.editCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.editSaveBtn} onPress={handleEditSave} disabled={editSaving}>
+                {editSaving
+                  ? <ActivityIndicator size="small" color={COLOR.ink} />
+                  : <Text style={styles.editSaveText}>Guardar</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
     </View>
   );
 }
@@ -453,4 +589,18 @@ const styles = StyleSheet.create({
   notesBox:       { marginTop: SPACE.s3, padding: SPACE.s3, backgroundColor: '#FFFBEB', borderRadius: RADIUS.r2, borderLeftWidth: 3, borderLeftColor: COLOR.brand },
   notesLabel:     { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink2, textTransform: 'uppercase', letterSpacing: 0.5 } as any,
   notesText:      { fontSize: FONT_SIZE.body, color: COLOR.ink, lineHeight: 20 },
+
+  // Modal editar cierre
+  editOverlay:    { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: SPACE.s4 },
+  editModal:      { backgroundColor: COLOR.surface, borderRadius: RADIUS.r3, width: '100%', maxWidth: 480, padding: SPACE.s4, gap: SPACE.s3 },
+  editTitle:      { fontSize: FONT_SIZE.h2, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
+  editCode:       { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, marginTop: -SPACE.s2 },
+  editInput:      { marginBottom: SPACE.s2, backgroundColor: COLOR.surface },
+  editErrorBanner:{ flexDirection: 'row', alignItems: 'center', gap: SPACE.s2, backgroundColor: COLOR.expense + '18', borderRadius: RADIUS.r2, padding: SPACE.s3, marginTop: SPACE.s1 },
+  editErrorText:  { flex: 1, fontSize: FONT_SIZE.label, color: COLOR.expense },
+  editActions:    { flexDirection: 'row', gap: SPACE.s3, marginTop: SPACE.s2 },
+  editCancelBtn:  { flex: 1, borderRadius: RADIUS.r3, borderWidth: 1, borderColor: COLOR.border, paddingVertical: SPACE.s3, alignItems: 'center' },
+  editCancelText: { color: COLOR.ink2, fontWeight: FONT_WEIGHT.semibold as any },
+  editSaveBtn:    { flex: 1, borderRadius: RADIUS.r3, backgroundColor: COLOR.brand, paddingVertical: SPACE.s3, alignItems: 'center' },
+  editSaveText:   { color: COLOR.ink, fontWeight: FONT_WEIGHT.bold as any },
 });

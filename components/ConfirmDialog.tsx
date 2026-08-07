@@ -9,7 +9,6 @@ interface Props {
   message: string;
   confirmLabel?: string;
   confirmColor?: string;
-  loading?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -22,7 +21,6 @@ const ConfirmDialog: React.FC<Props> = ({
   visible, title, message,
   confirmLabel = 'Confirmar',
   confirmColor = COLOR.expense,
-  loading = false,
   onConfirm, onCancel,
 }) => (
   <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
@@ -31,7 +29,7 @@ const ConfirmDialog: React.FC<Props> = ({
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.message}>{message}</Text>
         <View style={styles.actions}>
-          <Button mode="outlined" onPress={onCancel} style={styles.btn} disabled={loading}>
+          <Button mode="outlined" onPress={onCancel} style={styles.btn}>
             Cancelar
           </Button>
           <Button
@@ -40,8 +38,6 @@ const ConfirmDialog: React.FC<Props> = ({
             buttonColor={confirmColor}
             textColor={COLOR.white}
             style={styles.btn}
-            loading={loading}
-            disabled={loading}
           >
             {confirmLabel}
           </Button>

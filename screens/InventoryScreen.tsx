@@ -13,7 +13,6 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import { useAuth } from '../context/AuthContext';
 import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW, CONTROL, BREAKPOINT } from '../theme';
 import { formatHnl } from '../utils/format';
-import { getApiErrorMessage } from '../utils/apiError';
 import StoreDropdown from '../components/StoreDropdown';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -257,9 +256,8 @@ const InventoryScreen = () => {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 900;
 
-  const { roles, permissions } = useAuth();
+  const { roles } = useAuth();
   const isAdmin = roles.includes('admin');
-  const hasCatalog = isAdmin || permissions.length === 0 || permissions.includes('CATALOG');
 
   const { stores, selectedStore, setSelectedStore } = useStore();
   const storeId = selectedStore?.id ?? null;
@@ -324,21 +322,16 @@ const InventoryScreen = () => {
     if (!storeId) return;
     setLoading(true);
     try {
-      const [stockRes, summaryRes] = await Promise.all([
+      const [stockRes, summaryRes, catRes] = await Promise.all([
         axios.get<StockItem[]>(`${API}/api/v2/stores/${storeId}/stock`),
         axios.get<Summary>(`${API}/api/v2/stores/${storeId}/stock/summary`),
+        axios.get<Category[]>(`${API}/api/v2/stores/${storeId}/categories`),
       ]);
       setStock(stockRes.data);
       setSummary(summaryRes.data);
-    } catch (err) { setSnackbar(getApiErrorMessage(err, 'Error al cargar inventario')); }
-    finally { setLoading(false); }
-
-    // Categorías se cargan por separado — usuarios con solo INVENTORY
-    // no tienen permiso CATALOG y reciben 403; en ese caso se muestra lista vacía.
-    try {
-      const catRes = await axios.get<Category[]>(`${API}/api/v2/stores/${storeId}/categories`);
       setCategories(catRes.data);
-    } catch { setCategories([]); }
+    } catch { setSnackbar('Error al cargar inventario'); }
+    finally { setLoading(false); }
   }, [storeId]);
 
   useEffect(() => { loadAll(); }, [loadAll]);
@@ -709,7 +702,7 @@ const InventoryScreen = () => {
                 <Text style={styles.adjustBtnText}>{isAdmin ? 'Ajustar' : 'Agregar'}</Text>
               </TouchableOpacity>
             )}
-            {hasCatalog && (
+            {isAdmin && (
               <View style={{ flexDirection: 'row' }}>
                 <IconButton icon="pencil" size={18} iconColor={COLOR.ink2} onPress={() => openEditProduct(item)} style={styles.actionIcon} />
                 <IconButton
@@ -734,8 +727,8 @@ const InventoryScreen = () => {
               <Text style={styles.adjustBtnText}>{isAdmin ? 'Ajustar' : 'Agregar'}</Text>
             </TouchableOpacity>
           )}
-          {hasCatalog && <IconButton icon="pencil" size={18} iconColor={COLOR.ink2} onPress={() => openEditProduct(item)} style={styles.actionIcon} />}
-          {hasCatalog && (
+          {isAdmin && <IconButton icon="pencil" size={18} iconColor={COLOR.ink2} onPress={() => openEditProduct(item)} style={styles.actionIcon} />}
+          {isAdmin && (
             <IconButton
               icon={item.productActive ? 'toggle-switch' : 'toggle-switch-off'}
               size={18}
@@ -744,7 +737,7 @@ const InventoryScreen = () => {
               style={styles.actionIcon}
             />
           )}
-          {hasCatalog && <IconButton icon="trash-can" size={18} iconColor={COLOR.expense} onPress={() => handleDeleteProduct(item)} style={styles.actionIcon} />}
+          {isAdmin && <IconButton icon="trash-can" size={18} iconColor={COLOR.expense} onPress={() => handleDeleteProduct(item)} style={styles.actionIcon} />}
         </View>
       )}
     </View>
@@ -780,7 +773,7 @@ const InventoryScreen = () => {
                 <MaterialCommunityIcons name={topExpanded ? 'eye-off-outline' : 'eye-outline'} size={20} color={COLOR.ink2} />
               </TouchableOpacity>
             )}
-            {activeView === 'stock' && hasCatalog && (
+            {activeView === 'stock' && isAdmin && (
               <TouchableOpacity onPress={openCreateProduct} style={styles.addBtn}>
                 <MaterialCommunityIcons name="plus" size={18} color={COLOR.inkOnBrand} />
                 {width >= BREAKPOINT.tablet && <Text style={styles.addBtnText}>Nuevo</Text>}
@@ -885,7 +878,7 @@ const InventoryScreen = () => {
                   onDelete={handleDeleteCat}
                   onNewChild={(parentId) => openNewCat(parentId)}
                   onToggle={handleToggleCat}
-                  isAdmin={hasCatalog}
+                  isAdmin={isAdmin}
                 />
               )}
             </View>

@@ -265,6 +265,13 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
                       <View style={[styles.statusBadge, isClosed ? styles.statusClosed : styles.statusOpen]}>
                         <Text style={styles.statusText}>{isClosed ? 'Cerrado' : 'Abierto'}</Text>
                       </View>
+                      {/* Efectivo contado — visible en cierres */}
+                      {isClosed && shift.declaredCashAmount != null && (
+                        <View style={[styles.diffBadge, { backgroundColor: COLOR.income + '20', borderColor: COLOR.income }]}>
+                          <MaterialCommunityIcons name="cash" size={12} color={COLOR.income} />
+                          <Text style={[styles.diffBadgeText, { color: COLOR.income }]}>{formatHnl(shift.declaredCashAmount)}</Text>
+                        </View>
+                      )}
                       {/* Badge de diferencia de caja — solo en turnos cerrados con reconciliación */}
                       {isClosed && shift.cashDifference != null && (() => {
                         const diff = shift.cashDifference;

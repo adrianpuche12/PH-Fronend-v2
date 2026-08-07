@@ -15,6 +15,7 @@ interface AuthState {
   userId: string | null;
   firstLogin: boolean;
   permissions: string[];
+  storeId: number | null;
   storeIds: number[];
   loading: boolean;
   error: string | null;
@@ -114,6 +115,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     userId: null,
     firstLogin: false,
     permissions: [],
+    storeId: null,
     storeIds: [],
     loading: true,
     error: null,
@@ -231,6 +233,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       //   user               → 5xx / error de red → bloqueado
       let firstLogin = false;
       let permissions: string[] = [];
+      let storeId: number | null = null;
       let storeIds: number[] = [];
       if (!isAdmin) {
         try {
@@ -239,6 +242,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           );
           firstLogin   = profileResp.data?.firstLogin   ?? false;
           permissions  = profileResp.data?.permissions  ?? [];
+          storeId      = profileResp.data?.storeId      ?? null;
           storeIds     = profileResp.data?.storeIds     ?? [];
         } catch (profileErr: any) {
           const profileStatus: number = profileErr.response?.status ?? 0;
@@ -265,6 +269,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ['roles', JSON.stringify(isAdmin ? ['admin'] : ['user'])],
         ['firstLogin', String(firstLogin)],
         ['permissions', JSON.stringify(permissions)],
+        ['storeId', storeId !== null ? String(storeId) : ''],
         ['storeIds', JSON.stringify(storeIds)],
       ]);
 
@@ -278,6 +283,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         userId,
         firstLogin,
         permissions,
+        storeId,
         storeIds,
         loading: false,
         error: null,
@@ -312,6 +318,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         'roles',
         'firstLogin',
         'permissions',
+        'storeId',
         'storeIds',
       ]);
 
@@ -325,6 +332,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         userId: null,
         firstLogin: false,
         permissions: [],
+        storeId: null,
         storeIds: [],
         loading: false,
         error: null,
@@ -351,6 +359,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           'roles',
           'firstLogin',
           'permissions',
+          'storeId',
           'storeIds',
         ]);
 
@@ -382,6 +391,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 userId: storageMap.userId,
                 firstLogin: storageMap.firstLogin === 'true',
                 permissions: storageMap.permissions ? JSON.parse(storageMap.permissions) : [],
+                storeId: storageMap.storeId ? Number(storageMap.storeId) : null,
                 storeIds: storageMap.storeIds ? JSON.parse(storageMap.storeIds) : [],
                 loading: false,
                 error: null,
@@ -394,6 +404,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               refreshToken: null,
               roles: [],
               permissions: [],
+              storeId: null,
               storeIds: [],
               loading: false,
               error: null

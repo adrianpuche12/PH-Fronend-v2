@@ -41,7 +41,7 @@ const BACKEND_URL = `${REACT_APP_API_URL}/api/forms`;
 const TRANSACTIONS_URL = `${REACT_APP_API_URL}/transactions`;
 
 const DynamicFormScreen = () => {
-  const { userName } = useAuth();
+  const { userName, storeId: userStoreId } = useAuth();
   const [activeTab, setActiveTab] = useState<'form' | 'historial'>('form');
 
   // ── Historial de operaciones del usuario ────────────────────────────────────
@@ -119,7 +119,7 @@ const DynamicFormScreen = () => {
     closingsCount: '',
     periodStart: '',
     periodEnd: '',
-    storeId: 0,
+    storeId: userStoreId ?? 0,
     supplier: '',
     imageUri: '',
   });

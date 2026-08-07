@@ -30,6 +30,7 @@ interface ShiftRecord {
   totalShiftExpenses: number | null;
   declaredCashAmount: number | null;
   cashDifference: number | null;
+  notes: string | null;
 }
 
 interface ProductSummaryItem {

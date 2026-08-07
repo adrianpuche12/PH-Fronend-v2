@@ -27,11 +27,18 @@ interface AppUser {
 interface UserForm {
   fullName: string;
   username: string;
-  password: string;
+  email: string;
+  role: string;
   storeId: string;
 }
 
-const EMPTY_FORM: UserForm = { fullName: '', username: '', password: '', storeId: '' };
+const ROLES = [
+  { key: 'ENCARGADO', label: 'Encargado' },
+  { key: 'CONTADOR',  label: 'Contador'  },
+  { key: 'SOCIO',     label: 'Socio'     },
+];
+
+const EMPTY_FORM: UserForm = { fullName: '', username: '', email: '', role: 'ENCARGADO', storeId: '' };
 
 const statusLabel = (s: string) => s === 'ACTIVE' ? 'Activo' : 'Suspendido';
 const statusColor = (s: string) => s === 'ACTIVE' ? '#168542' : '#d32121';
@@ -52,9 +59,8 @@ export default function UsersScreen() {
   const [createModal, setCreateModal] = useState(false);
   const [form, setForm]               = useState<UserForm>(EMPTY_FORM);
   const [saving, setSaving]           = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [createModalError, setCreateModalError] = useState('');
-  const [createFieldErrors, setCreateFieldErrors] = useState<{fullName?:boolean; username?:boolean; password?:boolean; storeId?:boolean}>({});
+  const [createFieldErrors, setCreateFieldErrors] = useState<{fullName?:boolean; username?:boolean; email?:boolean; storeId?:boolean}>({});
 
   // Modal reasignar local
   const [reassignModal, setReassignModal]     = useState<AppUser | null>(null);
@@ -97,17 +103,17 @@ export default function UsersScreen() {
   // ── Crear usuario ──────────────────────────────────────────────────────────
 
   const handleCreate = async () => {
-    const errs: {fullName?:boolean; username?:boolean; password?:boolean; storeId?:boolean} = {};
+    const errs: {fullName?:boolean; username?:boolean; email?:boolean; storeId?:boolean} = {};
     if (!form.fullName.trim())  errs.fullName = true;
     if (!form.username.trim())  errs.username = true;
-    if (!form.password)         errs.password = true;
+    if (!form.email.trim())     errs.email    = true;
     if (!form.storeId)          errs.storeId  = true;
     if (Object.keys(errs).length > 0) {
       setCreateFieldErrors(errs);
       const missing = [
         errs.fullName && 'nombre completo',
         errs.username && 'username',
-        errs.password && 'contraseña',
+        errs.email    && 'email',
         errs.storeId  && 'local',
       ].filter(Boolean);
       setCreateModalError(`Completá los siguientes campos: ${missing.join(', ')}.`);
@@ -120,10 +126,11 @@ export default function UsersScreen() {
       await axios.post(`${API}/api/v2/users`, {
         fullName: form.fullName.trim(),
         username: form.username.trim().toLowerCase(),
-        password: form.password,
+        email:    form.email.trim().toLowerCase(),
+        role:     form.role,
         storeId:  Number(form.storeId),
       });
-      setSnackbar('Usuario creado correctamente');
+      setSnackbar('Usuario creado. Se generó una contraseña temporal.');
       setCreateModal(false);
       setForm(EMPTY_FORM);
       loadAll();
@@ -339,17 +346,28 @@ export default function UsersScreen() {
               {createFieldErrors.username && <Text style={styles.fieldErrorText}>El username es obligatorio</Text>}
 
               <TextInput
-                label="Contraseña *" value={form.password}
-                onChangeText={v => { setForm({ ...form, password: v }); if (v) setCreateFieldErrors(p => ({ ...p, password: false })); }}
-                mode="outlined" style={styles.input}
-                secureTextEntry={!showPassword}
-                autoComplete="new-password"
-                error={!!createFieldErrors.password}
-                outlineColor={createFieldErrors.password ? COLOR.expense : undefined}
-                activeOutlineColor={createFieldErrors.password ? COLOR.expense : COLOR.brand}
-                right={<TextInput.Icon icon={showPassword ? 'eye-off' : 'eye'} onPress={() => setShowPassword(v => !v)} />}
+                label="Email *" value={form.email}
+                onChangeText={v => { setForm({ ...form, email: v }); if (v.trim()) setCreateFieldErrors(p => ({ ...p, email: false })); }}
+                mode="outlined" style={styles.input} autoCapitalize="none" keyboardType="email-address" autoComplete="off"
+                error={!!createFieldErrors.email}
+                outlineColor={createFieldErrors.email ? COLOR.expense : undefined}
+                activeOutlineColor={createFieldErrors.email ? COLOR.expense : COLOR.brand}
               />
-              {createFieldErrors.password && <Text style={styles.fieldErrorText}>La contraseña es obligatoria</Text>}
+              {createFieldErrors.email && <Text style={styles.fieldErrorText}>El email es obligatorio</Text>}
+
+              {/* Selector de rol */}
+              <Text style={styles.fieldLabel}>Rol *</Text>
+              <View style={styles.storeSelector}>
+                {ROLES.map(r => (
+                  <TouchableOpacity
+                    key={r.key}
+                    style={[styles.storeChip, form.role === r.key && styles.storeChipActive]}
+                    onPress={() => setForm({ ...form, role: r.key })}
+                  >
+                    <Text style={[styles.storeChipText, form.role === r.key && styles.storeChipTextActive]}>{r.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
 
               {/* Selector de local */}
               <Text style={[styles.fieldLabel, createFieldErrors.storeId && { color: COLOR.expense }]}>Local *</Text>
@@ -368,7 +386,7 @@ export default function UsersScreen() {
               </View>
               {createFieldErrors.storeId && <Text style={styles.fieldErrorText}>Seleccioná un local</Text>}
 
-              <Text style={styles.roleNote}>El usuario recibirá el rol <Text style={{ fontWeight: '900' }}>user</Text> automáticamente.</Text>
+              <Text style={styles.roleNote}>Se generará una contraseña temporal. Podrás copiarla y enviarla al usuario.</Text>
 
               {!!createModalError && (
                 <View style={styles.modalErrorBanner}>

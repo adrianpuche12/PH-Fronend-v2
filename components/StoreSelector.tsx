@@ -18,27 +18,19 @@ interface StoreSelectorProps {
 }
 
 const StoreSelector: React.FC<StoreSelectorProps> = ({ selectedStore, onStoreChange, style }) => {
-  const { storeIds } = useAuth();
+  const { storeId: assignedStoreId } = useAuth();
   const [stores, setStores]     = useState<Store[]>([]);
   const [loading, setLoading]   = useState(true);
-
-  // Usuario atado a un único local: no tiene sentido mostrarle una lista para elegir.
-  const singleAssignedStoreId = storeIds.length === 1 ? storeIds[0] : null;
 
   useEffect(() => {
     axios.get<Store[]>(`${REACT_APP_API_URL}/api/v2/stores/active`)
       .then(res => {
-        // storeIds vacío = acceso a todos los locales (ver AppUser.accessibleStores en el backend).
-        const visibleStores = storeIds.length > 0
-          ? res.data.filter(s => storeIds.includes(s.id))
-          : res.data;
-        setStores(visibleStores);
-
-        if (singleAssignedStoreId) {
-          onStoreChange(singleAssignedStoreId);
-        } else if (!selectedStore && visibleStores.length > 0) {
+        setStores(res.data);
+        if (assignedStoreId) {
+          onStoreChange(assignedStoreId);
+        } else if (!selectedStore && res.data.length > 0) {
           // Auto-seleccionar el primero si no hay ninguno seleccionado
-          onStoreChange(visibleStores[0].id);
+          onStoreChange(res.data[0].id);
         }
       })
       .catch(() => setStores([]))
@@ -53,11 +45,14 @@ const StoreSelector: React.FC<StoreSelectorProps> = ({ selectedStore, onStoreCha
     return <Text style={styles.empty}>No hay locales activos disponibles.</Text>;
   }
 
-  if (singleAssignedStoreId) {
+  // Empleado con un único local asignado (AppUser.store en el backend): no tiene sentido
+  // mostrarle una lista para elegir entre locales que no le corresponden.
+  if (assignedStoreId) {
+    const assignedStore = stores.find(s => s.id === assignedStoreId);
     return (
       <View style={[styles.container, style]}>
         <Text style={styles.label}>Local</Text>
-        <Text style={styles.fixedStore}>{stores[0].name}</Text>
+        <Text style={styles.fixedStore}>{assignedStore?.name ?? '—'}</Text>
       </View>
     );
   }

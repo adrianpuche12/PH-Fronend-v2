@@ -159,10 +159,24 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
       const res = await axios.get<Shift>(`${API}/api/v2/shifts/active/${storeId}`, {
         params: { username: userName ?? 'empleada' },
       });
-      setShift(res.data ?? null);
+      if (res.data) { setShift(res.data); return; }
+
+      // Fallback para admin: buscar turno abierto en cualquier local
+      if (isAdmin) {
+        const fallback = await axios.get<Shift>(`${API}/api/v2/shifts/active`, {
+          params: { username: userName },
+        }).catch(() => ({ data: null as Shift | null }));
+        if (fallback.data) {
+          const matchedStore = stores.find(s => s.id === fallback.data!.storeId);
+          if (matchedStore) setSelectedStore(matchedStore);
+          setShift(fallback.data);
+          return;
+        }
+      }
+      setShift(null);
     } catch { setShift(null); }
     finally { setLoadingShift(false); }
-  }, [storeId, userName]);
+  }, [storeId, userName, isAdmin, stores, setSelectedStore]);
 
   const loadCatalog = useCallback(async () => {
     if (!storeId) return;

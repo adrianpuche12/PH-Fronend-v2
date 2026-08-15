@@ -485,6 +485,7 @@ const DynamicFormScreen = () => {
               paymentDate: formData.date,
               depositDate: formData.date,
               imageUri: imageUri,
+              ...(formType === 'closing-deposits' && { extraordinary: true }),
             };
 
       const response = await fetch(url, {

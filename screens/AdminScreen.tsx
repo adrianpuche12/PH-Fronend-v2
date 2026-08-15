@@ -990,8 +990,9 @@ const AdminScreen = () => {
   // ── Subir comprobante a cierre PENDING (no extraordinario) ───────────────
   const handleUploadClosingImage = async (closingId: number) => {
     try {
-      const asset = await ImageService.selectImage();
-      if (!asset) return;
+      const result = await ImageService.selectImage();
+      if (!result || result.canceled || !result.assets || result.assets.length === 0) return;
+      const asset = result.assets[0];
       setUploadingClosingId(closingId);
       const uploadResult = await ImageService.uploadImage(
         asset.uri,

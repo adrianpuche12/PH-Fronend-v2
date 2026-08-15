@@ -84,6 +84,24 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
   const [editSaving, setEditSaving]       = useState(false);
   const [editError, setEditError]         = useState('');
 
+  // ── Modal eliminar cierre ─────────────────────────────────────────────────
+  const [deletingShift, setDeletingShift]   = useState<ShiftRecord | null>(null);
+  const [deleteInProgress, setDeleteInProgress] = useState(false);
+
+  const handleDeleteShift = async () => {
+    if (!deletingShift) return;
+    setDeleteInProgress(true);
+    try {
+      await axios.delete(`${REACT_APP_API_URL}/api/v2/shifts/${deletingShift.id}`);
+      setDeletingShift(null);
+      loadShifts();
+    } catch {
+      // error silencioso — el turno sigue en lista si falla
+    } finally {
+      setDeleteInProgress(false);
+    }
+  };
+
   const openEdit = (shift: ShiftRecord) => {
     const toLocal = (iso: string | null) => {
       if (!iso) return '';
@@ -296,8 +314,12 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     {!usernameFilter && isClosed && (
-                      <IconButton icon="pencil" size={16} iconColor={COLOR.info} style={{ margin: 0 }}
-                        onPress={() => openEdit(shift)} />
+                      <>
+                        <IconButton icon="pencil" size={16} iconColor={COLOR.info} style={{ margin: 0 }}
+                          onPress={() => openEdit(shift)} />
+                        <IconButton icon="delete" size={16} iconColor={COLOR.expense} style={{ margin: 0 }}
+                          onPress={() => setDeletingShift(shift)} />
+                      </>
                     )}
                     <MaterialCommunityIcons name={isOpen ? 'chevron-up' : 'chevron-down'} size={18} color={COLOR.inkMute} />
                   </View>
@@ -491,6 +513,34 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
                 {editSaving
                   ? <ActivityIndicator size="small" color={COLOR.ink} />
                   : <Text style={styles.editSaveText}>Guardar</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Modal eliminar cierre ── */}
+      <Modal visible={!!deletingShift} transparent animationType="fade">
+        <View style={styles.editOverlay}>
+          <View style={[styles.editModal, { gap: 16 }]}>
+            <MaterialCommunityIcons name="alert-circle" size={40} color={COLOR.expense} style={{ alignSelf: 'center' }} />
+            <Text style={[styles.editTitle, { textAlign: 'center' }]}>Eliminar historial de ventas</Text>
+            <Text style={[styles.editCode, { textAlign: 'center' }]}>{deletingShift?.code}</Text>
+            <Text style={{ color: COLOR.ink, textAlign: 'center', lineHeight: 22 }}>
+              Esta acción eliminará permanentemente el turno, todas las ventas registradas y el cierre de caja asociado.{'\n\n'}
+              <Text style={{ fontWeight: 'bold', color: COLOR.expense }}>Esta operación no se puede deshacer.</Text>
+            </Text>
+            <View style={styles.editActions}>
+              <TouchableOpacity style={styles.editCancelBtn} onPress={() => setDeletingShift(null)} disabled={deleteInProgress}>
+                <Text style={styles.editCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.editSaveBtn, { backgroundColor: COLOR.expense }]}
+                onPress={handleDeleteShift}
+                disabled={deleteInProgress}>
+                {deleteInProgress
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Text style={[styles.editSaveText, { color: '#fff' }]}>Eliminar</Text>}
               </TouchableOpacity>
             </View>
           </View>

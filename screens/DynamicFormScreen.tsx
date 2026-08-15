@@ -49,7 +49,7 @@ const DynamicFormScreen = () => {
     id: number; type: string; amount: number; date: string;
     description: string; storeName: string; username: string;
     periodStart?: string; periodEnd?: string;
-    imageUri?: string; depositStatus?: string;
+    imageUri?: string; depositStatus?: string; extraordinary?: boolean;
   }
   const [historial, setHistorial]         = useState<OperacionHistorial[]>([]);
   const [histLoading, setHistLoading]     = useState(false);
@@ -1211,6 +1211,11 @@ const DynamicFormScreen = () => {
                   <View style={histStyles.badgeDeposited}>
                     <MaterialCommunityIcons name="bank-check" size={10} color={COLOR.income} />
                     <Text style={[histStyles.badgeText, { color: COLOR.income }]}>En banco</Text>
+                  </View>
+                )}
+                {op.extraordinary && (
+                  <View style={[histStyles.badgePending, { backgroundColor: COLOR.expense, borderColor: COLOR.expense }]}>
+                    <Text style={[histStyles.badgeText, { color: '#FFFFFF' }]}>Cierre extraordinario</Text>
                   </View>
                 )}
               </View>

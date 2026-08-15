@@ -81,6 +81,7 @@ interface Transaction {
   bankDepositId?: number;
   bankDeclaredAmount?: number;
   closingShiftId?: number;
+  extraordinary?: boolean;
 }
 
 interface DepositGroup {
@@ -93,6 +94,7 @@ interface DepositGroup {
   closingCount: number;
   periodStart?: string;
   periodEnd?: string;
+  extraordinary?: boolean;
 }
 
 type DisplayItem = Transaction | DepositGroup;
@@ -665,6 +667,7 @@ const AdminScreen = () => {
           if (!g.storeNames.includes(sName)) g.storeNames.push(sName);
           if (tx.periodStart && (!g.periodStart || tx.periodStart < g.periodStart)) g.periodStart = tx.periodStart;
           if (tx.periodEnd   && (!g.periodEnd   || tx.periodEnd   > g.periodEnd))   g.periodEnd   = tx.periodEnd;
+          if (tx.extraordinary) g.extraordinary = true;
         } else {
           const g: DepositGroup = {
             type: 'DEPOSIT_GROUP',
@@ -676,6 +679,7 @@ const AdminScreen = () => {
             closingCount: 1,
             periodStart: tx.periodStart,
             periodEnd: tx.periodEnd,
+            extraordinary: tx.extraordinary === true,
           };
           groups.set(gid, g);
           result.push(g);
@@ -1417,6 +1421,11 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
             <View style={styles.txMain}>
               <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
                 <Text style={styles.txName}>Depósito bancario</Text>
+                {dg.extraordinary && (
+                  <View style={[styles.txBadge, { backgroundColor: COLOR.expense }]}>
+                    <Text style={[styles.txBadgeText, { color: '#FFFFFF' }]}>Cierre extraordinario</Text>
+                  </View>
+                )}
               </View>
               {!isLargeScreen && (
                 <Text style={styles.txMeta}>{fmtD(item.date)}</Text>
@@ -1541,7 +1550,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
     const imageUri = rawUri && rawUri !== 'null' && rawUri !== 'undefined' && rawUri.startsWith('http') ? rawUri : null;
 
     return (
-      <View key={`tx-${item.id}-${index}`} style={{ backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border }}>
+      <View key={`tx-${item.id}-${index}`} style={{ backgroundColor: item.extraordinary ? COLOR.expenseTint : COLOR.surface, borderBottomWidth: 1, borderBottomColor: item.extraordinary ? COLOR.expenseBorder : COLOR.border }}>
       <View style={[styles.txRow, { borderBottomWidth: 0 }]}>
         {/* Icono */}
         <View style={[styles.txIconWrap, { backgroundColor: txBg }]}>
@@ -1555,6 +1564,11 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
             <View style={[styles.txBadge, { backgroundColor: txBg }]}>
               <Text style={[styles.txBadgeText, { color: txColor }]}>{TRANSACTION_LABELS[item.type]}</Text>
             </View>
+            {item.extraordinary && (
+              <View style={[styles.txBadge, { backgroundColor: COLOR.expense }]}>
+                <Text style={[styles.txBadgeText, { color: '#FFFFFF' }]}>Cierre extraordinario</Text>
+              </View>
+            )}
           </View>
           {!isLargeScreen && (
             <Text style={styles.txMeta}>

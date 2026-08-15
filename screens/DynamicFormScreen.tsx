@@ -1297,15 +1297,15 @@ const DynamicFormScreen = () => {
               ] as const).map(op => (
                 <TouchableOpacity
                   key={op.value}
-                  style={styles.typeCard}
+                  style={[styles.typeCard, op.value === 'closing-deposits' && styles.typeCardExtraordinary]}
                   onPress={() => setFormType(op.value)}
                   activeOpacity={0.8}
                 >
-                  <View style={styles.typeCardIcon}>
-                    <MaterialCommunityIcons name={op.icon} size={28} color={COLOR.brandDeep} />
+                  <View style={[styles.typeCardIcon, op.value === 'closing-deposits' && styles.typeCardIconExtraordinary]}>
+                    <MaterialCommunityIcons name={op.icon} size={28} color={op.value === 'closing-deposits' ? '#FFFFFF' : COLOR.brandDeep} />
                   </View>
-                  <Text style={styles.typeCardLabel}>{op.label}</Text>
-                  <Text style={styles.typeCardDesc}>{op.desc}</Text>
+                  <Text style={[styles.typeCardLabel, op.value === 'closing-deposits' && { color: '#FFFFFF' }]}>{op.label}</Text>
+                  <Text style={[styles.typeCardDesc, op.value === 'closing-deposits' && { color: 'rgba(255,255,255,0.8)' }]}>{op.desc}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -1761,8 +1761,10 @@ const styles = StyleSheet.create({
   typeSection:       { padding: SPACE.s4 },
   typeSectionTitle:  { fontSize: FONT_SIZE.h3, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink, marginBottom: SPACE.s4 },
   typeGrid:          { flexDirection: 'row', flexWrap: 'wrap', gap: SPACE.s3 },
-  typeCard:          { flexBasis: '47%', flexGrow: 1, backgroundColor: COLOR.surface, borderRadius: RADIUS.r3, borderWidth: 1.5, borderColor: COLOR.border, padding: SPACE.s4, alignItems: 'center', gap: SPACE.s2, ...SHADOW.sm },
-  typeCardIcon:      { width: 56, height: 56, borderRadius: RADIUS.full, backgroundColor: COLOR.brandTint, justifyContent: 'center', alignItems: 'center' },
+  typeCard:                   { flexBasis: '47%', flexGrow: 1, backgroundColor: COLOR.surface, borderRadius: RADIUS.r3, borderWidth: 1.5, borderColor: COLOR.border, padding: SPACE.s4, alignItems: 'center', gap: SPACE.s2, ...SHADOW.sm },
+  typeCardExtraordinary:      { backgroundColor: COLOR.expense, borderColor: COLOR.expense },
+  typeCardIcon:               { width: 56, height: 56, borderRadius: RADIUS.full, backgroundColor: COLOR.brandTint, justifyContent: 'center', alignItems: 'center' },
+  typeCardIconExtraordinary:  { backgroundColor: 'rgba(0,0,0,0.15)' },
   typeCardLabel:     { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink, textAlign: 'center' },
   typeCardDesc:      { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, textAlign: 'center' },
 

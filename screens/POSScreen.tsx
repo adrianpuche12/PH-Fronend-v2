@@ -4,7 +4,7 @@ import {
   TextInput as RNTextInput, ActivityIndicator, Modal,
   useWindowDimensions, Image, Alert,
 } from 'react-native';
-import ImageService from '../utils/ImageService';
+import { ImageService } from '../utils/ImageService';
 import { Button, Snackbar } from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -1380,7 +1380,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                   </View>
                   {closingImageUri ? (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACE.s2 }}>
-                      <Image source={{ uri: closingImageUri }} style={{ width: 56, height: 56, borderRadius: RADIUS.sm }} />
+                      <Image source={{ uri: closingImageUri }} style={{ width: 56, height: 56, borderRadius: RADIUS.r1 }} />
                       <TouchableOpacity onPress={handleSelectClosingImage} disabled={uploadingClosingImg}>
                         <Text style={{ color: COLOR.brand, fontSize: FONT_SIZE.caption }}>Cambiar foto</Text>
                       </TouchableOpacity>

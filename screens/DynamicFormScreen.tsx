@@ -383,6 +383,11 @@ const DynamicFormScreen = () => {
       showMessage('error', 'El comprobante bancario es obligatorio para el deposito');
       return;
     }
+    const closingsSinFoto = pendingClosings.filter((c: any) => !c.imageUri);
+    if (closingsSinFoto.length > 0) {
+      showMessage('error', `${closingsSinFoto.length} cierre(s) sin comprobante. Agregá la foto en Operaciones antes de depositar.`);
+      return;
+    }
     setIsSubmitting(true);
     try {
       let imageUri = null;
@@ -1062,7 +1067,7 @@ const DynamicFormScreen = () => {
                   {pendingClosings.length} cierre{pendingClosings.length !== 1 ? 's' : ''} pendiente{pendingClosings.length !== 1 ? 's' : ''} de depositar
                 </Text>
                 {pendingClosings.map((c: any, i: number) => (
-                  <View key={c.id} style={styles.bankClosingItem}>
+                  <View key={c.id} style={[styles.bankClosingItem, !c.imageUri && { borderColor: COLOR.expense, borderWidth: 1, borderRadius: 6 }]}>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.bankClosingDate}>
                         {c.periodStart === c.periodEnd
@@ -1072,6 +1077,11 @@ const DynamicFormScreen = () => {
                       <Text style={styles.bankClosingMeta}>
                         {c.closingsCount} cierre{c.closingsCount !== 1 ? 's' : ''} · {c.username}
                       </Text>
+                      {!c.imageUri && (
+                        <Text style={{ fontSize: 11, color: COLOR.expense, marginTop: 2 }}>
+                          ⚠ Sin comprobante — requerido antes de depositar
+                        </Text>
+                      )}
                     </View>
                     <Text style={styles.bankClosingAmount}>{formatHnl(c.amount)}</Text>
                   </View>

@@ -485,7 +485,12 @@ const DynamicFormScreen = () => {
               paymentDate: formData.date,
               depositDate: formData.date,
               imageUri: imageUri,
-              ...(formType === 'closing-deposits' && { extraordinary: true }),
+              ...(formType === 'closing-deposits' && {
+                extraordinary: true,
+                periodStart: formData.date,
+                periodEnd: formData.date,
+                closingsCount: 1,
+              }),
             };
 
       const response = await fetch(url, {
@@ -890,21 +895,6 @@ const DynamicFormScreen = () => {
             </FieldGroup>
 
             <FieldGroup>
-              <FieldLabel label="Cantidad de cierres" />
-              <TextInput
-                value={formData.closingsCount}
-                onChangeText={(v) => handleInputChange('closingsCount', v)}
-                keyboardType="numeric"
-                mode="outlined"
-                placeholder="Ej: 3"
-                style={styles.input}
-                outlineColor={COLOR.border}
-                activeOutlineColor={COLOR.brand}
-                theme={{ colors: { primary: COLOR.brand } }}
-              />
-            </FieldGroup>
-
-            <FieldGroup>
               <FieldLabel label="Fecha del cierre" />
               <DateField
                 label="Seleccionar fecha"
@@ -913,12 +903,6 @@ const DynamicFormScreen = () => {
                 error={errors.date}
               />
               {errors.date && <Text style={styles.fieldError}>La fecha es obligatoria</Text>}
-            </FieldGroup>
-
-            <FieldGroup>
-              <FieldLabel label="Período que cubre" />
-              <PeriodField onPress={() => setDateRangePickerVisible(true)} error={!!(errors.periodStart || errors.periodEnd)} />
-              {(errors.periodStart || errors.periodEnd) && <Text style={styles.fieldError}>Seleccioná el período completo</Text>}
             </FieldGroup>
 
             {renderImagePicker()}

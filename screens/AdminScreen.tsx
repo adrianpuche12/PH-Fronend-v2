@@ -426,6 +426,9 @@ const AdminScreen = () => {
 
   // Estado para visor de comprobante
   const [viewingImage, setViewingImage] = useState<string | null>(null);
+
+  // Estado para subir imagen a cierre PENDING
+  const [uploadingClosingId, setUploadingClosingId] = useState<number | null>(null);
   const [expandedClosings, setExpandedClosings] = useState<Record<number, boolean>>({});
   const toggleClosingDetail = (id: number) =>
     setExpandedClosings(prev => ({ ...prev, [id]: !prev[id] }));
@@ -981,6 +984,41 @@ const AdminScreen = () => {
       setDeletingInProgress(false);
       setDepositDeleteModalVisible(false);
       setDepositGroupToDelete(null);
+    }
+  };
+
+  // ── Subir comprobante a cierre PENDING (no extraordinario) ───────────────
+  const handleUploadClosingImage = async (closingId: number) => {
+    try {
+      const result = await ImageService.selectImage();
+      if (!result || result.canceled || !result.assets || result.assets.length === 0) return;
+      const asset = result.assets[0];
+      setUploadingClosingId(closingId);
+      const uploadResult = await ImageService.uploadImage(
+        asset.uri,
+        ImageService.generateFileName('CLOSING'),
+        'comprobantes'
+      );
+      if (!uploadResult.success) {
+        Alert.alert('Error', 'No se pudo subir el comprobante.');
+        return;
+      }
+      const res = await fetch(`${REACT_APP_API_URL}/api/forms/closing-deposits/${closingId}/image`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageUri: uploadResult.imageUri }),
+      });
+      if (res.ok) {
+        setSnackbarMessage('Comprobante guardado correctamente.');
+        setSnackbarVisible(true);
+        fetchData(startDate, endDate, selectedStore);
+      } else {
+        Alert.alert('Error', 'No se pudo guardar el comprobante.');
+      }
+    } catch {
+      Alert.alert('Error', 'Ocurrió un error al subir el comprobante.');
+    } finally {
+      setUploadingClosingId(null);
     }
   };
 
@@ -1628,6 +1666,15 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
                   style={{ width: 36, height: 36, borderRadius: 4, borderWidth: 1, borderColor: COLOR.border }}
                 />
               </TouchableOpacity>
+            ) : item.type === 'CLOSING' && item.depositStatus === 'PENDING' && !item.extraordinary ? (
+              <IconButton
+                icon={uploadingClosingId === item.id ? 'loading' : 'camera-plus-outline'}
+                size={18}
+                onPress={() => handleUploadClosingImage(item.id)}
+                iconColor={COLOR.brandDeep}
+                style={{ margin: 0 }}
+                disabled={uploadingClosingId === item.id}
+              />
             ) : (
               <View style={{ width: 36 }} />
             )}

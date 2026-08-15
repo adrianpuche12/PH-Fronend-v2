@@ -534,7 +534,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
         Alert.alert('Error', 'No se pudo subir el comprobante.');
         return;
       }
-      setClosingImageUri(uploadResult.imageUri);
+      setClosingImageUri(uploadResult.imageUri ?? null);
     } catch {
       Alert.alert('Error', 'Ocurrió un error al subir el comprobante.');
     } finally {

@@ -1288,7 +1288,7 @@ const DynamicFormScreen = () => {
             <Text style={styles.typeSectionTitle}>¿Qué querés registrar?</Text>
             <View style={styles.typeGrid}>
               {([
-                { value: 'closing-deposits',  icon: 'cash-register',          label: 'Cierre de caja',       desc: 'Cierre diario del local' },
+                { value: 'closing-deposits',  icon: 'cash-register',          label: 'Cierre extraordinario', desc: 'Cierre manual de caja' },
                 { value: 'bank-deposit',       icon: 'bank-outline',           label: 'Depósito bancario',    desc: 'Envío de dinero al banco' },
                 { value: 'transaction',        icon: 'swap-horizontal-circle', label: 'Transacción',          desc: 'Ingreso o egreso directo' },
                 { value: 'supplier-payments',  icon: 'truck-delivery-outline', label: 'Proveedor',            desc: 'Pago a proveedor' },

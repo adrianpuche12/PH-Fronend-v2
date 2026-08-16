@@ -4,6 +4,7 @@ import { RadioButton, Text, ActivityIndicator } from 'react-native-paper';
 import axios from 'axios';
 import { REACT_APP_API_URL } from '../config';
 import { COLOR, SPACE, FONT_SIZE, FONT_WEIGHT } from '../theme';
+import { useAuth } from '../context/AuthContext';
 
 interface Store {
   id: number;
@@ -17,6 +18,7 @@ interface StoreSelectorProps {
 }
 
 const StoreSelector: React.FC<StoreSelectorProps> = ({ selectedStore, onStoreChange, style }) => {
+  const { storeId: assignedStoreId } = useAuth();
   const [stores, setStores]     = useState<Store[]>([]);
   const [loading, setLoading]   = useState(true);
 
@@ -24,8 +26,10 @@ const StoreSelector: React.FC<StoreSelectorProps> = ({ selectedStore, onStoreCha
     axios.get<Store[]>(`${REACT_APP_API_URL}/api/v2/stores/active`)
       .then(res => {
         setStores(res.data);
-        // Auto-seleccionar el primero si no hay ninguno seleccionado
-        if (!selectedStore && res.data.length > 0) {
+        if (assignedStoreId) {
+          onStoreChange(assignedStoreId);
+        } else if (!selectedStore && res.data.length > 0) {
+          // Auto-seleccionar el primero si no hay ninguno seleccionado
           onStoreChange(res.data[0].id);
         }
       })
@@ -39,6 +43,18 @@ const StoreSelector: React.FC<StoreSelectorProps> = ({ selectedStore, onStoreCha
 
   if (stores.length === 0) {
     return <Text style={styles.empty}>No hay locales activos disponibles.</Text>;
+  }
+
+  // Empleado con un único local asignado (AppUser.store en el backend): no tiene sentido
+  // mostrarle una lista para elegir entre locales que no le corresponden.
+  if (assignedStoreId) {
+    const assignedStore = stores.find(s => s.id === assignedStoreId);
+    return (
+      <View style={[styles.container, style]}>
+        <Text style={styles.label}>Local</Text>
+        <Text style={styles.fixedStore}>{assignedStore?.name ?? '—'}</Text>
+      </View>
+    );
   }
 
   return (
@@ -81,6 +97,12 @@ const styles = StyleSheet.create({
   radioLabel: {
     fontSize: FONT_SIZE.body,
     color: COLOR.ink,
+  },
+  fixedStore: {
+    fontSize: FONT_SIZE.body,
+    fontWeight: FONT_WEIGHT.semibold as any,
+    color: COLOR.ink,
+    paddingVertical: SPACE.s2,
   },
   empty: {
     fontSize: FONT_SIZE.label,

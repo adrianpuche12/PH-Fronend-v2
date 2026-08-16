@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput as RNTextInput, ActivityIndicator, Modal,
-  useWindowDimensions,
+  useWindowDimensions, Image, Alert,
 } from 'react-native';
+import { ImageService } from '../utils/ImageService';
 import { Button, Snackbar } from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -142,6 +143,8 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
 
   // Reconciliación de caja al cierre
   const [declaredCash, setDeclaredCash]         = useState('');
+  const [closingImageUri, setClosingImageUri]   = useState<string | null>(null);
+  const [uploadingClosingImg, setUploadingClosingImg] = useState(false);
   interface ClosingResult {
     openingCashAmount: number; totalCashSales: number;
     totalShiftExpenses: number; expectedCashAmount: number;
@@ -159,10 +162,24 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
       const res = await axios.get<Shift>(`${API}/api/v2/shifts/active/${storeId}`, {
         params: { username: userName ?? 'empleada' },
       });
-      setShift(res.data ?? null);
+      if (res.data) { setShift(res.data); return; }
+
+      // Fallback para admin: buscar turno abierto en cualquier local
+      if (isAdmin) {
+        const fallback = await axios.get<Shift>(`${API}/api/v2/shifts/active`, {
+          params: { username: userName },
+        }).catch(() => ({ data: null as Shift | null }));
+        if (fallback.data) {
+          const matchedStore = stores.find(s => s.id === fallback.data!.storeId);
+          if (matchedStore) setSelectedStore(matchedStore);
+          setShift(fallback.data);
+          return;
+        }
+      }
+      setShift(null);
     } catch { setShift(null); }
     finally { setLoadingShift(false); }
-  }, [storeId, userName]);
+  }, [storeId, userName, isAdmin, stores, setSelectedStore]);
 
   const loadCatalog = useCallback(async () => {
     if (!storeId) return;
@@ -502,12 +519,36 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
 
   // ── Cierre de turno ───────────────────────────────────────────────────────
 
+  const handleSelectClosingImage = async () => {
+    try {
+      const result = await ImageService.selectImage();
+      if (!result || result.canceled || !result.assets || result.assets.length === 0) return;
+      const asset = result.assets[0];
+      setUploadingClosingImg(true);
+      const uploadResult = await ImageService.uploadImage(
+        asset.uri,
+        ImageService.generateFileName('CLOSING'),
+        'comprobantes'
+      );
+      if (!uploadResult.success) {
+        Alert.alert('Error', 'No se pudo subir el comprobante.');
+        return;
+      }
+      setClosingImageUri(uploadResult.imageUri ?? null);
+    } catch {
+      Alert.alert('Error', 'Ocurrió un error al subir el comprobante.');
+    } finally {
+      setUploadingClosingImg(false);
+    }
+  };
+
   const openClosing = async () => {
     if (!shift) return;
     setLoadingSummary(true);
     setClosingModal(true);
     setClosingDone(false);
     setDeclaredCash('');
+    setClosingImageUri(null);
     setClosingResult(null);
     try {
       const res = await axios.get<DailySummary>(`${API}/api/v2/shifts/${shift.id}/summary`);
@@ -532,8 +573,10 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
       const res = await axios.post(`${API}/api/v2/shifts/${shift.id}/closing`, {
         username: userName ?? 'empleada',
         declaredCashAmount: declared,
+        imageUri: closingImageUri ?? undefined,
       });
       setClosingResult(res.data);
+      setClosingImageUri(null);
       setClosingDone(true);
     } catch (e: any) {
       setClosingModalError(e.response?.data?.error || 'No se pudo confirmar el cierre. Intentá de nuevo.');
@@ -1328,12 +1371,39 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                     );
                   })()}
                 </View>
+
+                {/* Foto del comprobante de caja */}
+                <View style={[styles.cashInputBox, { marginTop: SPACE.s3 }]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACE.s2, marginBottom: SPACE.s2 }}>
+                    <MaterialCommunityIcons name="camera-outline" size={18} color={COLOR.inkMute} />
+                    <Text style={styles.cashInputLabel}>Foto del comprobante (opcional)</Text>
+                  </View>
+                  {closingImageUri ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACE.s2 }}>
+                      <Image source={{ uri: closingImageUri }} style={{ width: 56, height: 56, borderRadius: RADIUS.r1 }} />
+                      <TouchableOpacity onPress={handleSelectClosingImage} disabled={uploadingClosingImg}>
+                        <Text style={{ color: COLOR.brand, fontSize: FONT_SIZE.caption }}>Cambiar foto</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      onPress={handleSelectClosingImage}
+                      disabled={uploadingClosingImg}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: SPACE.s2, opacity: uploadingClosingImg ? 0.5 : 1 }}
+                    >
+                      <MaterialCommunityIcons name={uploadingClosingImg ? 'loading' : 'camera-plus-outline'} size={22} color={COLOR.brandDeep} />
+                      <Text style={{ color: COLOR.brandDeep, fontSize: FONT_SIZE.caption }}>
+                        {uploadingClosingImg ? 'Subiendo...' : 'Agregar foto del comprobante'}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
                 </ScrollView>
 
                 <Text style={styles.closingWarn}>Esta acción no se puede deshacer</Text>
 
                 <View style={styles.modalActions}>
-                  <Button mode="outlined" onPress={() => { setClosingModal(false); setDeclaredCash(''); setClosingModalError(''); }} style={{ flex: 1 }}>Cancelar</Button>
+                  <Button mode="outlined" onPress={() => { setClosingModal(false); setDeclaredCash(''); setClosingImageUri(null); setClosingModalError(''); }} style={{ flex: 1 }}>Cancelar</Button>
                   <Button
                     mode="contained"
                     buttonColor={COLOR.brand}

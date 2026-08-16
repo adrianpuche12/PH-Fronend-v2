@@ -32,7 +32,7 @@ const flattenCategories = (cats: Category[], prefix = ''): { id: number; label: 
   const result: { id: number; label: string; depth: number }[] = [];
   for (const cat of cats) {
     const label = prefix ? `${prefix} > ${cat.name}` : cat.name;
-    result.push({ id: cat.id, label, depth: prefix.split('>').length - 1 });
+    result.push({ id: cat.id, label, depth: prefix ? prefix.split('>').length : 0 });
     if (cat.children?.length) result.push(...flattenCategories(cat.children, label));
   }
   return result;
@@ -148,7 +148,7 @@ const CategoryTree = ({ categories, selected, onSelect, onNew, onEdit, onDelete,
           {/* Contador */}
           <View style={[styles.catCount, isSelected && styles.catCountSelected]}>
             <Text style={[styles.catCountText, isSelected && styles.catCountTextSelected]}>
-              {cat.productCount}
+              {countProducts(cat)}
             </Text>
           </View>
 
@@ -389,9 +389,13 @@ const InventoryScreen = () => {
   }
 
   // Filtro por nivel de stock (Todos / Stock bajo / Stock alto)
+  // Un producto se considera "bajo" si tiene lowStock=true (minStock configurado) O si su cantidad es 0
   const filteredByStock = stockFilter === 'all'
     ? filtered
-    : filtered.filter(item => stockFilter === 'low' ? item.lowStock : !item.lowStock);
+    : filtered.filter(item => {
+        const isLow = item.lowStock || item.quantity === 0;
+        return stockFilter === 'low' ? isLow : !isLow;
+      });
 
   // ── Ajuste de stock ──────────────────────────────────────────────────────────
 
@@ -891,7 +895,7 @@ const InventoryScreen = () => {
             ) : filteredByStock.length === 0 ? (
               <Text style={styles.empty}>No hay productos para mostrar.</Text>
             ) : (
-              <ScrollView>
+              <ScrollView key={`${stockFilter}-${selectedCat ?? 'all'}`}>
                 {/* Header tabla (solo desktop) */}
                 {isDesktop && (
                   <View style={[styles.row, styles.rowHeader]}>

@@ -41,7 +41,7 @@ const BACKEND_URL = `${REACT_APP_API_URL}/api/forms`;
 const TRANSACTIONS_URL = `${REACT_APP_API_URL}/transactions`;
 
 const DynamicFormScreen = () => {
-  const { userName } = useAuth();
+  const { userName, storeId: userStoreId } = useAuth();
   const [activeTab, setActiveTab] = useState<'form' | 'historial'>('form');
 
   // ── Historial de operaciones del usuario ────────────────────────────────────
@@ -49,7 +49,7 @@ const DynamicFormScreen = () => {
     id: number; type: string; amount: number; date: string;
     description: string; storeName: string; username: string;
     periodStart?: string; periodEnd?: string;
-    imageUri?: string; depositStatus?: string;
+    imageUri?: string; depositStatus?: string; extraordinary?: boolean;
   }
   const [historial, setHistorial]         = useState<OperacionHistorial[]>([]);
   const [histLoading, setHistLoading]     = useState(false);
@@ -119,7 +119,7 @@ const DynamicFormScreen = () => {
     closingsCount: '',
     periodStart: '',
     periodEnd: '',
-    storeId: 0,
+    storeId: userStoreId ?? 0,
     supplier: '',
     imageUri: '',
   });
@@ -485,6 +485,12 @@ const DynamicFormScreen = () => {
               paymentDate: formData.date,
               depositDate: formData.date,
               imageUri: imageUri,
+              ...(formType === 'closing-deposits' && {
+                extraordinary: true,
+                periodStart: formData.date,
+                periodEnd: formData.date,
+                closingsCount: 1,
+              }),
             };
 
       const response = await fetch(url, {
@@ -889,21 +895,6 @@ const DynamicFormScreen = () => {
             </FieldGroup>
 
             <FieldGroup>
-              <FieldLabel label="Cantidad de cierres" />
-              <TextInput
-                value={formData.closingsCount}
-                onChangeText={(v) => handleInputChange('closingsCount', v)}
-                keyboardType="numeric"
-                mode="outlined"
-                placeholder="Ej: 3"
-                style={styles.input}
-                outlineColor={COLOR.border}
-                activeOutlineColor={COLOR.brand}
-                theme={{ colors: { primary: COLOR.brand } }}
-              />
-            </FieldGroup>
-
-            <FieldGroup>
               <FieldLabel label="Fecha del cierre" />
               <DateField
                 label="Seleccionar fecha"
@@ -912,12 +903,6 @@ const DynamicFormScreen = () => {
                 error={errors.date}
               />
               {errors.date && <Text style={styles.fieldError}>La fecha es obligatoria</Text>}
-            </FieldGroup>
-
-            <FieldGroup>
-              <FieldLabel label="Período que cubre" />
-              <PeriodField onPress={() => setDateRangePickerVisible(true)} error={!!(errors.periodStart || errors.periodEnd)} />
-              {(errors.periodStart || errors.periodEnd) && <Text style={styles.fieldError}>Seleccioná el período completo</Text>}
             </FieldGroup>
 
             {renderImagePicker()}
@@ -1228,6 +1213,11 @@ const DynamicFormScreen = () => {
                     <Text style={[histStyles.badgeText, { color: COLOR.income }]}>En banco</Text>
                   </View>
                 )}
+                {op.extraordinary && (
+                  <View style={[histStyles.badgePending, { backgroundColor: COLOR.expense, borderColor: COLOR.expense }]}>
+                    <Text style={[histStyles.badgeText, { color: '#FFFFFF' }]}>Cierre extraordinario</Text>
+                  </View>
+                )}
               </View>
               {op.storeName && <Text style={histStyles.storeName}>{op.storeName}</Text>}
               {op.description ? (
@@ -1303,7 +1293,7 @@ const DynamicFormScreen = () => {
             <Text style={styles.typeSectionTitle}>¿Qué querés registrar?</Text>
             <View style={styles.typeGrid}>
               {([
-                { value: 'closing-deposits',  icon: 'cash-register',          label: 'Cierre de caja',       desc: 'Cierre diario del local' },
+                { value: 'closing-deposits',  icon: 'cash-register',          label: 'Cierre extraordinario', desc: 'Cierre manual de caja' },
                 { value: 'bank-deposit',       icon: 'bank-outline',           label: 'Depósito bancario',    desc: 'Envío de dinero al banco' },
                 { value: 'transaction',        icon: 'swap-horizontal-circle', label: 'Transacción',          desc: 'Ingreso o egreso directo' },
                 { value: 'supplier-payments',  icon: 'truck-delivery-outline', label: 'Proveedor',            desc: 'Pago a proveedor' },
@@ -1312,15 +1302,15 @@ const DynamicFormScreen = () => {
               ] as const).map(op => (
                 <TouchableOpacity
                   key={op.value}
-                  style={styles.typeCard}
+                  style={[styles.typeCard, op.value === 'closing-deposits' && styles.typeCardExtraordinary]}
                   onPress={() => setFormType(op.value)}
                   activeOpacity={0.8}
                 >
-                  <View style={styles.typeCardIcon}>
-                    <MaterialCommunityIcons name={op.icon} size={28} color={COLOR.brandDeep} />
+                  <View style={[styles.typeCardIcon, op.value === 'closing-deposits' && styles.typeCardIconExtraordinary]}>
+                    <MaterialCommunityIcons name={op.icon} size={28} color={op.value === 'closing-deposits' ? '#FFFFFF' : COLOR.brandDeep} />
                   </View>
-                  <Text style={styles.typeCardLabel}>{op.label}</Text>
-                  <Text style={styles.typeCardDesc}>{op.desc}</Text>
+                  <Text style={[styles.typeCardLabel, op.value === 'closing-deposits' && { color: '#FFFFFF' }]}>{op.label}</Text>
+                  <Text style={[styles.typeCardDesc, op.value === 'closing-deposits' && { color: 'rgba(255,255,255,0.8)' }]}>{op.desc}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -1776,8 +1766,10 @@ const styles = StyleSheet.create({
   typeSection:       { padding: SPACE.s4 },
   typeSectionTitle:  { fontSize: FONT_SIZE.h3, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink, marginBottom: SPACE.s4 },
   typeGrid:          { flexDirection: 'row', flexWrap: 'wrap', gap: SPACE.s3 },
-  typeCard:          { flexBasis: '47%', flexGrow: 1, backgroundColor: COLOR.surface, borderRadius: RADIUS.r3, borderWidth: 1.5, borderColor: COLOR.border, padding: SPACE.s4, alignItems: 'center', gap: SPACE.s2, ...SHADOW.sm },
-  typeCardIcon:      { width: 56, height: 56, borderRadius: RADIUS.full, backgroundColor: COLOR.brandTint, justifyContent: 'center', alignItems: 'center' },
+  typeCard:                   { flexBasis: '47%', flexGrow: 1, backgroundColor: COLOR.surface, borderRadius: RADIUS.r3, borderWidth: 1.5, borderColor: COLOR.border, padding: SPACE.s4, alignItems: 'center', gap: SPACE.s2, ...SHADOW.sm },
+  typeCardExtraordinary:      { backgroundColor: COLOR.expense, borderColor: COLOR.expense },
+  typeCardIcon:               { width: 56, height: 56, borderRadius: RADIUS.full, backgroundColor: COLOR.brandTint, justifyContent: 'center', alignItems: 'center' },
+  typeCardIconExtraordinary:  { backgroundColor: 'rgba(0,0,0,0.15)' },
   typeCardLabel:     { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink, textAlign: 'center' },
   typeCardDesc:      { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, textAlign: 'center' },
 

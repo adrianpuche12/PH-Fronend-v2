@@ -81,6 +81,7 @@ interface Transaction {
   bankDepositId?: number;
   bankDeclaredAmount?: number;
   closingShiftId?: number;
+  extraordinary?: boolean;
 }
 
 interface DepositGroup {
@@ -93,6 +94,7 @@ interface DepositGroup {
   closingCount: number;
   periodStart?: string;
   periodEnd?: string;
+  extraordinary?: boolean;
 }
 
 type DisplayItem = Transaction | DepositGroup;
@@ -424,6 +426,9 @@ const AdminScreen = () => {
 
   // Estado para visor de comprobante
   const [viewingImage, setViewingImage] = useState<string | null>(null);
+
+  // Estado para subir imagen a cierre PENDING
+  const [uploadingClosingId, setUploadingClosingId] = useState<number | null>(null);
   const [expandedClosings, setExpandedClosings] = useState<Record<number, boolean>>({});
   const toggleClosingDetail = (id: number) =>
     setExpandedClosings(prev => ({ ...prev, [id]: !prev[id] }));
@@ -665,6 +670,7 @@ const AdminScreen = () => {
           if (!g.storeNames.includes(sName)) g.storeNames.push(sName);
           if (tx.periodStart && (!g.periodStart || tx.periodStart < g.periodStart)) g.periodStart = tx.periodStart;
           if (tx.periodEnd   && (!g.periodEnd   || tx.periodEnd   > g.periodEnd))   g.periodEnd   = tx.periodEnd;
+          if (tx.extraordinary) g.extraordinary = true;
         } else {
           const g: DepositGroup = {
             type: 'DEPOSIT_GROUP',
@@ -676,6 +682,7 @@ const AdminScreen = () => {
             closingCount: 1,
             periodStart: tx.periodStart,
             periodEnd: tx.periodEnd,
+            extraordinary: tx.extraordinary === true,
           };
           groups.set(gid, g);
           result.push(g);
@@ -977,6 +984,41 @@ const AdminScreen = () => {
       setDeletingInProgress(false);
       setDepositDeleteModalVisible(false);
       setDepositGroupToDelete(null);
+    }
+  };
+
+  // ── Subir comprobante a cierre PENDING (no extraordinario) ───────────────
+  const handleUploadClosingImage = async (closingId: number) => {
+    try {
+      const result = await ImageService.selectImage();
+      if (!result || result.canceled || !result.assets || result.assets.length === 0) return;
+      const asset = result.assets[0];
+      setUploadingClosingId(closingId);
+      const uploadResult = await ImageService.uploadImage(
+        asset.uri,
+        ImageService.generateFileName('CLOSING'),
+        'comprobantes'
+      );
+      if (!uploadResult.success) {
+        Alert.alert('Error', 'No se pudo subir el comprobante.');
+        return;
+      }
+      const res = await fetch(`${REACT_APP_API_URL}/api/forms/closing-deposits/${closingId}/image`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageUri: uploadResult.imageUri }),
+      });
+      if (res.ok) {
+        setSnackbarMessage('Comprobante guardado correctamente.');
+        setSnackbarVisible(true);
+        fetchData(startDate, endDate, selectedStore);
+      } else {
+        Alert.alert('Error', 'No se pudo guardar el comprobante.');
+      }
+    } catch {
+      Alert.alert('Error', 'Ocurrió un error al subir el comprobante.');
+    } finally {
+      setUploadingClosingId(null);
     }
   };
 
@@ -1417,6 +1459,11 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
             <View style={styles.txMain}>
               <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
                 <Text style={styles.txName}>Depósito bancario</Text>
+                {dg.extraordinary && (
+                  <View style={[styles.txBadge, { backgroundColor: COLOR.expense }]}>
+                    <Text style={[styles.txBadgeText, { color: '#FFFFFF' }]}>Cierre extraordinario</Text>
+                  </View>
+                )}
               </View>
               {!isLargeScreen && (
                 <Text style={styles.txMeta}>{fmtD(item.date)}</Text>
@@ -1541,7 +1588,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
     const imageUri = rawUri && rawUri !== 'null' && rawUri !== 'undefined' && rawUri.startsWith('http') ? rawUri : null;
 
     return (
-      <View key={`tx-${item.id}-${index}`} style={{ backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border }}>
+      <View key={`tx-${item.id}-${index}`} style={{ backgroundColor: item.extraordinary ? COLOR.expenseTint : COLOR.surface, borderBottomWidth: 1, borderBottomColor: item.extraordinary ? COLOR.expenseBorder : COLOR.border }}>
       <View style={[styles.txRow, { borderBottomWidth: 0 }]}>
         {/* Icono */}
         <View style={[styles.txIconWrap, { backgroundColor: txBg }]}>
@@ -1555,6 +1602,11 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
             <View style={[styles.txBadge, { backgroundColor: txBg }]}>
               <Text style={[styles.txBadgeText, { color: txColor }]}>{TRANSACTION_LABELS[item.type]}</Text>
             </View>
+            {item.extraordinary && (
+              <View style={[styles.txBadge, { backgroundColor: COLOR.expense }]}>
+                <Text style={[styles.txBadgeText, { color: '#FFFFFF' }]}>Cierre extraordinario</Text>
+              </View>
+            )}
           </View>
           {!isLargeScreen && (
             <Text style={styles.txMeta}>
@@ -1614,6 +1666,15 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
                   style={{ width: 36, height: 36, borderRadius: 4, borderWidth: 1, borderColor: COLOR.border }}
                 />
               </TouchableOpacity>
+            ) : item.type === 'CLOSING' && item.depositStatus === 'PENDING' && !item.extraordinary ? (
+              <IconButton
+                icon={uploadingClosingId === item.id ? 'loading' : 'camera-plus-outline'}
+                size={18}
+                onPress={() => handleUploadClosingImage(item.id)}
+                iconColor={COLOR.brandDeep}
+                style={{ margin: 0 }}
+                disabled={uploadingClosingId === item.id}
+              />
             ) : (
               <View style={{ width: 36 }} />
             )}

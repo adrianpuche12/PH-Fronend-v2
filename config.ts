@@ -6,7 +6,7 @@
 // EXPO_PUBLIC_* se expone al cliente en builds de Expo web.
 // Estas variables DEBEN estar seteadas en Vercel — sin fallbacks a dominios externos.
 
-export const KEYCLOAK_URL      = process.env.EXPO_PUBLIC_KEYCLOAK_URL      || "https://keycloak-production-e4ef.up.railway.app";
+export const KEYCLOAK_URL      = process.env.EXPO_PUBLIC_KEYCLOAK_URL      || "https://keycloak.belopia.app";
 export const KEYCLOAK_REALM    = process.env.EXPO_PUBLIC_KEYCLOAK_REALM    || "proyecto-h-dev";
 export const REACT_APP_API_URL = process.env.EXPO_PUBLIC_API_URL           || "http://localhost:8080";
 export const IMAGE_SERVER_URL  = process.env.EXPO_PUBLIC_IMAGE_URL         || "https://pub-7e31005d201d4d34894758b2b1d00d9a.r2.dev";

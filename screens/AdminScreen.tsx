@@ -95,6 +95,7 @@ interface DepositGroup {
   periodStart?: string;
   periodEnd?: string;
   extraordinary?: boolean;
+  notes?: string;
 }
 
 type DisplayItem = Transaction | DepositGroup;
@@ -683,6 +684,7 @@ const AdminScreen = () => {
             periodStart: tx.periodStart,
             periodEnd: tx.periodEnd,
             extraordinary: tx.extraordinary === true,
+            notes: (tx as any).bankDepositNotes ?? undefined,
           };
           groups.set(gid, g);
           result.push(g);
@@ -1476,6 +1478,9 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
                   Periodo {fmtD(dg.periodStart)}{dg.periodEnd ? ` al ${fmtD(dg.periodEnd)}` : ''}
                 </Text>
               )}
+              {dg.notes ? (
+                <Text style={styles.txMeta} numberOfLines={2}>Obs: {dg.notes}</Text>
+              ) : null}
               <View style={[styles.depositBadge, styles.depositBadgeDone]}>
                 <MaterialCommunityIcons name="bank-check" size={11} color="#166534" />
                 <Text style={[styles.depositBadgeText, { color: '#166534' }]}>Depositado</Text>

@@ -2166,7 +2166,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
           <View style={styles.modalContainer}>
             <ThemedText style={styles.modalTitle}>Eliminar Depósito Bancario</ThemedText>
             <Text style={styles.confirmationText}>
-              ¿Estás seguro? Esta acción eliminará el depósito y todos los cierres de turno asociados de forma permanente.
+              ¿Estás seguro? Esta acción eliminará el depósito bancario. Los cierres de turno asociados volverán a estado Pendiente y podrán ser depositados nuevamente.
             </Text>
             <View style={styles.modalButtonContainer}>
               <Button

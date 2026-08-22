@@ -1293,7 +1293,6 @@ const DynamicFormScreen = () => {
             <Text style={styles.typeSectionTitle}>¿Qué querés registrar?</Text>
             <View style={styles.typeGrid}>
               {([
-                { value: 'closing-deposits',  icon: 'cash-register',          label: 'Cierre extraordinario', desc: 'Cierre manual de caja' },
                 { value: 'bank-deposit',       icon: 'bank-outline',           label: 'Depósito bancario',    desc: 'Envío de dinero al banco' },
                 { value: 'transaction',        icon: 'swap-horizontal-circle', label: 'Transacción',          desc: 'Ingreso o egreso directo' },
                 { value: 'supplier-payments',  icon: 'truck-delivery-outline', label: 'Proveedor',            desc: 'Pago a proveedor' },
@@ -1302,15 +1301,15 @@ const DynamicFormScreen = () => {
               ] as const).map(op => (
                 <TouchableOpacity
                   key={op.value}
-                  style={[styles.typeCard, op.value === 'closing-deposits' && styles.typeCardExtraordinary]}
+                  style={styles.typeCard}
                   onPress={() => setFormType(op.value)}
                   activeOpacity={0.8}
                 >
-                  <View style={[styles.typeCardIcon, op.value === 'closing-deposits' && styles.typeCardIconExtraordinary]}>
-                    <MaterialCommunityIcons name={op.icon} size={28} color={op.value === 'closing-deposits' ? '#FFFFFF' : COLOR.brandDeep} />
+                  <View style={styles.typeCardIcon}>
+                    <MaterialCommunityIcons name={op.icon} size={28} color={COLOR.brandDeep} />
                   </View>
-                  <Text style={[styles.typeCardLabel, op.value === 'closing-deposits' && { color: '#FFFFFF' }]}>{op.label}</Text>
-                  <Text style={[styles.typeCardDesc, op.value === 'closing-deposits' && { color: 'rgba(255,255,255,0.8)' }]}>{op.desc}</Text>
+                  <Text style={styles.typeCardLabel}>{op.label}</Text>
+                  <Text style={styles.typeCardDesc}>{op.desc}</Text>
                 </TouchableOpacity>
               ))}
             </View>

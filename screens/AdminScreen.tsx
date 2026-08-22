@@ -115,7 +115,7 @@ const CollapsibleBalanceCard = ({ transactions }: { transactions: any[] }) => {
   }, [isCollapsed]);
 
   const ingresos = transactions
-    .filter(tx => tx.type === 'CLOSING' || tx.type === 'income')
+    .filter(tx => tx.type === 'CLOSING' || tx.type === 'income' || tx.type === 'DEPOSIT_GROUP')
     .reduce((sum, tx) => sum + tx.amount, 0);
   const egresos = transactions
     .filter(tx => tx.type === 'SUPPLIER' || tx.type === 'SALARY' || tx.type === 'GASTO_ADMIN' || tx.type === 'expense' || tx.type === 'gasto_admin')
@@ -170,7 +170,7 @@ const CollapsibleBalanceCard = ({ transactions }: { transactions: any[] }) => {
 
 const BalanceCard = ({ transactions }: { transactions: any[] }) => {
   const ingresos = transactions
-    .filter(tx => tx.type === 'CLOSING' || tx.type === 'income')
+    .filter(tx => tx.type === 'CLOSING' || tx.type === 'income' || tx.type === 'DEPOSIT_GROUP')
     .reduce((sum, tx) => sum + tx.amount, 0);
   const egresos = transactions
     .filter(tx => tx.type === 'SUPPLIER' || tx.type === 'SALARY' || tx.type === 'GASTO_ADMIN' || tx.type === 'expense' || tx.type === 'gasto_admin')

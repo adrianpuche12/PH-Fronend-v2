@@ -1000,12 +1000,14 @@ const AdminScreen = () => {
   // ── Depósito extraordinario (admin only) ─────────────────────────────────
   const handleCreateExtraDeposit = async () => {
     if (!extraDepositStoreId || !extraDepositDate || !extraDepositAmount) {
-      Alert.alert('Campos incompletos', 'Completá el local, la fecha y el monto.');
+      setSnackbarMessage('Completá el local, la fecha y el monto.');
+      setSnackbarVisible(true);
       return;
     }
     const parsedAmount = parseFormattedNumber(extraDepositAmount);
     if (!parsedAmount || parsedAmount <= 0) {
-      Alert.alert('Monto inválido', 'Ingresá un monto mayor a 0.');
+      setSnackbarMessage('Ingresá un monto mayor a 0.');
+      setSnackbarVisible(true);
       return;
     }
     setExtraDepositSaving(true);
@@ -1028,10 +1030,12 @@ const AdminScreen = () => {
         setSnackbarVisible(true);
         fetchData(startDate, endDate, selectedStore);
       } else {
-        Alert.alert('Error', 'No se pudo registrar el depósito extraordinario.');
+        setSnackbarMessage('No se pudo registrar el depósito extraordinario.');
+        setSnackbarVisible(true);
       }
     } catch {
-      Alert.alert('Error', 'Ocurrió un error al registrar el depósito.');
+      setSnackbarMessage('Ocurrió un error al registrar el depósito.');
+      setSnackbarVisible(true);
     } finally {
       setExtraDepositSaving(false);
     }

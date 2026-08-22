@@ -465,6 +465,14 @@ const AdminScreen = () => {
   const [depositDeleteModalVisible, setDepositDeleteModalVisible] = useState(false);
   const [depositGroupToDelete, setDepositGroupToDelete] = useState<DepositGroup | null>(null);
 
+  // Estados para el modal de depósito extraordinario (admin only)
+  const [extraDepositModalVisible, setExtraDepositModalVisible] = useState(false);
+  const [extraDepositStoreId, setExtraDepositStoreId] = useState<number | null>(null);
+  const [extraDepositDate, setExtraDepositDate] = useState('');
+  const [extraDepositAmount, setExtraDepositAmount] = useState('');
+  const [extraDepositSaving, setExtraDepositSaving] = useState(false);
+  const [extraDepositDatePickerVisible, setExtraDepositDatePickerVisible] = useState(false);
+
   const { width: screenWidth } = useWindowDimensions();
   const isLargeScreen = screenWidth >= 768;
 
@@ -989,6 +997,46 @@ const AdminScreen = () => {
     }
   };
 
+  // ── Depósito extraordinario (admin only) ─────────────────────────────────
+  const handleCreateExtraDeposit = async () => {
+    if (!extraDepositStoreId || !extraDepositDate || !extraDepositAmount) {
+      Alert.alert('Campos incompletos', 'Completá el local, la fecha y el monto.');
+      return;
+    }
+    const parsedAmount = parseFormattedNumber(extraDepositAmount);
+    if (!parsedAmount || parsedAmount <= 0) {
+      Alert.alert('Monto inválido', 'Ingresá un monto mayor a 0.');
+      return;
+    }
+    setExtraDepositSaving(true);
+    try {
+      const params = new URLSearchParams({
+        username: 'admin',
+        storeId: String(extraDepositStoreId),
+        depositDate: extraDepositDate,
+        amount: String(parsedAmount),
+      });
+      const res = await fetch(`${REACT_APP_API_URL}/api/v2/deposits/extraordinary?${params}`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        setExtraDepositModalVisible(false);
+        setExtraDepositStoreId(null);
+        setExtraDepositDate('');
+        setExtraDepositAmount('');
+        setSnackbarMessage('Depósito extraordinario registrado correctamente.');
+        setSnackbarVisible(true);
+        fetchData(startDate, endDate, selectedStore);
+      } else {
+        Alert.alert('Error', 'No se pudo registrar el depósito extraordinario.');
+      }
+    } catch {
+      Alert.alert('Error', 'Ocurrió un error al registrar el depósito.');
+    } finally {
+      setExtraDepositSaving(false);
+    }
+  };
+
   // ── Subir comprobante a cierre PENDING (no extraordinario) ───────────────
   const handleUploadClosingImage = async (closingId: number) => {
     try {
@@ -1463,7 +1511,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
                 <Text style={styles.txName}>Depósito bancario</Text>
                 {dg.extraordinary && (
                   <View style={[styles.txBadge, { backgroundColor: COLOR.expense }]}>
-                    <Text style={[styles.txBadgeText, { color: '#FFFFFF' }]}>Cierre extraordinario</Text>
+                    <Text style={[styles.txBadgeText, { color: '#FFFFFF' }]}>Extraordinario</Text>
                   </View>
                 )}
               </View>
@@ -1609,7 +1657,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
             </View>
             {item.extraordinary && (
               <View style={[styles.txBadge, { backgroundColor: COLOR.expense }]}>
-                <Text style={[styles.txBadgeText, { color: '#FFFFFF' }]}>Cierre extraordinario</Text>
+                <Text style={[styles.txBadgeText, { color: '#FFFFFF' }]}>Extraordinario</Text>
               </View>
             )}
           </View>
@@ -1862,18 +1910,31 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
       {/* ── CABECERA MOBILE: siempre visible ── */}
       {!isLargeScreen && (
         <View style={{ backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border }}>
-          {/* Fila: título + botón colapsar */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingTop: 10, paddingBottom: 6 }}>
+          {/* Fila: título + botones */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingTop: 10, paddingBottom: 6, gap: 6 }}>
             <ThemedText style={[styles.title, { marginBottom: 0 }]}>Operaciones</ThemedText>
-            <Button
-              mode="outlined"
-              onPress={() => setFiltersExpanded(v => !v)}
-              textColor={COLOR.ink2}
-              style={{ borderColor: COLOR.border, minWidth: 0 }}
-              labelStyle={{ fontSize: 12 }}
-            >
-              {filtersExpanded ? 'Cerrar ▲' : 'Filtros ▼'}
-            </Button>
+            <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+              <Button
+                mode="contained"
+                onPress={() => setExtraDepositModalVisible(true)}
+                buttonColor={COLOR.brand}
+                textColor={COLOR.white}
+                labelStyle={{ fontSize: 11 }}
+                icon="bank-plus"
+                compact
+              >
+                Dep. extra
+              </Button>
+              <Button
+                mode="outlined"
+                onPress={() => setFiltersExpanded(v => !v)}
+                textColor={COLOR.ink2}
+                style={{ borderColor: COLOR.border, minWidth: 0 }}
+                labelStyle={{ fontSize: 12 }}
+              >
+                {filtersExpanded ? 'Cerrar ▲' : 'Filtros ▼'}
+              </Button>
+            </View>
           </View>
 
           {/* Filtro tipo: siempre visible */}
@@ -1959,15 +2020,27 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
               ))}
             </View>
 
-            <Button
-              mode="outlined"
-              onPress={() => setFiltersExpanded(v => !v)}
-              textColor={COLOR.ink2}
-              style={{ borderColor: COLOR.border }}
-              labelStyle={{ fontSize: 13 }}
-            >
-              {filtersExpanded ? 'Cerrar ▲' : 'Filtros ▼'}
-            </Button>
+            <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+              <Button
+                mode="contained"
+                onPress={() => setExtraDepositModalVisible(true)}
+                buttonColor={COLOR.brand}
+                textColor={COLOR.white}
+                labelStyle={{ fontSize: 12 }}
+                icon="bank-plus"
+              >
+                Dep. extraordinario
+              </Button>
+              <Button
+                mode="outlined"
+                onPress={() => setFiltersExpanded(v => !v)}
+                textColor={COLOR.ink2}
+                style={{ borderColor: COLOR.border }}
+                labelStyle={{ fontSize: 13 }}
+              >
+                {filtersExpanded ? 'Cerrar ▲' : 'Filtros ▼'}
+              </Button>
+            </View>
           </View>
 
           {/* Filtros colapsables */}
@@ -2193,6 +2266,109 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
           </View>
         </View>
       </Modal>
+
+      {/* ── Modal depósito extraordinario (admin only) ── */}
+      <Modal
+        visible={extraDepositModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setExtraDepositModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { maxWidth: 400, width: '92%' }]}>
+            <ThemedText style={styles.modalTitle}>Depósito Extraordinario</ThemedText>
+            <Text style={[styles.confirmationText, { marginBottom: 16 }]}>
+              Registra un depósito bancario directo sin necesidad de buscar cierres pendientes.
+            </Text>
+
+            {/* Local */}
+            <View style={{ marginBottom: 12 }}>
+              <Text style={{ fontSize: 13, color: COLOR.ink2, marginBottom: 4 }}>Local *</Text>
+              <View style={{ borderWidth: 1, borderColor: COLOR.border, borderRadius: RADIUS.r2, overflow: 'hidden' }}>
+                {activeStores.map(s => (
+                  <TouchableOpacity
+                    key={s.id}
+                    onPress={() => setExtraDepositStoreId(s.id)}
+                    style={{
+                      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                      paddingHorizontal: 12, paddingVertical: 10,
+                      backgroundColor: extraDepositStoreId === s.id ? COLOR.incomeTint : COLOR.surface,
+                      borderBottomWidth: 1, borderBottomColor: COLOR.border,
+                    }}
+                  >
+                    <Text style={{ fontSize: 14, color: COLOR.ink1 }}>{s.name}</Text>
+                    {extraDepositStoreId === s.id && (
+                      <MaterialCommunityIcons name="check-circle" size={18} color={COLOR.income} />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Fecha */}
+            <TouchableOpacity
+              onPress={() => setExtraDepositDatePickerVisible(true)}
+              style={{ borderWidth: 1, borderColor: COLOR.border, borderRadius: RADIUS.r2, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+            >
+              <Text style={{ fontSize: 14, color: extraDepositDate ? COLOR.ink1 : COLOR.ink3 }}>
+                {extraDepositDate || 'Fecha del depósito *'}
+              </Text>
+              <MaterialCommunityIcons name="calendar" size={18} color={COLOR.ink2} />
+            </TouchableOpacity>
+
+            {/* Monto */}
+            <TextInput
+              label="Monto (L) *"
+              value={extraDepositAmount}
+              onChangeText={v => setExtraDepositAmount(formatAmountInput(v))}
+              keyboardType="numeric"
+              mode="outlined"
+              style={{ marginBottom: 16, backgroundColor: COLOR.surface }}
+            />
+
+            <View style={styles.modalButtonContainer}>
+              <Button
+                onPress={() => {
+                  setExtraDepositModalVisible(false);
+                  setExtraDepositStoreId(null);
+                  setExtraDepositDate('');
+                  setExtraDepositAmount('');
+                }}
+                mode="outlined"
+                style={styles.modalButton}
+                textColor={COLOR.ink2}
+                disabled={extraDepositSaving}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onPress={handleCreateExtraDeposit}
+                mode="contained"
+                style={styles.modalButton}
+                buttonColor={COLOR.brand}
+                textColor={COLOR.white}
+                disabled={extraDepositSaving}
+                loading={extraDepositSaving}
+              >
+                {extraDepositSaving ? 'Guardando...' : 'Registrar'}
+              </Button>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* DatePicker para depósito extraordinario */}
+      <DatePickerModal
+        locale="es"
+        mode="single"
+        visible={extraDepositDatePickerVisible}
+        onDismiss={() => setExtraDepositDatePickerVisible(false)}
+        date={extraDepositDate ? new Date(extraDepositDate + 'T12:00:00') : undefined}
+        onConfirm={({ date }) => {
+          if (date) setExtraDepositDate(format(date, 'yyyy-MM-dd'));
+          setExtraDepositDatePickerVisible(false);
+        }}
+      />
 
       {/* Modal de gestión de Excel */}
       <ExcelManager

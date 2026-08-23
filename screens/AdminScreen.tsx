@@ -2186,19 +2186,21 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
         onRequestClose={handleCancelEdit}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <ThemedText style={styles.modalTitle}>Editar Transacción</ThemedText>
-            <TextInput
-              label="Tipo"
-              value={
-                editingTransaction && editingTransaction.type
-                  ? TRANSACTION_LABELS[editingTransaction.type]
-                  : ''
-              }
-              disabled
-              style={styles.modalInput}
-            />
-            {renderEditFields()}
+          <View style={[styles.modalContainer, { maxHeight: '85%' }]}>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <ThemedText style={styles.modalTitle}>Editar Transacción</ThemedText>
+              <TextInput
+                label="Tipo"
+                value={
+                  editingTransaction && editingTransaction.type
+                    ? TRANSACTION_LABELS[editingTransaction.type]
+                    : ''
+                }
+                disabled
+                style={styles.modalInput}
+              />
+              {renderEditFields()}
+            </ScrollView>
             <View style={styles.modalButtonContainer}>
               <Button
                 onPress={handleCancelEdit}

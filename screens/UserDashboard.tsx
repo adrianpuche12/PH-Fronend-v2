@@ -30,7 +30,7 @@ const hasPermission = (permissions: string[], section?: string) =>
 // ─── Sidebar del usuario ──────────────────────────────────────────────────────
 
 const SIDEBAR_W_EXPANDED  = 220;
-const SIDEBAR_W_COLLAPSED = 64;
+const SIDEBAR_W_COLLAPSED = 80;
 
 const UserSidebar = ({ active, onSelect, onClose, isDesktop }: {
   active: UserScreen; onSelect: (s: UserScreen) => void;
@@ -254,9 +254,10 @@ const styles = StyleSheet.create({
   content:         { flex: 1, flexDirection: 'column' },
 
   sidebar:         { backgroundColor: COLOR.surface, borderRightWidth: 1, borderRightColor: COLOR.border, flexDirection: 'column', overflow: 'hidden' },
-  sidebarHeader:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: SPACE.s3, borderBottomWidth: 1, borderBottomColor: COLOR.brandDark, backgroundColor: COLOR.brand, position: 'relative', minHeight: 56 },
+  sidebarHeader:   { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACE.s3, paddingVertical: SPACE.s4, minHeight: 72, borderBottomWidth: 1, borderBottomColor: COLOR.brandDark, backgroundColor: COLOR.brand, position: 'relative', gap: SPACE.s2 },
 
   togglePin: {
+    position: 'absolute', right: 6, top: '50%' as any,
     width: 26, height: 26, borderRadius: RADIUS.full,
     backgroundColor: COLOR.brandTint2, borderWidth: 1, borderColor: COLOR.brandDark,
     justifyContent: 'center', alignItems: 'center',

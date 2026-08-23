@@ -470,6 +470,7 @@ const AdminScreen = () => {
   const [extraDepositStoreId, setExtraDepositStoreId] = useState<number | null>(null);
   const [extraDepositDate, setExtraDepositDate] = useState('');
   const [extraDepositAmount, setExtraDepositAmount] = useState('');
+  const [extraDepositNotes, setExtraDepositNotes] = useState('');
   const [extraDepositImage, setExtraDepositImage] = useState<{uri: string; name: string; type: string} | null>(null);
   const [extraDepositSaving, setExtraDepositSaving] = useState(false);
   const [extraDepositDatePickerVisible, setExtraDepositDatePickerVisible] = useState(false);
@@ -934,36 +935,45 @@ const AdminScreen = () => {
       if (depositEditAmount) payload.declaredAmount = parseFloat(depositEditAmount.replace(/,/g, ''));
       if (depositEditNotes) payload.notes = depositEditNotes;
       if (depositEditImage) {
+        const prefix = editingDepositGroup.extraordinary ? 'EXTRA' : 'DEP';
         const uploadResult = await ImageService.uploadImage(
           depositEditImage.uri,
-          ImageService.generateFileName('DEP'),
+          ImageService.generateFileName(prefix),
           'comprobantes'
         );
         if (!uploadResult.success) {
-          Alert.alert('Error', 'No se pudo subir el comprobante.');
+          setSnackbarMessage('No se pudo subir el comprobante.');
+          setSnackbarVisible(true);
           setDepositEditSaving(false);
           return;
         }
         payload.imageUri = uploadResult.imageUri;
       }
 
-      const res = await fetch(`${REACT_APP_API_URL}/api/v2/deposits/${editingDepositGroup.id}`, {
-        method: 'PUT',
+      const url = editingDepositGroup.extraordinary
+        ? `${REACT_APP_API_URL}/api/v2/deposits/extraordinary/${editingDepositGroup.id}`
+        : `${REACT_APP_API_URL}/api/v2/deposits/${editingDepositGroup.id}`;
+      const method = editingDepositGroup.extraordinary ? 'PATCH' : 'PUT';
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
       if (res.ok) {
-        setSnackbarMessage('Depósito bancario actualizado correctamente.');
+        setSnackbarMessage('Depósito actualizado correctamente.');
         setSnackbarVisible(true);
         setEditModalVisible(false);
         setEditingTransaction(null);
         setEditingDepositGroup(null);
         fetchData(startDate, endDate, selectedStore);
       } else {
-        Alert.alert('Error', 'No se pudo actualizar el depósito.');
+        setSnackbarMessage('No se pudo actualizar el depósito.');
+        setSnackbarVisible(true);
       }
     } catch {
-      Alert.alert('Error', 'Ocurrió un error al actualizar el depósito.');
+      setSnackbarMessage('Ocurrió un error al actualizar el depósito.');
+      setSnackbarVisible(true);
     } finally {
       setDepositEditSaving(false);
     }
@@ -1036,6 +1046,7 @@ const AdminScreen = () => {
         amount: String(parsedAmount),
       });
       if (uploadedImageUri) params.append('imageUri', uploadedImageUri);
+      if (extraDepositNotes.trim()) params.append('notes', extraDepositNotes.trim());
 
       const res = await fetch(`${REACT_APP_API_URL}/api/v2/deposits/extraordinary?${params}`, {
         method: 'POST',
@@ -1045,6 +1056,7 @@ const AdminScreen = () => {
         setExtraDepositStoreId(null);
         setExtraDepositDate('');
         setExtraDepositAmount('');
+        setExtraDepositNotes('');
         setExtraDepositImage(null);
         setSnackbarMessage('Depósito extraordinario registrado correctamente.');
         setSnackbarVisible(true);
@@ -2177,19 +2189,21 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
         onRequestClose={handleCancelEdit}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <ThemedText style={styles.modalTitle}>Editar Transacción</ThemedText>
-            <TextInput
-              label="Tipo"
-              value={
-                editingTransaction && editingTransaction.type
-                  ? TRANSACTION_LABELS[editingTransaction.type]
-                  : ''
-              }
-              disabled
-              style={styles.modalInput}
-            />
-            {renderEditFields()}
+          <View style={[styles.modalContainer, { maxHeight: '85%' }]}>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <ThemedText style={styles.modalTitle}>Editar Transacción</ThemedText>
+              <TextInput
+                label="Tipo"
+                value={
+                  editingTransaction && editingTransaction.type
+                    ? TRANSACTION_LABELS[editingTransaction.type]
+                    : ''
+                }
+                disabled
+                style={styles.modalInput}
+              />
+              {renderEditFields()}
+            </ScrollView>
             <View style={styles.modalButtonContainer}>
               <Button
                 onPress={handleCancelEdit}
@@ -2299,73 +2313,86 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
         onRequestClose={() => setExtraDepositModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContainer, { maxWidth: 400, width: '92%' }]}>
-            <ThemedText style={styles.modalTitle}>Depósito Extraordinario</ThemedText>
-            <Text style={[styles.confirmationText, { marginBottom: 16 }]}>
-              Registra un depósito bancario directo sin necesidad de buscar cierres pendientes.
-            </Text>
+          <View style={[styles.modalContainer, { maxWidth: 400, width: '92%', maxHeight: '85%' }]}>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <ThemedText style={styles.modalTitle}>Depósito Extraordinario</ThemedText>
+              <Text style={[styles.confirmationText, { marginBottom: 16 }]}>
+                Registra un depósito bancario directo sin necesidad de buscar cierres pendientes.
+              </Text>
 
-            {/* Local */}
-            <View style={{ marginBottom: 12 }}>
-              <Text style={{ fontSize: 13, color: COLOR.ink2, marginBottom: 4 }}>Local *</Text>
-              <View style={{ borderWidth: 1, borderColor: COLOR.border, borderRadius: RADIUS.r2, overflow: 'hidden' }}>
-                {activeStores.map(s => (
-                  <TouchableOpacity
-                    key={s.id}
-                    onPress={() => setExtraDepositStoreId(s.id)}
-                    style={{
-                      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-                      paddingHorizontal: 12, paddingVertical: 10,
-                      backgroundColor: extraDepositStoreId === s.id ? COLOR.incomeTint : COLOR.surface,
-                      borderBottomWidth: 1, borderBottomColor: COLOR.border,
-                    }}
-                  >
-                    <Text style={{ fontSize: 14, color: COLOR.ink1 }}>{s.name}</Text>
-                    {extraDepositStoreId === s.id && (
-                      <MaterialCommunityIcons name="check-circle" size={18} color={COLOR.income} />
-                    )}
-                  </TouchableOpacity>
-                ))}
+              {/* Local */}
+              <View style={{ marginBottom: 12 }}>
+                <Text style={{ fontSize: 13, color: COLOR.ink2, marginBottom: 4 }}>Local *</Text>
+                <View style={{ borderWidth: 1, borderColor: COLOR.border, borderRadius: RADIUS.r2, overflow: 'hidden' }}>
+                  {activeStores.map(s => (
+                    <TouchableOpacity
+                      key={s.id}
+                      onPress={() => setExtraDepositStoreId(s.id)}
+                      style={{
+                        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                        paddingHorizontal: 12, paddingVertical: 10,
+                        backgroundColor: extraDepositStoreId === s.id ? COLOR.incomeTint : COLOR.surface,
+                        borderBottomWidth: 1, borderBottomColor: COLOR.border,
+                      }}
+                    >
+                      <Text style={{ fontSize: 14, color: COLOR.ink1 }}>{s.name}</Text>
+                      {extraDepositStoreId === s.id && (
+                        <MaterialCommunityIcons name="check-circle" size={18} color={COLOR.income} />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
-            </View>
 
-            {/* Fecha */}
-            <TouchableOpacity
-              onPress={() => setExtraDepositDatePickerVisible(true)}
-              style={{ borderWidth: 1, borderColor: COLOR.border, borderRadius: RADIUS.r2, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
-            >
-              <Text style={{ fontSize: 14, color: extraDepositDate ? COLOR.ink1 : COLOR.ink3 }}>
-                {extraDepositDate || 'Fecha del depósito *'}
-              </Text>
-              <MaterialCommunityIcons name="calendar" size={18} color={COLOR.ink2} />
-            </TouchableOpacity>
+              {/* Fecha */}
+              <TouchableOpacity
+                onPress={() => setExtraDepositDatePickerVisible(true)}
+                style={{ borderWidth: 1, borderColor: COLOR.border, borderRadius: RADIUS.r2, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+              >
+                <Text style={{ fontSize: 14, color: extraDepositDate ? COLOR.ink1 : COLOR.ink3 }}>
+                  {extraDepositDate || 'Fecha del depósito *'}
+                </Text>
+                <MaterialCommunityIcons name="calendar" size={18} color={COLOR.ink2} />
+              </TouchableOpacity>
 
-            {/* Monto */}
-            <TextInput
-              label="Monto (L) *"
-              value={extraDepositAmount}
-              onChangeText={v => setExtraDepositAmount(formatAmountInput(v))}
-              keyboardType="numeric"
-              mode="outlined"
-              style={{ marginBottom: 12, backgroundColor: COLOR.surface }}
-            />
+              {/* Monto */}
+              <TextInput
+                label="Monto (L) *"
+                value={extraDepositAmount}
+                onChangeText={v => setExtraDepositAmount(formatAmountInput(v))}
+                keyboardType="numeric"
+                mode="outlined"
+                style={{ marginBottom: 12, backgroundColor: COLOR.surface }}
+              />
 
-            {/* Comprobante (opcional) */}
-            <TouchableOpacity
-              onPress={async () => {
-                const result = await ImageService.selectImage();
-                if (!result.canceled && result.assets?.[0]) {
-                  const asset = result.assets[0];
-                  setExtraDepositImage({ uri: asset.uri, name: asset.fileName ?? 'comprobante.jpg', type: asset.mimeType ?? 'image/jpeg' });
-                }
-              }}
-              style={{ borderWidth: 1, borderColor: COLOR.border, borderRadius: RADIUS.r2, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
-            >
-              <Text style={{ fontSize: 14, color: extraDepositImage ? COLOR.ink1 : COLOR.ink3 }}>
-                {extraDepositImage ? extraDepositImage.name : 'Comprobante (opcional)'}
-              </Text>
-              <MaterialCommunityIcons name="camera-outline" size={18} color={COLOR.ink2} />
-            </TouchableOpacity>
+              {/* Notas */}
+              <TextInput
+                label="Observación (opcional)"
+                value={extraDepositNotes}
+                onChangeText={setExtraDepositNotes}
+                mode="outlined"
+                style={{ marginBottom: 12, backgroundColor: COLOR.surface }}
+                multiline
+                numberOfLines={2}
+              />
+
+              {/* Comprobante (opcional) */}
+              <TouchableOpacity
+                onPress={async () => {
+                  const result = await ImageService.selectImage();
+                  if (!result.canceled && result.assets?.[0]) {
+                    const asset = result.assets[0];
+                    setExtraDepositImage({ uri: asset.uri, name: asset.fileName ?? 'comprobante.jpg', type: asset.mimeType ?? 'image/jpeg' });
+                  }
+                }}
+                style={{ borderWidth: 1, borderColor: COLOR.border, borderRadius: RADIUS.r2, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+              >
+                <Text style={{ fontSize: 14, color: extraDepositImage ? COLOR.ink1 : COLOR.ink3 }}>
+                  {extraDepositImage ? extraDepositImage.name : 'Comprobante (opcional)'}
+                </Text>
+                <MaterialCommunityIcons name="camera-outline" size={18} color={COLOR.ink2} />
+              </TouchableOpacity>
+            </ScrollView>
 
             <View style={styles.modalButtonContainer}>
               <Button
@@ -2374,6 +2401,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
                   setExtraDepositStoreId(null);
                   setExtraDepositDate('');
                   setExtraDepositAmount('');
+                  setExtraDepositNotes('');
                   setExtraDepositImage(null);
                 }}
                 mode="outlined"

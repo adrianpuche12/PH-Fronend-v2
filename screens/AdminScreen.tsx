@@ -470,6 +470,7 @@ const AdminScreen = () => {
   const [extraDepositStoreId, setExtraDepositStoreId] = useState<number | null>(null);
   const [extraDepositDate, setExtraDepositDate] = useState('');
   const [extraDepositAmount, setExtraDepositAmount] = useState('');
+  const [extraDepositNotes, setExtraDepositNotes] = useState('');
   const [extraDepositImage, setExtraDepositImage] = useState<{uri: string; name: string; type: string} | null>(null);
   const [extraDepositSaving, setExtraDepositSaving] = useState(false);
   const [extraDepositDatePickerVisible, setExtraDepositDatePickerVisible] = useState(false);
@@ -1045,6 +1046,7 @@ const AdminScreen = () => {
         amount: String(parsedAmount),
       });
       if (uploadedImageUri) params.append('imageUri', uploadedImageUri);
+      if (extraDepositNotes.trim()) params.append('notes', extraDepositNotes.trim());
 
       const res = await fetch(`${REACT_APP_API_URL}/api/v2/deposits/extraordinary?${params}`, {
         method: 'POST',
@@ -1054,6 +1056,7 @@ const AdminScreen = () => {
         setExtraDepositStoreId(null);
         setExtraDepositDate('');
         setExtraDepositAmount('');
+        setExtraDepositNotes('');
         setExtraDepositImage(null);
         setSnackbarMessage('Depósito extraordinario registrado correctamente.');
         setSnackbarVisible(true);
@@ -2361,6 +2364,17 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
               style={{ marginBottom: 12, backgroundColor: COLOR.surface }}
             />
 
+            {/* Notas */}
+            <TextInput
+              label="Observación (opcional)"
+              value={extraDepositNotes}
+              onChangeText={setExtraDepositNotes}
+              mode="outlined"
+              style={{ marginBottom: 12, backgroundColor: COLOR.surface }}
+              multiline
+              numberOfLines={2}
+            />
+
             {/* Comprobante (opcional) */}
             <TouchableOpacity
               onPress={async () => {
@@ -2385,6 +2399,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
                   setExtraDepositStoreId(null);
                   setExtraDepositDate('');
                   setExtraDepositAmount('');
+                  setExtraDepositNotes('');
                   setExtraDepositImage(null);
                 }}
                 mode="outlined"

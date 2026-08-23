@@ -1581,7 +1581,9 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
             <View style={{ alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
               <View style={styles.txAmtWrap}>
                 <Text style={[styles.txAmt, { color: COLOR.income }]}>+{amtStr}</Text>
-                <Text style={styles.txAmtLabel}>LEMPIRAS</Text>
+                <Text style={styles.txAmtLabel} numberOfLines={1}>
+                  {!isLargeScreen ? dg.storeNames.join(', ') : 'LEMPIRAS'}
+                </Text>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 {imageUri ? (
@@ -1745,7 +1747,9 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
             <Text style={[styles.txAmt, { color: txColor }]}>
               {isIncome ? '+' : '-'}{amtStr}
             </Text>
-            <Text style={styles.txAmtLabel}>LEMPIRAS</Text>
+            <Text style={styles.txAmtLabel} numberOfLines={1}>
+              {!isLargeScreen ? storeName : 'LEMPIRAS'}
+            </Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             {imageUri ? (

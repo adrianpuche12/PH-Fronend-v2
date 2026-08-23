@@ -41,7 +41,8 @@ const BACKEND_URL = `${REACT_APP_API_URL}/api/forms`;
 const TRANSACTIONS_URL = `${REACT_APP_API_URL}/transactions`;
 
 const DynamicFormScreen = () => {
-  const { userName, storeId: userStoreId } = useAuth();
+  const { userName, storeId: userStoreId, roles } = useAuth();
+  const isAdmin = roles.includes('admin');
   const [activeTab, setActiveTab] = useState<'form' | 'historial'>('form');
 
   // ── Historial de operaciones del usuario ────────────────────────────────────
@@ -1298,7 +1299,7 @@ const DynamicFormScreen = () => {
                 { value: 'supplier-payments',  icon: 'truck-delivery-outline', label: 'Proveedor',            desc: 'Pago a proveedor' },
                 { value: 'salary-payments',    icon: 'account-cash-outline',   label: 'Salario',              desc: 'Pago de salario' },
                 { value: 'gasto-admin',        icon: 'office-building-cog',    label: 'Gasto administrativo', desc: 'Gasto entre locales' },
-              ] as const).map(op => (
+              ] as const).filter(op => isAdmin || (op.value !== 'salary-payments' && op.value !== 'gasto-admin')).map(op => (
                 <TouchableOpacity
                   key={op.value}
                   style={styles.typeCard}

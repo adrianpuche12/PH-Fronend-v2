@@ -470,6 +470,7 @@ const AdminScreen = () => {
   const [extraDepositStoreId, setExtraDepositStoreId] = useState<number | null>(null);
   const [extraDepositDate, setExtraDepositDate] = useState('');
   const [extraDepositAmount, setExtraDepositAmount] = useState('');
+  const [extraDepositImage, setExtraDepositImage] = useState<{uri: string; name: string; type: string} | null>(null);
   const [extraDepositSaving, setExtraDepositSaving] = useState(false);
   const [extraDepositDatePickerVisible, setExtraDepositDatePickerVisible] = useState(false);
 
@@ -1012,12 +1013,30 @@ const AdminScreen = () => {
     }
     setExtraDepositSaving(true);
     try {
+      let uploadedImageUri: string | null = null;
+      if (extraDepositImage) {
+        const uploadResult = await ImageService.uploadImage(
+          extraDepositImage.uri,
+          ImageService.generateFileName('EXTRA'),
+          'comprobantes'
+        );
+        if (!uploadResult.success) {
+          setSnackbarMessage('No se pudo subir el comprobante. Intentá de nuevo.');
+          setSnackbarVisible(true);
+          setExtraDepositSaving(false);
+          return;
+        }
+        uploadedImageUri = uploadResult.imageUri;
+      }
+
       const params = new URLSearchParams({
         username: 'admin',
         storeId: String(extraDepositStoreId),
         depositDate: extraDepositDate,
         amount: String(parsedAmount),
       });
+      if (uploadedImageUri) params.append('imageUri', uploadedImageUri);
+
       const res = await fetch(`${REACT_APP_API_URL}/api/v2/deposits/extraordinary?${params}`, {
         method: 'POST',
       });
@@ -1026,6 +1045,7 @@ const AdminScreen = () => {
         setExtraDepositStoreId(null);
         setExtraDepositDate('');
         setExtraDepositAmount('');
+        setExtraDepositImage(null);
         setSnackbarMessage('Depósito extraordinario registrado correctamente.');
         setSnackbarVisible(true);
         fetchData(startDate, endDate, selectedStore);
@@ -2327,8 +2347,25 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
               onChangeText={v => setExtraDepositAmount(formatAmountInput(v))}
               keyboardType="numeric"
               mode="outlined"
-              style={{ marginBottom: 16, backgroundColor: COLOR.surface }}
+              style={{ marginBottom: 12, backgroundColor: COLOR.surface }}
             />
+
+            {/* Comprobante (opcional) */}
+            <TouchableOpacity
+              onPress={async () => {
+                const result = await ImageService.selectImage();
+                if (!result.canceled && result.assets?.[0]) {
+                  const asset = result.assets[0];
+                  setExtraDepositImage({ uri: asset.uri, name: asset.fileName ?? 'comprobante.jpg', type: asset.mimeType ?? 'image/jpeg' });
+                }
+              }}
+              style={{ borderWidth: 1, borderColor: COLOR.border, borderRadius: RADIUS.r2, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+            >
+              <Text style={{ fontSize: 14, color: extraDepositImage ? COLOR.ink1 : COLOR.ink3 }}>
+                {extraDepositImage ? extraDepositImage.name : 'Comprobante (opcional)'}
+              </Text>
+              <MaterialCommunityIcons name="camera-outline" size={18} color={COLOR.ink2} />
+            </TouchableOpacity>
 
             <View style={styles.modalButtonContainer}>
               <Button
@@ -2337,6 +2374,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
                   setExtraDepositStoreId(null);
                   setExtraDepositDate('');
                   setExtraDepositAmount('');
+                  setExtraDepositImage(null);
                 }}
                 mode="outlined"
                 style={styles.modalButton}

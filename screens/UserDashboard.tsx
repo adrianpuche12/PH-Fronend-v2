@@ -30,7 +30,7 @@ const hasPermission = (permissions: string[], section?: string) =>
 // ─── Sidebar del usuario ──────────────────────────────────────────────────────
 
 const SIDEBAR_W_EXPANDED  = 220;
-const SIDEBAR_W_COLLAPSED = 64;
+const SIDEBAR_W_COLLAPSED = 80;
 
 const UserSidebar = ({ active, onSelect, onClose, isDesktop }: {
   active: UserScreen; onSelect: (s: UserScreen) => void;

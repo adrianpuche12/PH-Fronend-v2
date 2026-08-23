@@ -934,36 +934,45 @@ const AdminScreen = () => {
       if (depositEditAmount) payload.declaredAmount = parseFloat(depositEditAmount.replace(/,/g, ''));
       if (depositEditNotes) payload.notes = depositEditNotes;
       if (depositEditImage) {
+        const prefix = editingDepositGroup.extraordinary ? 'EXTRA' : 'DEP';
         const uploadResult = await ImageService.uploadImage(
           depositEditImage.uri,
-          ImageService.generateFileName('DEP'),
+          ImageService.generateFileName(prefix),
           'comprobantes'
         );
         if (!uploadResult.success) {
-          Alert.alert('Error', 'No se pudo subir el comprobante.');
+          setSnackbarMessage('No se pudo subir el comprobante.');
+          setSnackbarVisible(true);
           setDepositEditSaving(false);
           return;
         }
         payload.imageUri = uploadResult.imageUri;
       }
 
-      const res = await fetch(`${REACT_APP_API_URL}/api/v2/deposits/${editingDepositGroup.id}`, {
-        method: 'PUT',
+      const url = editingDepositGroup.extraordinary
+        ? `${REACT_APP_API_URL}/api/v2/deposits/extraordinary/${editingDepositGroup.id}`
+        : `${REACT_APP_API_URL}/api/v2/deposits/${editingDepositGroup.id}`;
+      const method = editingDepositGroup.extraordinary ? 'PATCH' : 'PUT';
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
       if (res.ok) {
-        setSnackbarMessage('Depósito bancario actualizado correctamente.');
+        setSnackbarMessage('Depósito actualizado correctamente.');
         setSnackbarVisible(true);
         setEditModalVisible(false);
         setEditingTransaction(null);
         setEditingDepositGroup(null);
         fetchData(startDate, endDate, selectedStore);
       } else {
-        Alert.alert('Error', 'No se pudo actualizar el depósito.');
+        setSnackbarMessage('No se pudo actualizar el depósito.');
+        setSnackbarVisible(true);
       }
     } catch {
-      Alert.alert('Error', 'Ocurrió un error al actualizar el depósito.');
+      setSnackbarMessage('Ocurrió un error al actualizar el depósito.');
+      setSnackbarVisible(true);
     } finally {
       setDepositEditSaving(false);
     }

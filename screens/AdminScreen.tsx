@@ -320,13 +320,13 @@ const CompactDateFilters = ({
           allLabel="Todos los locales"
         />
 
-        {/* Botones — grid 2 columnas para que no se corten en mobile */}
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 4, marginTop: 4 }}>
+        {/* Botones — una fila en desktop, grid 2 col en mobile */}
+        <View style={{ flexDirection: 'row', flexWrap: isLargeScreen ? 'nowrap' : 'wrap', gap: 8, paddingHorizontal: 4, marginTop: 4 }}>
           <Button
             mode={showAdminExpenses ? "contained" : "outlined"}
             compact
             onPress={onToggleAdminExpenses}
-            style={{ flex: 1, minWidth: '45%' }}
+            style={{ flex: 1, minWidth: isLargeScreen ? undefined : '45%' }}
             icon="bank"
             buttonColor={showAdminExpenses ? COLOR.warn : COLOR.transparent}
             textColor={showAdminExpenses ? COLOR.white : COLOR.warn}
@@ -337,7 +337,7 @@ const CompactDateFilters = ({
             mode="contained"
             compact
             onPress={() => fetchData(startDate, endDate, selectedStore)}
-            style={{ flex: 1, minWidth: '45%' }}
+            style={{ flex: 1, minWidth: isLargeScreen ? undefined : '45%' }}
             icon="refresh"
             buttonColor={COLOR.info}
           >
@@ -347,7 +347,7 @@ const CompactDateFilters = ({
             mode="contained"
             compact
             onPress={onExcelPress}
-            style={{ flex: 1, minWidth: '45%' }}
+            style={{ flex: 1, minWidth: isLargeScreen ? undefined : '45%' }}
             icon="microsoft-excel"
             buttonColor={COLOR.income}
           >
@@ -363,7 +363,7 @@ const CompactDateFilters = ({
                 setSelectedStore(null);
                 if (showAdminExpenses) onToggleAdminExpenses();
               }}
-              style={{ flex: 1, minWidth: '45%' }}
+              style={{ flex: 1, minWidth: isLargeScreen ? undefined : '45%' }}
               textColor={COLOR.brandDark}
             >
               Limpiar

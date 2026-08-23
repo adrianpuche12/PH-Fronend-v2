@@ -407,7 +407,9 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: SPACE.s3,
+    paddingHorizontal: SPACE.s3,
+    paddingVertical: SPACE.s4,
+    minHeight: 72,
     backgroundColor: COLOR.brand,
     borderBottomWidth: 1,
     borderBottomColor: COLOR.brandDark,

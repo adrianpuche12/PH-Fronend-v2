@@ -802,7 +802,7 @@ const AdminScreen = () => {
     setNewPeriodStart(transaction.periodStart ?? '');
     setNewPeriodEnd(transaction.periodEnd ?? '');
     setNewSupplier(transaction.supplier ?? '');
-    setNewStoreId(null);
+    setNewStoreId(transaction.store?.id ?? transaction.storeId ?? null);
     setEditModalVisible(true);
   };
 

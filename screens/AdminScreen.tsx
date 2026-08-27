@@ -802,7 +802,7 @@ const AdminScreen = () => {
     setNewPeriodStart(transaction.periodStart ?? '');
     setNewPeriodEnd(transaction.periodEnd ?? '');
     setNewSupplier(transaction.supplier ?? '');
-    setNewStoreId(null);
+    setNewStoreId(transaction.store?.id ?? transaction.storeId ?? null);
     setEditModalVisible(true);
   };
 
@@ -1669,10 +1669,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
     // (efectivo contado - fondo inicial), no la venta total (que incluye tarjeta/recargo).
     // La cajera declara solo el efectivo de ventas (fondo excluido),
     // por lo que el monto a depositar es directamente lo que declaró.
-    const displayAmount = (item.type === 'CLOSING' && item.shiftId != null
-      && item.declaredCashAmount != null)
-      ? item.declaredCashAmount
-      : item.amount;
+    const displayAmount = item.amount;
 
     const amtStr = `L ${displayAmount.toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const rawUri = item.imageUri || (item as any).image_uri;

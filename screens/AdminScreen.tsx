@@ -277,7 +277,7 @@ const CompactDateFilters = ({
   setDepositFilter: (filter: 'all' | 'pending' | 'deposited') => void;
 }) => {
   const { width: screenWidth } = useWindowDimensions();
-  const isLargeScreen = screenWidth >= 768;
+  const isLargeScreen = screenWidth >= 900;
   const formatDate = (date?: Date | string) => {
     if (!date) return '';
     try {
@@ -476,7 +476,7 @@ const AdminScreen = () => {
   const [extraDepositDatePickerVisible, setExtraDepositDatePickerVisible] = useState(false);
 
   const { width: screenWidth } = useWindowDimensions();
-  const isLargeScreen = screenWidth >= 768;
+  const isLargeScreen = screenWidth >= 900;
 
   // Stores activos — cargados dinámicamente desde /api/v2/stores/active
   const [activeStores, setActiveStores] = useState<{id: number; name: string}[]>([]);

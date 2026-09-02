@@ -25,7 +25,7 @@ const SCREEN_TITLE: Record<SidebarScreen, string> = {
 
 const AdminDashboard = () => {
   const { width } = useWindowDimensions();
-  const isDesktop = width >= BREAKPOINT.desktop;
+  const isTabletOrDesktop = width >= BREAKPOINT.tablet;
 
   const [activeScreen, setActiveScreen] = useState<SidebarScreen>('dashboard');
   const [drawerOpen, setDrawerOpen]     = useState(false);
@@ -35,8 +35,8 @@ const AdminDashboard = () => {
     <StoreProvider>
       <View style={styles.container}>
 
-        {/* Sidebar fijo en desktop */}
-        {isDesktop && (
+        {/* Sidebar fijo en tablet y desktop */}
+        {isTabletOrDesktop && (
           <Sidebar
             active={activeScreen}
             onSelect={setActiveScreen}
@@ -48,8 +48,8 @@ const AdminDashboard = () => {
         {/* Área de contenido */}
         <View style={styles.content}>
 
-          {/* Topbar mobile */}
-          {!isDesktop && (
+          {/* Topbar solo en mobile */}
+          {!isTabletOrDesktop && (
             <View style={styles.topbar}>
               <TouchableOpacity
                 onPress={() => setDrawerOpen(true)}
@@ -74,8 +74,8 @@ const AdminDashboard = () => {
           {activeScreen === 'salesHistory' && <SalesHistoryScreen />}
         </View>
 
-        {/* Drawer mobile */}
-        {!isDesktop && (
+        {/* Drawer solo en mobile */}
+        {!isTabletOrDesktop && (
           <Sidebar
             active={activeScreen}
             onSelect={setActiveScreen}

@@ -280,7 +280,7 @@ interface Props {
 
 const Sidebar: React.FC<Props> = ({ active, onSelect, visible, onClose }) => {
   const { width } = useWindowDimensions();
-  const isDesktop = width >= BREAKPOINT.desktop;
+  const isDesktop = width >= BREAKPOINT.tablet;
 
   if (isDesktop) {
     return <SidebarDesktop active={active} onSelect={onSelect} />;

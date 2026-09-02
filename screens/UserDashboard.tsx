@@ -117,7 +117,7 @@ const UserSidebar = ({ active, onSelect, onClose, isDesktop }: {
 
 const UserContent = () => {
   const { width } = useWindowDimensions();
-  const isDesktop = width >= BREAKPOINT.desktop;
+  const isTabletOrDesktop = width >= BREAKPOINT.tablet;
   const { userName, logout, permissions } = useAuth();
   const { stores, setSelectedStore } = useStore();
 
@@ -154,12 +154,12 @@ const UserContent = () => {
 
   return (
     <View style={styles.container}>
-      {isDesktop && (
-        <UserSidebar active={active} onSelect={setActive} onClose={() => {}} isDesktop />
+      {isTabletOrDesktop && (
+        <UserSidebar active={active} onSelect={setActive} onClose={() => {}} isDesktop={isTabletOrDesktop} />
       )}
 
       <View style={styles.content}>
-        {!isDesktop && (
+        {!isTabletOrDesktop && (
           <View style={styles.topbar}>
             <TouchableOpacity
               onPress={() => setDrawerOpen(true)}
@@ -179,7 +179,7 @@ const UserContent = () => {
         {active === 'operaciones'  && <DynamicFormScreen />}
       </View>
 
-      {!isDesktop && (
+      {!isTabletOrDesktop && (
         <Modal visible={drawerOpen} transparent animationType="slide" onRequestClose={() => setDrawerOpen(false)}>
           <View style={styles.drawerOverlay}>
             <View style={styles.mobileDrawer}>

@@ -20,7 +20,7 @@ interface UserMenuItem { key: UserScreen; label: string; icon: string; permissio
 const MENU_ALL: UserMenuItem[] = [
   { key: 'sales',        label: 'Ventas',      icon: 'cart-outline',          permission: 'POS' },
   { key: 'inventory',    label: 'Inventario',  icon: 'package-variant',       permission: 'INVENTORY' },
-  { key: 'salesHistory', label: 'Mis ventas',  icon: 'receipt-text-outline',  permission: 'SALES_HISTORY' },
+  // { key: 'salesHistory', label: 'Mis ventas',  icon: 'receipt-text-outline',  permission: 'SALES_HISTORY' },
   { key: 'operaciones',  label: 'Operaciones', icon: 'clipboard-text-outline' },
 ];
 

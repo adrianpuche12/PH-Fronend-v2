@@ -347,6 +347,7 @@ const DynamicFormScreen = () => {
     setLoadingClosings(true);
     setClosingsLoaded(false);
     setPendingClosings([]);
+    setBankDeclaredAmount('');
     try {
       const params = new URLSearchParams({
         storeId: String(formData.storeId),
@@ -359,10 +360,6 @@ const DynamicFormScreen = () => {
       const closings = Array.isArray(data) ? data : [];
       setPendingClosings(closings);
       setClosingsLoaded(true);
-      if (closings.length > 0) {
-        const total = closings.reduce((sum: number, c: any) => sum + (c.amount || 0), 0);
-        setBankDeclaredAmount(total.toFixed(2));
-      }
     } catch {
       showMessage('error', 'Error al buscar cierres pendientes');
     } finally {

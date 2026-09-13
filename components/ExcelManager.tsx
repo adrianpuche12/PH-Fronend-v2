@@ -136,7 +136,12 @@ const ExcelManager: React.FC<ExcelManagerProps> = ({
       fileName = `Control de Gastos ${currentMonth.charAt(0).toUpperCase() + currentMonth.slice(1)}`;
     }
     
-    const exportResult = await exportToExcel(dataToExport, fileName);
+    const exportData = dataToExport.map(tx =>
+      tx.type === 'CLOSING' && tx.periodStart
+        ? { ...tx, date: tx.periodStart }
+        : tx
+    );
+    const exportResult = await exportToExcel(exportData, fileName);
     setResult(exportResult);
     setShowResult(true);
     setLoading(false);

@@ -392,7 +392,7 @@ export default function UsersScreen() {
                   <TouchableOpacity
                     key={opt.value}
                     style={[styles.profileCard, form.profileType === opt.value && styles.profileCardActive]}
-                    onPress={() => setForm({ ...EMPTY_FORM, profileType: opt.value })}
+                    onPress={() => setForm(p => ({ ...p, profileType: opt.value, storeId: '', selectedStoreIds: [], email: '' }))}
                   >
                     <MaterialCommunityIcons
                       name={opt.icon}

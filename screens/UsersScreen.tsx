@@ -323,7 +323,11 @@ export default function UsersScreen() {
                     <Text style={[styles.roleText, { color: ROLE_COLOR[user.role] ?? '#6B7280' }]}>{ROLE_LABEL[user.role] ?? user.role}</Text>
                   </View>
                 </View>
-                <Text style={[styles.cell, styles.cellStore, styles.metaText]}>{user.storeName ?? '—'}</Text>
+                <Text style={[styles.cell, styles.cellStore, styles.metaText]}>
+                  {isExternal(user.role as ProfileType)
+                    ? (user.storeIds?.length > 0 ? `${user.storeIds.length} local${user.storeIds.length !== 1 ? 'es' : ''}` : 'Todos')
+                    : (user.storeName ?? '—')}
+                </Text>
                 <View style={[styles.cell, styles.cellStatus]}>
                   <View style={[styles.statusBadge, { backgroundColor: statusColor(user.status) + '18', borderColor: statusColor(user.status) + '44' }]}>
                     <Text style={[styles.statusText, { color: statusColor(user.status) }]}>{statusLabel(user.status)}</Text>
@@ -349,8 +353,12 @@ export default function UsersScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.userName} numberOfLines={1}>{user.fullName}</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                      <Text style={styles.userMeta}>@{user.username}</Text>
-                      {user.storeName ? <Text style={styles.userMeta}>· {user.storeName}</Text> : null}
+                      <Text style={[styles.userMeta, { flex: 1 }]} numberOfLines={1}>
+                        @{user.username}
+                        {isExternal(user.role as ProfileType)
+                          ? ` · ${user.storeIds?.length > 0 ? `${user.storeIds.length} local${user.storeIds.length !== 1 ? 'es' : ''}` : 'Todos'}`
+                          : (user.storeName ? ` · ${user.storeName}` : '')}
+                      </Text>
                       <View style={[styles.roleBadge, { backgroundColor: (ROLE_COLOR[user.role] ?? '#6B7280') + '18', borderColor: (ROLE_COLOR[user.role] ?? '#6B7280') + '44' }]}>
                         <Text style={[styles.roleText, { color: ROLE_COLOR[user.role] ?? '#6B7280' }]}>{ROLE_LABEL[user.role] ?? user.role}</Text>
                       </View>
@@ -392,7 +400,11 @@ export default function UsersScreen() {
                   <TouchableOpacity
                     key={opt.value}
                     style={[styles.profileCard, form.profileType === opt.value && styles.profileCardActive]}
-                    onPress={() => setForm(p => ({ ...p, profileType: opt.value, storeId: '', selectedStoreIds: [], email: '' }))}
+                    onPress={() => {
+                      setForm(p => ({ ...p, profileType: opt.value, storeId: '', selectedStoreIds: [], email: '' }));
+                      setCreateFieldErrors({});
+                      setCreateModalError('');
+                    }}
                   >
                     <MaterialCommunityIcons
                       name={opt.icon}
@@ -635,7 +647,7 @@ const styles = StyleSheet.create({
   cellRole:       { width: 100 },
   cellStore:      { width: 100 },
   cellStatus:     { width: 100 },
-  cellActions:    { flexDirection: 'row', alignItems: 'center', width: 150 },
+  cellActions:    { flexDirection: 'row', alignItems: 'center', width: 160 },
   colHeader:      { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.inkMute } as any,
 
   userName:       { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
@@ -666,7 +678,7 @@ const styles = StyleSheet.create({
   roleText:       { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.bold as any },
 
   profileGrid:    { flexDirection: 'row', flexWrap: 'wrap', gap: SPACE.s2, marginBottom: SPACE.s2 },
-  profileCard:    { flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingHorizontal: SPACE.s3, paddingVertical: SPACE.s3, borderRadius: RADIUS.r2, backgroundColor: COLOR.bg, borderWidth: 1, borderColor: COLOR.border, minWidth: 72, gap: SPACE.s1 },
+  profileCard:    { flex: 1, flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingHorizontal: SPACE.s2, paddingVertical: SPACE.s3, borderRadius: RADIUS.r2, backgroundColor: COLOR.bg, borderWidth: 1, borderColor: COLOR.border, minWidth: 0, gap: SPACE.s1 },
   profileCardActive: { backgroundColor: COLOR.brandTint, borderColor: COLOR.brand, borderWidth: 2 },
   profileCardLabel: { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink2, textAlign: 'center' as any },
   profileCardLabelActive: { color: COLOR.brandDeep, fontWeight: FONT_WEIGHT.bold as any },

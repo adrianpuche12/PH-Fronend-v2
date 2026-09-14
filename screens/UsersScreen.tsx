@@ -18,20 +18,57 @@ interface AppUser {
   id: number;
   fullName: string;
   username: string;
+  role: string;
   status: string;
-  storeId: number;
-  storeName: string;
+  storeId: number | null;
+  storeName: string | null;
+  storeIds: number[];
+  permissions: string[];
   createdAt: string;
 }
 
+type ProfileType = 'ENCARGADO' | 'INVERSOR' | 'SOCIO' | 'CONTADOR' | 'ABOGADO';
+
 interface UserForm {
+  profileType: ProfileType;
   fullName: string;
   username: string;
   password: string;
+  email: string;
   storeId: string;
+  selectedStoreIds: number[];
 }
 
-const EMPTY_FORM: UserForm = { fullName: '', username: '', password: '', storeId: '' };
+const EMPTY_FORM: UserForm = {
+  profileType: 'ENCARGADO',
+  fullName: '', username: '', password: '', email: '',
+  storeId: '', selectedStoreIds: [],
+};
+
+const PROFILE_OPTIONS: { value: ProfileType; label: string; icon: string; desc: string }[] = [
+  { value: 'ENCARGADO',  label: 'Encargado',  icon: 'account-hard-hat', desc: 'Empleado de local — acceso operativo' },
+  { value: 'INVERSOR',   label: 'Inversor',   icon: 'chart-line',       desc: 'Solo ve resúmenes y estadísticas' },
+  { value: 'SOCIO',      label: 'Socio',      icon: 'handshake',        desc: 'Ve estadísticas y transacciones' },
+  { value: 'CONTADOR',   label: 'Contador',   icon: 'calculator',       desc: 'Ve transacciones y pagos' },
+  { value: 'ABOGADO',    label: 'Abogado',    icon: 'scale-balance',    desc: 'Solo ve registro de transacciones' },
+];
+
+const DEFAULT_PERMISSIONS: Record<ProfileType, string[]> = {
+  ENCARGADO: [],
+  INVERSOR:  ['DASHBOARD', 'SALES_HISTORY'],
+  SOCIO:     ['DASHBOARD', 'SALES_HISTORY', 'TRANSACTIONS'],
+  CONTADOR:  ['TRANSACTIONS', 'SALARY_PAYMENTS', 'SUPPLIER_PAYMENTS'],
+  ABOGADO:   ['TRANSACTIONS'],
+};
+
+const ROLE_LABEL: Record<string, string> = {
+  ENCARGADO: 'Encargado', INVERSOR: 'Inversor', SOCIO: 'Socio',
+  CONTADOR: 'Contador', ABOGADO: 'Abogado', ADMIN: 'Admin',
+};
+const ROLE_COLOR: Record<string, string> = {
+  ENCARGADO: '#2563EB', INVERSOR: '#7C3AED', SOCIO: '#0891B2',
+  CONTADOR:  '#065F46', ABOGADO:  '#92400E', ADMIN: '#1F2937',
+};
 
 const statusLabel = (s: string) => s === 'ACTIVE' ? 'Activo' : 'Suspendido';
 const statusColor = (s: string) => s === 'ACTIVE' ? '#168542' : '#d32121';
@@ -54,7 +91,7 @@ export default function UsersScreen() {
   const [saving, setSaving]           = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [createModalError, setCreateModalError] = useState('');
-  const [createFieldErrors, setCreateFieldErrors] = useState<{fullName?:boolean; username?:boolean; password?:boolean; storeId?:boolean}>({});
+  const [createFieldErrors, setCreateFieldErrors] = useState<{fullName?:boolean; username?:boolean; password?:boolean; storeId?:boolean; email?:boolean}>({});
 
   // Modal reasignar local
   const [reassignModal, setReassignModal]     = useState<AppUser | null>(null);
@@ -96,12 +133,15 @@ export default function UsersScreen() {
 
   // ── Crear usuario ──────────────────────────────────────────────────────────
 
+  const isExternal = (p: ProfileType) => p !== 'ENCARGADO';
+
   const handleCreate = async () => {
-    const errs: {fullName?:boolean; username?:boolean; password?:boolean; storeId?:boolean} = {};
+    const errs: {fullName?:boolean; username?:boolean; password?:boolean; storeId?:boolean; email?:boolean} = {};
     if (!form.fullName.trim())  errs.fullName = true;
     if (!form.username.trim())  errs.username = true;
     if (!form.password)         errs.password = true;
-    if (!form.storeId)          errs.storeId  = true;
+    if (!isExternal(form.profileType) && !form.storeId) errs.storeId = true;
+    if (isExternal(form.profileType) && !form.email.trim()) errs.email = true;
     if (Object.keys(errs).length > 0) {
       setCreateFieldErrors(errs);
       const missing = [
@@ -109,6 +149,7 @@ export default function UsersScreen() {
         errs.username  && 'username',
         errs.password  && 'contraseña',
         errs.storeId   && 'local',
+        errs.email     && 'email',
       ].filter(Boolean);
       setCreateModalError(`Completá los siguientes campos: ${missing.join(', ')}.`);
       return;
@@ -117,12 +158,22 @@ export default function UsersScreen() {
     setCreateModalError('');
     setSaving(true);
     try {
-      await axios.post(`${API}/api/v2/users`, {
+      const body: Record<string, any> = {
         fullName: form.fullName.trim(),
         username: form.username.trim().toLowerCase(),
         password: form.password,
-        storeId:  Number(form.storeId),
-      });
+        role: form.profileType,
+        permissions: DEFAULT_PERMISSIONS[form.profileType],
+      };
+      if (!isExternal(form.profileType)) {
+        body.storeId = Number(form.storeId);
+      } else {
+        body.email = form.email.trim();
+        if (form.selectedStoreIds.length > 0) {
+          body.storeIds = form.selectedStoreIds;
+        }
+      }
+      await axios.post(`${API}/api/v2/users`, body);
       setSnackbar('Usuario creado correctamente.');
       setCreateModal(false);
       setForm(EMPTY_FORM);
@@ -252,6 +303,7 @@ export default function UsersScreen() {
             <View style={[styles.row, styles.rowHeader]}>
               <Text style={[styles.cell, styles.cellName, styles.colHeader]}>Nombre</Text>
               <Text style={[styles.cell, styles.cellUser, styles.colHeader]}>Usuario</Text>
+              <Text style={[styles.cell, styles.cellRole, styles.colHeader]}>Tipo</Text>
               <Text style={[styles.cell, styles.cellStore, styles.colHeader]}>Local</Text>
               <Text style={[styles.cell, styles.cellStatus, styles.colHeader]}>Estado</Text>
               <Text style={[styles.cell, styles.cellActions, styles.colHeader]}>Acciones</Text>
@@ -266,7 +318,12 @@ export default function UsersScreen() {
                   <Text style={styles.userName}>{user.fullName}</Text>
                 </View>
                 <Text style={[styles.cell, styles.cellUser, styles.metaText]}>@{user.username}</Text>
-                <Text style={[styles.cell, styles.cellStore, styles.metaText]}>{user.storeName}</Text>
+                <View style={[styles.cell, styles.cellRole]}>
+                  <View style={[styles.roleBadge, { backgroundColor: (ROLE_COLOR[user.role] ?? '#6B7280') + '18', borderColor: (ROLE_COLOR[user.role] ?? '#6B7280') + '44' }]}>
+                    <Text style={[styles.roleText, { color: ROLE_COLOR[user.role] ?? '#6B7280' }]}>{ROLE_LABEL[user.role] ?? user.role}</Text>
+                  </View>
+                </View>
+                <Text style={[styles.cell, styles.cellStore, styles.metaText]}>{user.storeName ?? '—'}</Text>
                 <View style={[styles.cell, styles.cellStatus]}>
                   <View style={[styles.statusBadge, { backgroundColor: statusColor(user.status) + '18', borderColor: statusColor(user.status) + '44' }]}>
                     <Text style={[styles.statusText, { color: statusColor(user.status) }]}>{statusLabel(user.status)}</Text>
@@ -277,7 +334,9 @@ export default function UsersScreen() {
                     ? <IconButton icon="pause-circle" size={20} iconColor={COLOR.warn} onPress={() => handleSuspend(user)} style={{ margin: 0 }} />
                     : <IconButton icon="play-circle" size={20} iconColor={COLOR.income} onPress={() => handleActivate(user)} style={{ margin: 0 }} />
                   }
-                  <IconButton icon="store-edit" size={20} iconColor={COLOR.info} onPress={() => { setReassignModal(user); setReassignStoreId(String(user.storeId)); }} style={{ margin: 0 }} />
+                  {!isExternal(user.role as ProfileType) && (
+                    <IconButton icon="store-edit" size={20} iconColor={COLOR.info} onPress={() => { setReassignModal(user); setReassignStoreId(String(user.storeId)); }} style={{ margin: 0 }} />
+                  )}
                   <IconButton icon="lock-reset" size={20} iconColor={COLOR.ink2} onPress={() => { setResetModal(user); setNewPassword(''); }} style={{ margin: 0 }} />
                   <IconButton icon="delete" size={20} iconColor={COLOR.expense} onPress={() => handleDelete(user)} style={{ margin: 0 }} />
                 </View>
@@ -285,11 +344,17 @@ export default function UsersScreen() {
             ) : (
               /* ── Mobile: card ── */
               <View key={user.id} style={[styles.mobileCard, user.status === 'SUSPENDED' && styles.rowSuspended]}>
-                {/* Fila 1: nombre + estado */}
+                {/* Fila 1: nombre + estado + tipo */}
                 <View style={styles.mobileCardTop}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.userName} numberOfLines={1}>{user.fullName}</Text>
-                    <Text style={styles.userMeta}>@{user.username} · {user.storeName}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                      <Text style={styles.userMeta}>@{user.username}</Text>
+                      {user.storeName ? <Text style={styles.userMeta}>· {user.storeName}</Text> : null}
+                      <View style={[styles.roleBadge, { backgroundColor: (ROLE_COLOR[user.role] ?? '#6B7280') + '18', borderColor: (ROLE_COLOR[user.role] ?? '#6B7280') + '44' }]}>
+                        <Text style={[styles.roleText, { color: ROLE_COLOR[user.role] ?? '#6B7280' }]}>{ROLE_LABEL[user.role] ?? user.role}</Text>
+                      </View>
+                    </View>
                   </View>
                   <View style={[styles.statusBadge, { backgroundColor: statusColor(user.status) + '18', borderColor: statusColor(user.status) + '44' }]}>
                     <Text style={[styles.statusText, { color: statusColor(user.status) }]}>{statusLabel(user.status)}</Text>
@@ -301,7 +366,9 @@ export default function UsersScreen() {
                     ? <IconButton icon="pause-circle" size={22} iconColor={COLOR.warn} onPress={() => handleSuspend(user)} style={{ margin: 0 }} />
                     : <IconButton icon="play-circle" size={22} iconColor={COLOR.income} onPress={() => handleActivate(user)} style={{ margin: 0 }} />
                   }
-                  <IconButton icon="store-edit" size={22} iconColor={COLOR.info} onPress={() => { setReassignModal(user); setReassignStoreId(String(user.storeId)); }} style={{ margin: 0 }} />
+                  {!isExternal(user.role as ProfileType) && (
+                    <IconButton icon="store-edit" size={22} iconColor={COLOR.info} onPress={() => { setReassignModal(user); setReassignStoreId(String(user.storeId)); }} style={{ margin: 0 }} />
+                  )}
                   <IconButton icon="lock-reset" size={22} iconColor={COLOR.ink2} onPress={() => { setResetModal(user); setNewPassword(''); }} style={{ margin: 0 }} />
                   <IconButton icon="delete" size={22} iconColor={COLOR.expense} onPress={() => handleDelete(user)} style={{ margin: 0 }} />
                 </View>
@@ -315,12 +382,37 @@ export default function UsersScreen() {
       <Modal visible={createModal} transparent animationType="fade" onRequestClose={() => setCreateModal(false)}>
         <View style={styles.overlay}>
           <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 16 }}>
-            <View style={[styles.modal, { width: '100%', maxWidth: 440 }]}>
+            <View style={[styles.modal, { width: '100%', maxWidth: 480 }]}>
               <Text style={styles.modalTitle}>Nuevo usuario</Text>
 
+              {/* Selector de tipo de perfil */}
+              <Text style={styles.fieldLabel}>Tipo de usuario *</Text>
+              <View style={styles.profileGrid}>
+                {PROFILE_OPTIONS.map(opt => (
+                  <TouchableOpacity
+                    key={opt.value}
+                    style={[styles.profileCard, form.profileType === opt.value && styles.profileCardActive]}
+                    onPress={() => setForm({ ...EMPTY_FORM, profileType: opt.value })}
+                  >
+                    <MaterialCommunityIcons
+                      name={opt.icon}
+                      size={22}
+                      color={form.profileType === opt.value ? COLOR.brand : COLOR.ink2}
+                    />
+                    <Text style={[styles.profileCardLabel, form.profileType === opt.value && styles.profileCardLabelActive]}>
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <Text style={styles.profileDesc}>
+                {PROFILE_OPTIONS.find(o => o.value === form.profileType)?.desc}
+              </Text>
+
+              {/* Campos comunes */}
               <TextInput
                 label="Nombre completo *" value={form.fullName}
-                onChangeText={v => { setForm({ ...form, fullName: v }); if (v.trim()) setCreateFieldErrors(p => ({ ...p, fullName: false })); }}
+                onChangeText={v => { setForm(p => ({ ...p, fullName: v })); if (v.trim()) setCreateFieldErrors(p => ({ ...p, fullName: false })); }}
                 mode="outlined" style={styles.input} autoComplete="off"
                 error={!!createFieldErrors.fullName}
                 outlineColor={createFieldErrors.fullName ? COLOR.expense : undefined}
@@ -330,7 +422,7 @@ export default function UsersScreen() {
 
               <TextInput
                 label="Username *" value={form.username}
-                onChangeText={v => { setForm({ ...form, username: v.toLowerCase().replace(/\s+/g, '.') }); if (v.trim()) setCreateFieldErrors(p => ({ ...p, username: false })); }}
+                onChangeText={v => { setForm(p => ({ ...p, username: v.toLowerCase().replace(/\s+/g, '.') })); if (v.trim()) setCreateFieldErrors(p => ({ ...p, username: false })); }}
                 mode="outlined" style={styles.input} autoCapitalize="none" autoComplete="off"
                 error={!!createFieldErrors.username}
                 outlineColor={createFieldErrors.username ? COLOR.expense : undefined}
@@ -339,8 +431,8 @@ export default function UsersScreen() {
               {createFieldErrors.username && <Text style={styles.fieldErrorText}>El username es obligatorio</Text>}
 
               <TextInput
-                label="Contraseña *" value={form.password}
-                onChangeText={v => { setForm({ ...form, password: v }); if (v) setCreateFieldErrors(p => ({ ...p, password: false })); }}
+                label="Contraseña temporal *" value={form.password}
+                onChangeText={v => { setForm(p => ({ ...p, password: v })); if (v) setCreateFieldErrors(p => ({ ...p, password: false })); }}
                 mode="outlined" style={styles.input}
                 secureTextEntry={!showPassword}
                 autoComplete="new-password"
@@ -351,24 +443,80 @@ export default function UsersScreen() {
               />
               {createFieldErrors.password && <Text style={styles.fieldErrorText}>La contraseña es obligatoria</Text>}
 
-              {/* Selector de local */}
-              <Text style={[styles.fieldLabel, createFieldErrors.storeId && { color: COLOR.expense }]}>Local *</Text>
-              <View style={[styles.storeSelector, createFieldErrors.storeId && { borderColor: COLOR.expense, borderWidth: 1, borderRadius: 8, padding: 4 }]}>
-                {stores.map(s => (
-                  <TouchableOpacity
-                    key={s.id}
-                    style={[styles.storeChip, form.storeId === String(s.id) && styles.storeChipActive]}
-                    onPress={() => { setForm({ ...form, storeId: String(s.id) }); setCreateFieldErrors(p => ({ ...p, storeId: false })); setCreateModalError(''); }}
-                  >
-                    <Text style={[styles.storeChipText, form.storeId === String(s.id) && styles.storeChipTextActive]}>
-                      {s.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              {createFieldErrors.storeId && <Text style={styles.fieldErrorText}>Seleccioná un local</Text>}
+              {/* Email — solo para perfiles externos */}
+              {isExternal(form.profileType) && (
+                <>
+                  <TextInput
+                    label="Email *" value={form.email}
+                    onChangeText={v => { setForm(p => ({ ...p, email: v })); if (v.trim()) setCreateFieldErrors(p => ({ ...p, email: false })); }}
+                    mode="outlined" style={styles.input} autoCapitalize="none" keyboardType="email-address" autoComplete="email"
+                    error={!!createFieldErrors.email}
+                    outlineColor={createFieldErrors.email ? COLOR.expense : undefined}
+                    activeOutlineColor={createFieldErrors.email ? COLOR.expense : COLOR.brand}
+                  />
+                  {createFieldErrors.email && <Text style={styles.fieldErrorText}>El email es obligatorio</Text>}
+                </>
+              )}
 
-              <Text style={styles.roleNote}>El usuario recibirá el rol <Text style={{ fontWeight: '900' }}>user</Text> automáticamente.</Text>
+              {/* Selector de local — solo para ENCARGADO (un local, obligatorio) */}
+              {!isExternal(form.profileType) && (
+                <>
+                  <Text style={[styles.fieldLabel, createFieldErrors.storeId && { color: COLOR.expense }]}>Local *</Text>
+                  <View style={[styles.storeSelector, createFieldErrors.storeId && { borderColor: COLOR.expense, borderWidth: 1, borderRadius: 8, padding: 4 }]}>
+                    {stores.map(s => (
+                      <TouchableOpacity
+                        key={s.id}
+                        style={[styles.storeChip, form.storeId === String(s.id) && styles.storeChipActive]}
+                        onPress={() => { setForm(p => ({ ...p, storeId: String(s.id) })); setCreateFieldErrors(p => ({ ...p, storeId: false })); setCreateModalError(''); }}
+                      >
+                        <Text style={[styles.storeChipText, form.storeId === String(s.id) && styles.storeChipTextActive]}>
+                          {s.name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  {createFieldErrors.storeId && <Text style={styles.fieldErrorText}>Seleccioná un local</Text>}
+                </>
+              )}
+
+              {/* Multi-selector de locales — solo para perfiles externos (opcional) */}
+              {isExternal(form.profileType) && stores.length > 0 && (
+                <>
+                  <Text style={styles.fieldLabel}>Acceso a locales (opcional)</Text>
+                  <Text style={styles.fieldHint}>Dejalo vacío para dar acceso a todos los locales.</Text>
+                  <View style={styles.storeSelector}>
+                    {stores.map(s => {
+                      const selected = form.selectedStoreIds.includes(s.id);
+                      return (
+                        <TouchableOpacity
+                          key={s.id}
+                          style={[styles.storeChip, selected && styles.storeChipActive]}
+                          onPress={() => setForm(p => ({
+                            ...p,
+                            selectedStoreIds: selected
+                              ? p.selectedStoreIds.filter(id => id !== s.id)
+                              : [...p.selectedStoreIds, s.id],
+                          }))}
+                        >
+                          <Text style={[styles.storeChipText, selected && styles.storeChipTextActive]}>
+                            {selected ? '✓ ' : ''}{s.name}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </>
+              )}
+
+              {/* Nota de permisos */}
+              <View style={styles.permissionsNote}>
+                <MaterialCommunityIcons name="shield-check-outline" size={14} color={COLOR.inkMute} />
+                <Text style={styles.roleNote}>
+                  {isExternal(form.profileType)
+                    ? `Permisos asignados automáticamente: ${DEFAULT_PERMISSIONS[form.profileType].join(', ') || 'ninguno'}`
+                    : 'Acceso completo al sistema (rol encargado)'}
+                </Text>
+              </View>
 
               {!!createModalError && (
                 <View style={styles.modalErrorBanner}>
@@ -483,10 +631,11 @@ const styles = StyleSheet.create({
   rowSuspended:   { opacity: 0.6, backgroundColor: COLOR.bgAlt },
   cell:           { paddingHorizontal: SPACE.s2, paddingVertical: SPACE.s2 },
   cellName:       { flex: 1 },
-  cellUser:       { width: 140 },
-  cellStore:      { width: 110 },
-  cellStatus:     { width: 110 },
-  cellActions:    { flexDirection: 'row', alignItems: 'center', width: 160 },
+  cellUser:       { width: 130 },
+  cellRole:       { width: 100 },
+  cellStore:      { width: 100 },
+  cellStatus:     { width: 100 },
+  cellActions:    { flexDirection: 'row', alignItems: 'center', width: 150 },
   colHeader:      { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.inkMute } as any,
 
   userName:       { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
@@ -513,7 +662,19 @@ const styles = StyleSheet.create({
   storeChipText:  { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink2 },
   storeChipTextActive: { color: COLOR.ink, fontWeight: FONT_WEIGHT.bold as any },
 
-  roleNote:       { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, backgroundColor: COLOR.bgAlt, borderRadius: RADIUS.r2, padding: SPACE.s2, marginBottom: SPACE.s1 },
+  roleBadge:      { borderRadius: RADIUS.r1, paddingHorizontal: SPACE.s2, paddingVertical: 3, borderWidth: 1, alignSelf: 'flex-start' },
+  roleText:       { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.bold as any },
+
+  profileGrid:    { flexDirection: 'row', flexWrap: 'wrap', gap: SPACE.s2, marginBottom: SPACE.s2 },
+  profileCard:    { flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingHorizontal: SPACE.s3, paddingVertical: SPACE.s3, borderRadius: RADIUS.r2, backgroundColor: COLOR.bg, borderWidth: 1, borderColor: COLOR.border, minWidth: 72, gap: SPACE.s1 },
+  profileCardActive: { backgroundColor: COLOR.brandTint, borderColor: COLOR.brand, borderWidth: 2 },
+  profileCardLabel: { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink2, textAlign: 'center' as any },
+  profileCardLabelActive: { color: COLOR.brandDeep, fontWeight: FONT_WEIGHT.bold as any },
+  profileDesc:    { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, marginBottom: SPACE.s3, fontStyle: 'italic' as any },
+
+  fieldHint:      { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, marginTop: -SPACE.s2, marginBottom: SPACE.s2 },
+  permissionsNote: { flexDirection: 'row', alignItems: 'flex-start', gap: SPACE.s1, marginBottom: SPACE.s1 },
+  roleNote:       { flex: 1, fontSize: FONT_SIZE.caption, color: COLOR.inkMute },
 
   mobileCard:       { backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border, paddingHorizontal: SPACE.s4, paddingVertical: SPACE.s3, gap: SPACE.s2 },
   mobileCardTop:    { flexDirection: 'row', alignItems: 'center', gap: SPACE.s3 },

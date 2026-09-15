@@ -73,6 +73,16 @@ const ROLE_COLOR: Record<string, string> = {
 const statusLabel = (s: string) => s === 'ACTIVE' ? 'Activo' : 'Suspendido';
 const statusColor = (s: string) => s === 'ACTIVE' ? '#168542' : '#d32121';
 
+const ALL_PERMISSIONS: { key: string; label: string; icon: string }[] = [
+  { key: 'DASHBOARD',         label: 'Dashboard y estadísticas',  icon: 'view-dashboard-outline' },
+  { key: 'TRANSACTIONS',      label: 'Transacciones y depósitos', icon: 'bank-transfer' },
+  { key: 'SALARY_PAYMENTS',   label: 'Pagos de salarios',         icon: 'account-cash-outline' },
+  { key: 'SUPPLIER_PAYMENTS', label: 'Pagos a proveedores',       icon: 'truck-delivery-outline' },
+  { key: 'INVENTORY',         label: 'Inventario y stock',        icon: 'package-variant-closed' },
+  { key: 'CATALOG',           label: 'Catálogo de productos',     icon: 'food-outline' },
+  { key: 'POS',               label: 'Punto de venta (turnos)',   icon: 'cash-register' },
+];
+
 // ─── UsersScreen ──────────────────────────────────────────────────────────────
 
 export default function UsersScreen() {
@@ -107,6 +117,12 @@ export default function UsersScreen() {
   const [showNewPwd, setShowNewPwd]     = useState(false);
   const [resetError, setResetError]     = useState('');
   const [resetPwdError, setResetPwdError] = useState(false);
+
+  // Modal permisos
+  const [permissionsModal, setPermissionsModal] = useState<AppUser | null>(null);
+  const [editPerms, setEditPerms]               = useState<string[]>([]);
+  const [savingPerms, setSavingPerms]           = useState(false);
+  const [permsError, setPermsError]             = useState('');
 
   // ConfirmDialog
   const [confirmDlg, setConfirmDlg] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
@@ -257,6 +273,21 @@ export default function UsersScreen() {
     finally { setResetting(false); }
   };
 
+  // ── Permisos ───────────────────────────────────────────────────────────────
+
+  const handlePermissionsSave = async () => {
+    setSavingPerms(true);
+    setPermsError('');
+    try {
+      await axios.put(`${API}/api/v2/users/${permissionsModal!.id}/permissions`, { permissions: editPerms });
+      setSnackbar(`Permisos de ${permissionsModal!.fullName} actualizados`);
+      setPermissionsModal(null);
+      loadAll();
+    } catch (e: any) {
+      setPermsError(e.response?.data?.error || 'No se pudieron guardar los permisos.');
+    } finally { setSavingPerms(false); }
+  };
+
   // ── Eliminar ───────────────────────────────────────────────────────────────
 
   const handleDelete = (user: AppUser) => {
@@ -341,6 +372,9 @@ export default function UsersScreen() {
                   {!isExternal(user.role as ProfileType) && (
                     <IconButton icon="store-edit" size={20} iconColor={COLOR.info} onPress={() => { setReassignModal(user); setReassignStoreId(String(user.storeId)); }} style={{ margin: 0 }} />
                   )}
+                  {isExternal(user.role as ProfileType) && (
+                    <IconButton icon="shield-edit" size={20} iconColor={COLOR.brand} onPress={() => { setPermissionsModal(user); setEditPerms(user.permissions ?? []); setPermsError(''); }} style={{ margin: 0 }} />
+                  )}
                   <IconButton icon="lock-reset" size={20} iconColor={COLOR.ink2} onPress={() => { setResetModal(user); setNewPassword(''); }} style={{ margin: 0 }} />
                   <IconButton icon="delete" size={20} iconColor={COLOR.expense} onPress={() => handleDelete(user)} style={{ margin: 0 }} />
                 </View>
@@ -376,6 +410,9 @@ export default function UsersScreen() {
                   }
                   {!isExternal(user.role as ProfileType) && (
                     <IconButton icon="store-edit" size={22} iconColor={COLOR.info} onPress={() => { setReassignModal(user); setReassignStoreId(String(user.storeId)); }} style={{ margin: 0 }} />
+                  )}
+                  {isExternal(user.role as ProfileType) && (
+                    <IconButton icon="shield-edit" size={22} iconColor={COLOR.brand} onPress={() => { setPermissionsModal(user); setEditPerms(user.permissions ?? []); setPermsError(''); }} style={{ margin: 0 }} />
                   )}
                   <IconButton icon="lock-reset" size={22} iconColor={COLOR.ink2} onPress={() => { setResetModal(user); setNewPassword(''); }} style={{ margin: 0 }} />
                   <IconButton icon="delete" size={22} iconColor={COLOR.expense} onPress={() => handleDelete(user)} style={{ margin: 0 }} />
@@ -612,6 +649,47 @@ export default function UsersScreen() {
         </View>
       </Modal>
 
+      {/* ── Modal permisos ── */}
+      <Modal visible={!!permissionsModal} transparent animationType="fade" onRequestClose={() => { setPermissionsModal(null); setPermsError(''); }}>
+        <View style={styles.overlay}>
+          <View style={[styles.modal, { maxWidth: 420 }]}>
+            <Text style={styles.modalTitle}>Permisos de acceso</Text>
+            <Text style={styles.modalSub}>{permissionsModal?.fullName} · {ROLE_LABEL[permissionsModal?.role ?? ''] ?? permissionsModal?.role}</Text>
+
+            {ALL_PERMISSIONS.map(p => {
+              const enabled = editPerms.includes(p.key);
+              return (
+                <TouchableOpacity
+                  key={p.key}
+                  style={styles.permRow}
+                  onPress={() => setEditPerms(prev =>
+                    enabled ? prev.filter(k => k !== p.key) : [...prev, p.key]
+                  )}
+                  activeOpacity={0.7}
+                >
+                  <MaterialCommunityIcons name={p.icon as any} size={20} color={enabled ? COLOR.brand : COLOR.inkMute} style={{ width: 28 }} />
+                  <Text style={[styles.permLabel, enabled && styles.permLabelActive]}>{p.label}</Text>
+                  <View style={[styles.permToggle, enabled && styles.permToggleOn]}>
+                    <View style={[styles.permThumb, enabled && styles.permThumbOn]} />
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+
+            {!!permsError && (
+              <View style={styles.modalErrorBanner}>
+                <MaterialCommunityIcons name="alert-circle-outline" size={18} color={COLOR.expense} />
+                <Text style={styles.modalErrorText}>{permsError}</Text>
+              </View>
+            )}
+            <View style={styles.modalActions}>
+              <Button mode="outlined" onPress={() => { setPermissionsModal(null); setPermsError(''); }} style={{ flex: 1 }}>Cancelar</Button>
+              <Button mode="contained" onPress={handlePermissionsSave} loading={savingPerms} buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ flex: 1 }}>Guardar</Button>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <ConfirmDialog
         visible={!!confirmDlg}
         title={confirmDlg?.title ?? ''}
@@ -647,7 +725,7 @@ const styles = StyleSheet.create({
   cellRole:       { width: 100 },
   cellStore:      { width: 100 },
   cellStatus:     { width: 100 },
-  cellActions:    { flexDirection: 'row', alignItems: 'center', width: 160 },
+  cellActions:    { flexDirection: 'row', alignItems: 'center', width: 200 },
   colHeader:      { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.inkMute } as any,
 
   userName:       { fontSize: FONT_SIZE.label, fontWeight: FONT_WEIGHT.bold as any, color: COLOR.ink },
@@ -691,4 +769,12 @@ const styles = StyleSheet.create({
   mobileCard:       { backgroundColor: COLOR.surface, borderBottomWidth: 1, borderBottomColor: COLOR.border, paddingHorizontal: SPACE.s4, paddingVertical: SPACE.s3, gap: SPACE.s2 },
   mobileCardTop:    { flexDirection: 'row', alignItems: 'center', gap: SPACE.s3 },
   mobileCardActions:{ flexDirection: 'row', alignItems: 'center' },
+
+  permRow:          { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: COLOR.border },
+  permLabel:        { flex: 1, fontSize: FONT_SIZE.label, color: COLOR.ink2, fontWeight: FONT_WEIGHT.medium as any },
+  permLabelActive:  { color: COLOR.ink, fontWeight: FONT_WEIGHT.semibold as any },
+  permToggle:       { width: 40, height: 22, borderRadius: 11, backgroundColor: COLOR.border, justifyContent: 'center', paddingHorizontal: 2 },
+  permToggleOn:     { backgroundColor: COLOR.brand },
+  permThumb:        { width: 18, height: 18, borderRadius: 9, backgroundColor: COLOR.surface, alignSelf: 'flex-start' },
+  permThumbOn:      { alignSelf: 'flex-end' },
 });

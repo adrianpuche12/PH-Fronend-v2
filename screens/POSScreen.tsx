@@ -1410,6 +1410,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                     textColor={COLOR.inkOnBrand}
                     style={{ flex: 1 }}
                     onPress={handleConfirmClosing}
+                    disabled={uploadingClosingImg}
                   >
                     Confirmar cierre
                   </Button>

@@ -414,7 +414,7 @@ const DynamicFormScreen = () => {
         setBankNotes('');
         setSelectedImage(null);
         loadHistorial(true);
-        setActiveTab('historial');
+        setActiveTab('form');
       } else {
         const err = await res.json();
         showMessage('error', err.message || 'Error al registrar el depósito');
@@ -516,7 +516,7 @@ const DynamicFormScreen = () => {
         setErrors({});
         // Refrescar historial y mostrar tab
         loadHistorial(true);
-        setActiveTab('historial');
+        setActiveTab('form');
       } else {
         const error = await response.json();
         showMessage('error', error.message || 'Error al enviar el formulario');
@@ -1273,13 +1273,13 @@ const DynamicFormScreen = () => {
           <MaterialCommunityIcons name="plus-circle-outline" size={16} color={activeTab === 'form' ? COLOR.brandDeep : COLOR.ink2} />
           <Text style={[tabStyles.tabText, activeTab === 'form' && tabStyles.tabTextActive]}>Nueva operación</Text>
         </TouchableOpacity>
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={[tabStyles.tab, activeTab === 'historial' && tabStyles.tabActive]}
           onPress={() => setActiveTab('historial')}
         >
           <MaterialCommunityIcons name="history" size={16} color={activeTab === 'historial' ? COLOR.brandDeep : COLOR.ink2} />
           <Text style={[tabStyles.tabText, activeTab === 'historial' && tabStyles.tabTextActive]}>Mi historial</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
 
       {activeTab === 'historial' ? renderHistorial() : (

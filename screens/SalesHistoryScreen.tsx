@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, useWindowDimensions, RefreshControl, Modal,
+  ActivityIndicator, useWindowDimensions, RefreshControl, Modal, Image,
 } from 'react-native';
 import { TextInput, IconButton } from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -31,6 +31,7 @@ interface ShiftRecord {
   declaredCashAmount: number | null;
   cashDifference: number | null;
   notes: string | null;
+  imageUri?: string | null;
 }
 
 interface ProductSummaryItem {
@@ -77,6 +78,7 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
   const [summaries, setSummaries]     = useState<Record<number, ShiftSummary>>({});
   const [loadingSum, setLoadingSum]   = useState<Record<number, boolean>>({});
   const [error, setError]             = useState('');
+  const [viewingImage, setViewingImage] = useState<string | null>(null);
 
   // ── Modal editar cierre ──────────────────────────────────────────────────
   const [editingShift, setEditingShift]   = useState<ShiftRecord | null>(null);
@@ -312,7 +314,12 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
                       {' · '}{shift.username}
                     </Text>
                   </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    {isClosed && shift.imageUri && (
+                      <TouchableOpacity onPress={() => setViewingImage(shift.imageUri!)} activeOpacity={0.8}>
+                        <Image source={{ uri: shift.imageUri }} style={{ width: 32, height: 32, borderRadius: 4, borderWidth: 1, borderColor: COLOR.border }} />
+                      </TouchableOpacity>
+                    )}
                     {!usernameFilter && isClosed && (
                       <>
                         <IconButton icon="pencil" size={16} iconColor={COLOR.info} style={{ margin: 0 }}
@@ -443,6 +450,19 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
           )}
         </ScrollView>
       )}
+
+      {/* ── Modal ver comprobante ── */}
+      <Modal visible={!!viewingImage} transparent animationType="fade" onRequestClose={() => setViewingImage(null)}>
+        <TouchableOpacity
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', alignItems: 'center' }}
+          onPress={() => setViewingImage(null)}
+          activeOpacity={1}
+        >
+          {viewingImage && (
+            <Image source={{ uri: viewingImage }} style={{ width: '90%', height: '70%', resizeMode: 'contain' }} />
+          )}
+        </TouchableOpacity>
+      </Modal>
 
       {/* ── Modal editar cierre ── */}
       <Modal visible={!!editingShift} transparent animationType="fade" onRequestClose={() => setEditingShift(null)}>

@@ -569,12 +569,14 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
       return;
     }
     setClosingModalError('');
+    console.log('[DEBUG-closing] imageUri before POST:', closingImageUri);
     try {
       const res = await axios.post(`${API}/api/v2/shifts/${shift.id}/closing`, {
         username: userName ?? 'empleada',
         declaredCashAmount: declared,
         imageUri: closingImageUri ?? undefined,
       });
+      console.log('[DEBUG-closing] response:', JSON.stringify(res.data));
       setClosingResult(res.data);
       setClosingImageUri(null);
       setClosingDone(true);

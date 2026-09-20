@@ -27,7 +27,7 @@ interface AppUser {
   createdAt: string;
 }
 
-type ProfileType = 'ENCARGADO' | 'INVERSOR' | 'SOCIO' | 'CONTADOR' | 'ABOGADO';
+type ProfileType = 'CAJERO' | 'ENCARGADO' | 'INVERSOR' | 'SOCIO' | 'CONTADOR' | 'ABOGADO';
 
 interface UserForm {
   profileType: ProfileType;
@@ -40,13 +40,14 @@ interface UserForm {
 }
 
 const EMPTY_FORM: UserForm = {
-  profileType: 'ENCARGADO',
+  profileType: 'CAJERO',
   fullName: '', username: '', password: '', email: '',
   storeId: '', selectedStoreIds: [],
 };
 
 const PROFILE_OPTIONS: { value: ProfileType; label: string; icon: string; desc: string }[] = [
-  { value: 'ENCARGADO',  label: 'Encargado',  icon: 'account-hard-hat', desc: 'Cajero/operador de local. Abre y cierra turnos, registra ventas, maneja stock y operaciones. Acceso completo.' },
+  { value: 'CAJERO',     label: 'Cajero',     icon: 'cash-register',    desc: 'Opera la caja de un local. Abre/cierra turnos y registra ventas. Acceso exclusivo al Punto de Venta.' },
+  { value: 'ENCARGADO',  label: 'Encargado',  icon: 'account-hard-hat', desc: 'Supervisor de local. Acceso completo: POS, inventario, historial de ventas y operaciones.' },
   { value: 'INVERSOR',   label: 'Inversor',   icon: 'chart-line',       desc: 'Solo lectura. Ve el dashboard de métricas y el historial de ventas. No puede operar el sistema.' },
   { value: 'SOCIO',      label: 'Socio',      icon: 'handshake',        desc: 'Acceso de seguimiento. Ve dashboard, historial de ventas y el registro de transacciones y depósitos.' },
   { value: 'CONTADOR',   label: 'Contador',   icon: 'calculator',       desc: 'Perfil financiero. Accede a transacciones, pagos de salarios y pagos a proveedores.' },
@@ -54,6 +55,7 @@ const PROFILE_OPTIONS: { value: ProfileType; label: string; icon: string; desc: 
 ];
 
 const DEFAULT_PERMISSIONS: Record<ProfileType, string[]> = {
+  CAJERO:    ['POS'],
   ENCARGADO: [],
   INVERSOR:  ['DASHBOARD', 'SALES_HISTORY'],
   SOCIO:     ['DASHBOARD', 'SALES_HISTORY', 'TRANSACTIONS'],
@@ -62,10 +64,11 @@ const DEFAULT_PERMISSIONS: Record<ProfileType, string[]> = {
 };
 
 const ROLE_LABEL: Record<string, string> = {
-  ENCARGADO: 'Encargado', INVERSOR: 'Inversor', SOCIO: 'Socio',
+  CAJERO: 'Cajero', ENCARGADO: 'Encargado', INVERSOR: 'Inversor', SOCIO: 'Socio',
   CONTADOR: 'Contador', ABOGADO: 'Abogado', ADMIN: 'Admin',
 };
 const ROLE_COLOR: Record<string, string> = {
+  CAJERO:    '#D97706',
   ENCARGADO: '#2563EB', INVERSOR: '#7C3AED', SOCIO: '#0891B2',
   CONTADOR:  '#065F46', ABOGADO:  '#92400E', ADMIN: '#1F2937',
 };
@@ -168,7 +171,7 @@ export default function UsersScreen() {
 
   // ── Crear usuario ──────────────────────────────────────────────────────────
 
-  const isExternal = (p: ProfileType) => p !== 'ENCARGADO';
+  const isExternal = (p: ProfileType) => p !== 'CAJERO' && p !== 'ENCARGADO';
 
   const handleCreate = async () => {
     const errs: {fullName?:boolean; username?:boolean; password?:boolean; storeId?:boolean; email?:boolean} = {};
@@ -536,7 +539,7 @@ export default function UsersScreen() {
                 </>
               )}
 
-              {/* Selector de local — solo para ENCARGADO (un local, obligatorio) */}
+              {/* Selector de local — para CAJERO y ENCARGADO (un local, obligatorio) */}
               {!isExternal(form.profileType) && (
                 <>
                   <Text style={[styles.fieldLabel, createFieldErrors.storeId && { color: COLOR.expense }]}>Local *</Text>
@@ -590,9 +593,9 @@ export default function UsersScreen() {
               <View style={styles.permissionsNote}>
                 <MaterialCommunityIcons name="shield-check-outline" size={14} color={COLOR.inkMute} />
                 <Text style={styles.roleNote}>
-                  {isExternal(form.profileType)
-                    ? `Permisos asignados automáticamente: ${DEFAULT_PERMISSIONS[form.profileType].join(', ') || 'ninguno'}`
-                    : 'Acceso completo al sistema (rol encargado)'}
+                  {DEFAULT_PERMISSIONS[form.profileType].length === 0
+                    ? 'Acceso completo al sistema'
+                    : `Permisos asignados automáticamente: ${DEFAULT_PERMISSIONS[form.profileType].join(', ')}`}
                 </Text>
               </View>
 

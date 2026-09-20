@@ -148,8 +148,15 @@ const UserContent = () => {
     axios.get(`${REACT_APP_API_URL}/api/v2/users/by-username/${userName}`)
       .then(res => {
         const store = stores.find(s => s.id === res.data.storeId);
-        if (store) setSelectedStore(store);
-        else if (stores[0]) setSelectedStore(stores[0]);
+        if (store) {
+          setSelectedStore(store);
+        } else {
+          const allowedIds: number[] = res.data.storeIds ?? [];
+          const firstAllowed = allowedIds.length > 0
+            ? stores.find(s => allowedIds.includes(s.id))
+            : stores[0];
+          if (firstAllowed) setSelectedStore(firstAllowed);
+        }
       })
       .catch((err: any) => {
         // Si la cuenta fue suspendida mientras la sesión estaba activa → forzar logout
@@ -158,7 +165,10 @@ const UserContent = () => {
           logout();
           return;
         }
-        if (stores[0]) setSelectedStore(stores[0]);
+        const firstAllowed = storeIds.length > 0
+          ? stores.find(s => storeIds.includes(s.id))
+          : stores[0];
+        if (firstAllowed) setSelectedStore(firstAllowed);
       })
       .finally(() => setReady(true));
   }, [userName, stores]);

@@ -12,16 +12,25 @@ import POSScreen from './POSScreen';
 import InventoryScreen from './InventoryScreen';
 import SalesHistoryScreen from './SalesHistoryScreen';
 import DynamicFormScreen from './DynamicFormScreen';
+import AdminScreen from './AdminScreen';
+import SocioDashboardScreen from './SocioDashboardScreen';
 
-type UserScreen = 'sales' | 'inventory' | 'salesHistory' | 'operaciones';
+type UserScreen = 'sales' | 'inventory' | 'salesHistory' | 'operaciones' | 'socioDashboard';
 
-interface UserMenuItem { key: UserScreen; label: string; icon: string; permission?: string }
+interface UserMenuItem {
+  key: UserScreen;
+  label: string;
+  icon: string;
+  permission?: string;
+  showWhen?: (ctx: { storeIds: number[] }) => boolean;
+}
 
 const MENU_ALL: UserMenuItem[] = [
-  { key: 'sales',        label: 'Ventas',      icon: 'cart-outline',          permission: 'POS' },
-  { key: 'inventory',    label: 'Inventario',  icon: 'package-variant',       permission: 'INVENTORY' },
-  { key: 'salesHistory', label: 'Mis ventas',  icon: 'receipt-text-outline',  permission: 'SALES_HISTORY' },
-  { key: 'operaciones',  label: 'Operaciones', icon: 'clipboard-text-outline' },
+  { key: 'socioDashboard', label: 'Dashboard',   icon: 'view-dashboard-outline', showWhen: ({ storeIds }) => storeIds.length > 0 },
+  { key: 'sales',          label: 'Ventas',       icon: 'cart-outline',           permission: 'POS' },
+  { key: 'inventory',      label: 'Inventario',   icon: 'package-variant',        permission: 'INVENTORY' },
+  { key: 'salesHistory',   label: 'Mis ventas',   icon: 'receipt-text-outline',   permission: 'SALES_HISTORY' },
+  { key: 'operaciones',    label: 'Operaciones',  icon: 'clipboard-text-outline' },
 ];
 
 const hasPermission = (permissions: string[], section?: string) =>
@@ -36,9 +45,12 @@ const UserSidebar = ({ active, onSelect, onClose, isDesktop }: {
   active: UserScreen; onSelect: (s: UserScreen) => void;
   onClose: () => void; isDesktop: boolean;
 }) => {
-  const { logout, userName, permissions } = useAuth();
+  const { logout, userName, permissions, storeIds } = useAuth();
   const { sidebarCollapsed, toggleSidebar } = useUIPreferences();
-  const menu = MENU_ALL.filter(item => hasPermission(permissions, item.permission));
+  const menu = MENU_ALL.filter(item =>
+    hasPermission(permissions, item.permission) &&
+    (!item.showWhen || item.showWhen({ storeIds }))
+  );
   const collapsed = isDesktop && sidebarCollapsed;
 
   const animW = useRef(new Animated.Value(
@@ -118,10 +130,13 @@ const UserSidebar = ({ active, onSelect, onClose, isDesktop }: {
 const UserContent = () => {
   const { width } = useWindowDimensions();
   const isTabletOrDesktop = width >= BREAKPOINT.tablet;
-  const { userName, logout, permissions } = useAuth();
+  const { userName, logout, permissions, storeIds } = useAuth();
   const { stores, setSelectedStore } = useStore();
 
-  const filteredMenu = MENU_ALL.filter(item => hasPermission(permissions, item.permission));
+  const filteredMenu = MENU_ALL.filter(item =>
+    hasPermission(permissions, item.permission) &&
+    (!item.showWhen || item.showWhen({ storeIds }))
+  );
   const defaultScreen = filteredMenu[0]?.key ?? 'sales';
 
   const [active, setActive]         = useState<UserScreen>(defaultScreen);
@@ -173,10 +188,15 @@ const UserContent = () => {
           </View>
         )}
 
-        {active === 'sales'        && <POSScreen hideStoreSelector />}
-        {active === 'inventory'    && <InventoryScreen />}
-        {active === 'salesHistory' && <SalesHistoryScreen usernameFilter={userName ?? undefined} />}
-        {active === 'operaciones'  && <DynamicFormScreen />}
+        {active === 'socioDashboard' && <SocioDashboardScreen />}
+        {active === 'sales'          && <POSScreen hideStoreSelector />}
+        {active === 'inventory'      && <InventoryScreen />}
+        {active === 'salesHistory'   && <SalesHistoryScreen usernameFilter={userName ?? undefined} />}
+        {active === 'operaciones'    && (
+          storeIds.length > 0
+            ? <AdminScreen allowedStoreIds={storeIds} />
+            : <DynamicFormScreen />
+        )}
       </View>
 
       {!isTabletOrDesktop && (

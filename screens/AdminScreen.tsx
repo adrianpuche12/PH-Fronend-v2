@@ -259,6 +259,8 @@ const CompactDateFilters = ({
   activeStores,
   depositFilter,
   setDepositFilter,
+  includeAll = true,
+  allLabel = 'Todos los locales',
 }: {
   startDate?: Date;
   endDate?: Date;
@@ -275,6 +277,8 @@ const CompactDateFilters = ({
   activeStores: {id: number; name: string}[];
   depositFilter: 'all' | 'pending' | 'deposited';
   setDepositFilter: (filter: 'all' | 'pending' | 'deposited') => void;
+  includeAll?: boolean;
+  allLabel?: string;
 }) => {
   const { width: screenWidth } = useWindowDimensions();
   const isLargeScreen = screenWidth >= 900;
@@ -316,8 +320,8 @@ const CompactDateFilters = ({
           stores={activeStores}
           selectedId={selectedStore}
           onSelect={(id) => setSelectedStore(id)}
-          includeAll
-          allLabel="Todos los locales"
+          includeAll={includeAll}
+          allLabel={allLabel}
         />
 
         {/* Botones — una fila en desktop, grid 2 col en mobile */}
@@ -399,7 +403,7 @@ const CompactDateFilters = ({
   );
 };
 
-const AdminScreen = () => {
+const AdminScreen = ({ allowedStoreIds }: { allowedStoreIds?: number[] } = {}) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -486,6 +490,19 @@ const AdminScreen = () => {
       .then(setActiveStores)
       .catch(() => {});
   }, []);
+
+  // Cuando allowedStoreIds está presente, filtrar al subconjunto permitido
+  const visibleStores = (allowedStoreIds && allowedStoreIds.length > 0)
+    ? activeStores.filter(s => allowedStoreIds.includes(s.id))
+    : activeStores;
+
+  // Auto-seleccionar el único local si el Socio tiene exactamente uno asignado
+  useEffect(() => {
+    if (allowedStoreIds && allowedStoreIds.length === 1 && activeStores.length > 0 && selectedStore === null) {
+      const match = activeStores.find(s => s.id === allowedStoreIds[0]);
+      if (match) setSelectedStore(match.id);
+    }
+  }, [activeStores]);
 
   // Manejador para éxito de importación desde Excel
   const handleImportSuccess = () => {
@@ -1118,7 +1135,7 @@ const renderEditFields = () => {
       <Text style={styles.modalInputLabel}>Local:</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ flexDirection: 'row', gap: 8, paddingVertical: 4 }}>
-        {activeStores.map(s => (
+        {visibleStores.map(s => (
           <TouchableOpacity
             key={s.id}
             style={[storeChipStyle.chip, newStoreId === s.id && storeChipStyle.active]}
@@ -2017,9 +2034,11 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
                   onExcelPress={() => setShowExcelManager(true)}
                   showAdminExpenses={showAdminExpenses}
                   onToggleAdminExpenses={handleToggleAdminExpenses}
-                  activeStores={activeStores}
+                  activeStores={visibleStores}
                   depositFilter={depositFilter}
                   setDepositFilter={(f) => { setDepositFilter(f); setCurrentPage(1); }}
+                  includeAll={!allowedStoreIds || visibleStores.length > 1}
+                  allLabel={allowedStoreIds ? 'Todos mis locales' : 'Todos los locales'}
                 />
                 <BalanceCard transactions={filteredByDeposit} />
               </View>
@@ -2096,9 +2115,11 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
                 onExcelPress={() => setShowExcelManager(true)}
                 showAdminExpenses={showAdminExpenses}
                 onToggleAdminExpenses={handleToggleAdminExpenses}
-                activeStores={activeStores}
+                activeStores={visibleStores}
                 depositFilter={depositFilter}
                 setDepositFilter={(f) => { setDepositFilter(f); setCurrentPage(1); }}
+                includeAll={!allowedStoreIds || visibleStores.length > 1}
+                allLabel={allowedStoreIds ? 'Todos mis locales' : 'Todos los locales'}
               />
               <BalanceCard transactions={filteredByDeposit} />
             </View>
@@ -2325,7 +2346,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
               <View style={{ marginBottom: 12 }}>
                 <Text style={{ fontSize: 13, color: COLOR.ink2, marginBottom: 4 }}>Local *</Text>
                 <View style={{ borderWidth: 1, borderColor: COLOR.border, borderRadius: RADIUS.r2, overflow: 'hidden' }}>
-                  {activeStores.map(s => (
+                  {visibleStores.map(s => (
                     <TouchableOpacity
                       key={s.id}
                       onPress={() => setExtraDepositStoreId(s.id)}

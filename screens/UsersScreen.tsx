@@ -49,7 +49,7 @@ const PROFILE_OPTIONS: { value: ProfileType; label: string; icon: string; desc: 
   { value: 'CAJERO',     label: 'Cajero',     icon: 'cash-register',    desc: 'Opera la caja de un local. Abre/cierra turnos y registra ventas. Acceso exclusivo al Punto de Venta.' },
   { value: 'ENCARGADO',  label: 'Encargado',  icon: 'account-hard-hat', desc: 'Supervisor de local. Acceso completo: POS, inventario, historial de ventas y operaciones.' },
   { value: 'INVERSOR',   label: 'Inversor',   icon: 'chart-line',       desc: 'Solo lectura. Ve el dashboard de métricas y el historial de ventas. No puede operar el sistema.' },
-  { value: 'SOCIO',      label: 'Socio',      icon: 'handshake',        desc: 'Acceso de seguimiento. Ve dashboard, historial de ventas y el registro de transacciones y depósitos.' },
+  { value: 'SOCIO',      label: 'Socio',      icon: 'handshake',        desc: 'Admin de local. Acceso completo a su local: dashboard, turnos, operaciones, inventario y transacciones.' },
   { value: 'CONTADOR',   label: 'Contador',   icon: 'calculator',       desc: 'Perfil financiero. Accede a transacciones, pagos de salarios y pagos a proveedores.' },
   { value: 'ABOGADO',    label: 'Abogado',    icon: 'scale-balance',    desc: 'Acceso mínimo. Solo puede consultar el registro de transacciones y depósitos.' },
 ];
@@ -58,7 +58,7 @@ const DEFAULT_PERMISSIONS: Record<ProfileType, string[]> = {
   CAJERO:    ['POS'],
   ENCARGADO: [],
   INVERSOR:  ['DASHBOARD', 'SALES_HISTORY'],
-  SOCIO:     ['DASHBOARD', 'SALES_HISTORY', 'TRANSACTIONS'],
+  SOCIO:     [],
   CONTADOR:  ['TRANSACTIONS', 'SALARY_PAYMENTS', 'SUPPLIER_PAYMENTS'],
   ABOGADO:   ['TRANSACTIONS'],
 };

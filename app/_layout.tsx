@@ -1,5 +1,6 @@
 import { Slot, useSegments, useRootNavigationState, router } from 'expo-router';
 import { useEffect } from 'react';
+import { Platform } from 'react-native';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { Provider as PaperProvider, MD3LightTheme } from 'react-native-paper';
 
@@ -77,6 +78,14 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      const style = document.createElement('style');
+      style.textContent = `* { scrollbar-width: none; } *::-webkit-scrollbar { display: none; }`;
+      document.head.appendChild(style);
+    }
+  }, []);
+
   return (
     <PaperProvider theme={appTheme}>
       <AuthProvider>

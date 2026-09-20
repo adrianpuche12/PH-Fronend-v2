@@ -448,7 +448,7 @@ export default function UsersScreen() {
       {/* ── Modal crear usuario ── */}
       <Modal visible={createModal} transparent animationType="fade" onRequestClose={() => setCreateModal(false)}>
         <View style={styles.overlay}>
-          <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 16 }}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 16 }}>
             <View style={[styles.modal, { width: '100%', maxWidth: 480 }]}>
               <Text style={styles.modalTitle}>Nuevo usuario</Text>
 

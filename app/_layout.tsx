@@ -81,7 +81,28 @@ export default function RootLayout() {
   useEffect(() => {
     if (Platform.OS === 'web') {
       const style = document.createElement('style');
-      style.textContent = `* { scrollbar-width: none; } *::-webkit-scrollbar { display: none; }`;
+      style.textContent = `
+        * { scrollbar-width: none; }
+        *::-webkit-scrollbar { display: none; }
+        @keyframes onAutoFillStart { from {} to {} }
+        @keyframes onAutoFillCancel { from {} to {} }
+        input:-webkit-autofill {
+          animation-name: onAutoFillStart;
+          -webkit-text-fill-color: #1F1B16;
+          -webkit-box-shadow: 0 0 0px 1000px #fff inset;
+          transition: background-color 5000s ease-in-out 0s;
+          caret-color: #1F1B16;
+        }
+        input:not(:-webkit-autofill) { animation-name: onAutoFillCancel; }
+      `;
+      // Detect browser autofill and fire input event so React updates state
+      document.addEventListener('animationstart', (e: AnimationEvent) => {
+        const target = e.target as HTMLInputElement;
+        if (e.animationName === 'onAutoFillStart' && target?.tagName === 'INPUT') {
+          target.dispatchEvent(new Event('input', { bubbles: true }));
+          target.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }, true);
       document.head.appendChild(style);
     }
   }, []);

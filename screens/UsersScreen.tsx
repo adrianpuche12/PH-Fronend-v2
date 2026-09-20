@@ -46,11 +46,11 @@ const EMPTY_FORM: UserForm = {
 };
 
 const PROFILE_OPTIONS: { value: ProfileType; label: string; icon: string; desc: string }[] = [
-  { value: 'ENCARGADO',  label: 'Encargado',  icon: 'account-hard-hat', desc: 'Empleado de local — acceso operativo' },
-  { value: 'INVERSOR',   label: 'Inversor',   icon: 'chart-line',       desc: 'Solo ve resúmenes y estadísticas' },
-  { value: 'SOCIO',      label: 'Socio',      icon: 'handshake',        desc: 'Ve estadísticas y transacciones' },
-  { value: 'CONTADOR',   label: 'Contador',   icon: 'calculator',       desc: 'Ve transacciones y pagos' },
-  { value: 'ABOGADO',    label: 'Abogado',    icon: 'scale-balance',    desc: 'Solo ve registro de transacciones' },
+  { value: 'ENCARGADO',  label: 'Encargado',  icon: 'account-hard-hat', desc: 'Cajero/operador de local. Abre y cierra turnos, registra ventas, maneja stock y operaciones. Acceso completo.' },
+  { value: 'INVERSOR',   label: 'Inversor',   icon: 'chart-line',       desc: 'Solo lectura. Ve el dashboard de métricas y el historial de ventas. No puede operar el sistema.' },
+  { value: 'SOCIO',      label: 'Socio',      icon: 'handshake',        desc: 'Acceso de seguimiento. Ve dashboard, historial de ventas y el registro de transacciones y depósitos.' },
+  { value: 'CONTADOR',   label: 'Contador',   icon: 'calculator',       desc: 'Perfil financiero. Accede a transacciones, pagos de salarios y pagos a proveedores.' },
+  { value: 'ABOGADO',    label: 'Abogado',    icon: 'scale-balance',    desc: 'Acceso mínimo. Solo puede consultar el registro de transacciones y depósitos.' },
 ];
 
 const DEFAULT_PERMISSIONS: Record<ProfileType, string[]> = {
@@ -74,14 +74,33 @@ const statusLabel = (s: string) => s === 'ACTIVE' ? 'Activo' : 'Suspendido';
 const statusColor = (s: string) => s === 'ACTIVE' ? '#168542' : '#d32121';
 
 const ALL_PERMISSIONS: { key: string; label: string; icon: string }[] = [
+  { key: 'POS',               label: 'Punto de venta',            icon: 'cash-register' },
+  { key: 'INVENTORY',         label: 'Inventario y stock',        icon: 'package-variant-closed' },
+  { key: 'SALES_HISTORY',     label: 'Historial de ventas',       icon: 'receipt-text-outline' },
   { key: 'DASHBOARD',         label: 'Dashboard y estadísticas',  icon: 'view-dashboard-outline' },
   { key: 'TRANSACTIONS',      label: 'Transacciones y depósitos', icon: 'bank-transfer' },
   { key: 'SALARY_PAYMENTS',   label: 'Pagos de salarios',         icon: 'account-cash-outline' },
   { key: 'SUPPLIER_PAYMENTS', label: 'Pagos a proveedores',       icon: 'truck-delivery-outline' },
-  { key: 'INVENTORY',         label: 'Inventario y stock',        icon: 'package-variant-closed' },
   { key: 'CATALOG',           label: 'Catálogo de productos',     icon: 'food-outline' },
-  { key: 'POS',               label: 'Punto de venta (turnos)',   icon: 'cash-register' },
 ];
+
+// Nombre corto de cada permiso para mostrar en las cards de perfil
+const PERM_SHORT: Record<string, string> = {
+  POS:               'POS',
+  INVENTORY:         'Inventario',
+  SALES_HISTORY:     'Historial',
+  DASHBOARD:         'Dashboard',
+  TRANSACTIONS:      'Transacciones',
+  SALARY_PAYMENTS:   'Salarios',
+  SUPPLIER_PAYMENTS: 'Proveedores',
+  CATALOG:           'Catálogo',
+};
+
+const profileAccessLabel = (type: ProfileType): string => {
+  const perms = DEFAULT_PERMISSIONS[type];
+  if (perms.length === 0) return 'POS · Inventario · Historial · Operaciones';
+  return perms.map(p => PERM_SHORT[p] ?? p).join(' · ');
+};
 
 // ─── UsersScreen ──────────────────────────────────────────────────────────────
 
@@ -433,30 +452,40 @@ export default function UsersScreen() {
               {/* Selector de tipo de perfil */}
               <Text style={styles.fieldLabel}>Tipo de usuario *</Text>
               <View style={styles.profileGrid}>
-                {PROFILE_OPTIONS.map(opt => (
-                  <TouchableOpacity
-                    key={opt.value}
-                    style={[styles.profileCard, form.profileType === opt.value && styles.profileCardActive]}
-                    onPress={() => {
-                      setForm(p => ({ ...p, profileType: opt.value, storeId: '', selectedStoreIds: [], email: '' }));
-                      setCreateFieldErrors({});
-                      setCreateModalError('');
-                    }}
-                  >
-                    <MaterialCommunityIcons
-                      name={opt.icon}
-                      size={22}
-                      color={form.profileType === opt.value ? COLOR.brand : COLOR.ink2}
-                    />
-                    <Text style={[styles.profileCardLabel, form.profileType === opt.value && styles.profileCardLabelActive]}>
-                      {opt.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                {PROFILE_OPTIONS.map(opt => {
+                  const isActive = form.profileType === opt.value;
+                  return (
+                    <TouchableOpacity
+                      key={opt.value}
+                      style={[styles.profileCard, isActive && styles.profileCardActive]}
+                      onPress={() => {
+                        setForm(p => ({ ...p, profileType: opt.value, storeId: '', selectedStoreIds: [], email: '' }));
+                        setCreateFieldErrors({});
+                        setCreateModalError('');
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name={opt.icon}
+                        size={22}
+                        color={isActive ? COLOR.brand : COLOR.ink2}
+                      />
+                      <Text style={[styles.profileCardLabel, isActive && styles.profileCardLabelActive]}>
+                        {opt.label}
+                      </Text>
+                      <Text style={[styles.profileCardAccess, isActive && styles.profileCardAccessActive]} numberOfLines={3}>
+                        {profileAccessLabel(opt.value)}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
-              <Text style={styles.profileDesc}>
-                {PROFILE_OPTIONS.find(o => o.value === form.profileType)?.desc}
-              </Text>
+              {/* Descripción completa del rol seleccionado */}
+              <View style={styles.profileDescBox}>
+                <MaterialCommunityIcons name="information-outline" size={13} color={COLOR.inkMute} />
+                <Text style={styles.profileDesc}>
+                  {PROFILE_OPTIONS.find(o => o.value === form.profileType)?.desc}
+                </Text>
+              </View>
 
               {/* Campos comunes */}
               <TextInput
@@ -756,11 +785,14 @@ const styles = StyleSheet.create({
   roleText:       { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.bold as any },
 
   profileGrid:    { flexDirection: 'row', flexWrap: 'wrap', gap: SPACE.s2, marginBottom: SPACE.s2 },
-  profileCard:    { flex: 1, flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingHorizontal: SPACE.s2, paddingVertical: SPACE.s3, borderRadius: RADIUS.r2, backgroundColor: COLOR.bg, borderWidth: 1, borderColor: COLOR.border, minWidth: 0, gap: SPACE.s1 },
+  profileCard:    { flex: 1, flexBasis: '18%', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', paddingHorizontal: SPACE.s2, paddingVertical: SPACE.s3, borderRadius: RADIUS.r2, backgroundColor: COLOR.bg, borderWidth: 1, borderColor: COLOR.border, minWidth: 0, gap: SPACE.s1 },
   profileCardActive: { backgroundColor: COLOR.brandTint, borderColor: COLOR.brand, borderWidth: 2 },
   profileCardLabel: { fontSize: FONT_SIZE.caption, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.ink2, textAlign: 'center' as any },
   profileCardLabelActive: { color: COLOR.brandDeep, fontWeight: FONT_WEIGHT.bold as any },
-  profileDesc:    { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, marginBottom: SPACE.s3, fontStyle: 'italic' as any },
+  profileCardAccess: { fontSize: 9, color: COLOR.inkDisabled, textAlign: 'center' as any, lineHeight: 13 },
+  profileCardAccessActive: { color: COLOR.brandDeep + 'BB' },
+  profileDescBox:  { flexDirection: 'row', alignItems: 'flex-start', gap: SPACE.s1, marginBottom: SPACE.s3 },
+  profileDesc:    { flex: 1, fontSize: FONT_SIZE.caption, color: COLOR.inkMute, fontStyle: 'italic' as any, lineHeight: 17 },
 
   fieldHint:      { fontSize: FONT_SIZE.caption, color: COLOR.inkMute, marginTop: -SPACE.s2, marginBottom: SPACE.s2 },
   permissionsNote: { flexDirection: 'row', alignItems: 'flex-start', gap: SPACE.s1, marginBottom: SPACE.s1 },

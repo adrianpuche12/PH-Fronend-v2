@@ -543,6 +543,9 @@ const AdminScreen = ({ allowedStoreIds }: { allowedStoreIds?: number[] } = {}) =
       const response = await fetch(url);
       let adminExpensesData: Transaction[] = [];
       if (response.ok) adminExpensesData = await response.json();
+      if (allowedStoreIds && allowedStoreIds.length > 0) {
+        adminExpensesData = adminExpensesData.filter(t => t.storeId != null && allowedStoreIds.includes(t.storeId));
+      }
 
       hasLoadedRef.current = true;
       setTransactions(adminExpensesData);
@@ -600,7 +603,10 @@ const AdminScreen = ({ allowedStoreIds }: { allowedStoreIds?: number[] } = {}) =
       const transactionsData: Transaction[] = transRaw;
 
       const merged = [...operationsData, ...transactionsData];
-      const sortedTransactions = merged.sort((a, b) => {
+      const filtered = (allowedStoreIds && allowedStoreIds.length > 0)
+        ? merged.filter(t => t.storeId != null && allowedStoreIds.includes(t.storeId))
+        : merged;
+      const sortedTransactions = filtered.sort((a, b) => {
         if (!a.date) return 1;
         if (!b.date) return -1;
         return new Date(b.date).getTime() - new Date(a.date).getTime();

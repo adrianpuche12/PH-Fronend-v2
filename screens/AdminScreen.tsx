@@ -1059,7 +1059,7 @@ const AdminScreen = ({ allowedStoreIds }: { allowedStoreIds?: number[] } = {}) =
           setExtraDepositSaving(false);
           return;
         }
-        uploadedImageUri = uploadResult.imageUri;
+        uploadedImageUri = uploadResult.imageUri ?? null;
       }
 
       const params = new URLSearchParams({
@@ -2363,7 +2363,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
                         borderBottomWidth: 1, borderBottomColor: COLOR.border,
                       }}
                     >
-                      <Text style={{ fontSize: 14, color: COLOR.ink1 }}>{s.name}</Text>
+                      <Text style={{ fontSize: 14, color: COLOR.ink }}>{s.name}</Text>
                       {extraDepositStoreId === s.id && (
                         <MaterialCommunityIcons name="check-circle" size={18} color={COLOR.income} />
                       )}
@@ -2377,7 +2377,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
                 onPress={() => setExtraDepositDatePickerVisible(true)}
                 style={{ borderWidth: 1, borderColor: COLOR.border, borderRadius: RADIUS.r2, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
               >
-                <Text style={{ fontSize: 14, color: extraDepositDate ? COLOR.ink1 : COLOR.ink3 }}>
+                <Text style={{ fontSize: 14, color: extraDepositDate ? COLOR.ink : COLOR.inkMute }}>
                   {extraDepositDate || 'Fecha del depósito *'}
                 </Text>
                 <MaterialCommunityIcons name="calendar" size={18} color={COLOR.ink2} />
@@ -2410,12 +2410,12 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
                   const result = await ImageService.selectImage();
                   if (!result.canceled && result.assets?.[0]) {
                     const asset = result.assets[0];
-                    setExtraDepositImage({ uri: asset.uri, name: asset.fileName ?? 'comprobante.jpg', type: asset.mimeType ?? 'image/jpeg' });
+                    setExtraDepositImage({ uri: asset.uri, name: asset.name ?? 'comprobante.jpg', type: asset.mimeType ?? 'image/jpeg' });
                   }
                 }}
                 style={{ borderWidth: 1, borderColor: COLOR.border, borderRadius: RADIUS.r2, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
               >
-                <Text style={{ fontSize: 14, color: extraDepositImage ? COLOR.ink1 : COLOR.ink3 }}>
+                <Text style={{ fontSize: 14, color: extraDepositImage ? COLOR.ink : COLOR.inkMute }}>
                   {extraDepositImage ? extraDepositImage.name : 'Comprobante (opcional)'}
                 </Text>
                 <MaterialCommunityIcons name="camera-outline" size={18} color={COLOR.ink2} />

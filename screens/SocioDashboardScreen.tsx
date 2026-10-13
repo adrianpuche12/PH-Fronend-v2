@@ -142,7 +142,7 @@ const SocioDashboardScreen = () => {
     }
   }, [storeIds]);
 
-  useFocusEffect(loadDashboard);
+  useFocusEffect(useCallback(() => { loadDashboard(); }, [loadDashboard]));
 
   if (loading) {
     return (

@@ -136,11 +136,20 @@ const ExcelManager: React.FC<ExcelManagerProps> = ({
       fileName = `Control de Gastos ${currentMonth.charAt(0).toUpperCase() + currentMonth.slice(1)}`;
     }
     
-    const exportData = dataToExport.map(tx =>
-      tx.type === 'CLOSING' && tx.periodStart
-        ? { ...tx, date: tx.periodStart }
-        : tx
-    );
+    const exportData = dataToExport.map(tx => {
+      if (tx.type === 'DEPOSIT_GROUP') {
+        return {
+          ...tx,
+          storeName: (tx as any).storeNames?.join(', ') || '—',
+          closingsCount: (tx as any).closingCount,
+          description: `Depósito bancario (${(tx as any).closingCount} cierre${(tx as any).closingCount !== 1 ? 's' : ''})`,
+        };
+      }
+      if (tx.type === 'CLOSING' && tx.periodStart) {
+        return { ...tx, date: tx.periodStart };
+      }
+      return tx;
+    });
     const exportResult = await exportToExcel(exportData, fileName);
     setResult(exportResult);
     setShowResult(true);

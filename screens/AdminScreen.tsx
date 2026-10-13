@@ -115,7 +115,7 @@ const CollapsibleBalanceCard = ({ transactions }: { transactions: any[] }) => {
   }, [isCollapsed]);
 
   const ingresos = transactions
-    .filter(tx => tx.type === 'CLOSING' || tx.type === 'income' || tx.type === 'DEPOSIT_GROUP')
+    .filter(tx => tx.type === 'DEPOSIT_GROUP' || tx.type === 'income')
     .reduce((sum, tx) => sum + tx.amount, 0);
   const egresos = transactions
     .filter(tx => tx.type === 'SUPPLIER' || tx.type === 'SALARY' || tx.type === 'GASTO_ADMIN' || tx.type === 'expense' || tx.type === 'gasto_admin')
@@ -170,7 +170,7 @@ const CollapsibleBalanceCard = ({ transactions }: { transactions: any[] }) => {
 
 const BalanceCard = ({ transactions }: { transactions: any[] }) => {
   const ingresos = transactions
-    .filter(tx => tx.type === 'CLOSING' || tx.type === 'income' || tx.type === 'DEPOSIT_GROUP')
+    .filter(tx => tx.type === 'DEPOSIT_GROUP' || tx.type === 'income')
     .reduce((sum, tx) => sum + tx.amount, 0);
   const egresos = transactions
     .filter(tx => tx.type === 'SUPPLIER' || tx.type === 'SALARY' || tx.type === 'GASTO_ADMIN' || tx.type === 'expense' || tx.type === 'gasto_admin')
@@ -202,8 +202,8 @@ const BalanceCard = ({ transactions }: { transactions: any[] }) => {
 };
 
 // ─── KPI Row (4 cards: Balance · Ingresos · Egresos · Promedio) ───────────────
-const KpiRow = ({ transactions }: { transactions: Transaction[] }) => {
-  const INCOME_T = ['income', 'CLOSING'];
+const KpiRow = ({ transactions }: { transactions: DisplayItem[] }) => {
+  const INCOME_T = ['income', 'DEPOSIT_GROUP'];
   const EXPENSE_T = ['expense', 'SALARY', 'SUPPLIER', 'GASTO_ADMIN', 'gasto_admin'];
   const incomeTxs  = transactions.filter(tx => INCOME_T.includes(tx.type));
   const expenseTxs = transactions.filter(tx => EXPENSE_T.includes(tx.type));
@@ -1059,7 +1059,7 @@ const AdminScreen = ({ allowedStoreIds }: { allowedStoreIds?: number[] } = {}) =
           setExtraDepositSaving(false);
           return;
         }
-        uploadedImageUri = uploadResult.imageUri;
+        uploadedImageUri = uploadResult.imageUri ?? null;
       }
 
       const params = new URLSearchParams({
@@ -2134,7 +2134,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
       )}
 
       {/* ── KPI stats row — solo desktop, dentro del panel de Filtros (mobile va dentro del scroll) ── */}
-      {!loading && isLargeScreen && filtersExpanded && <KpiRow transactions={transactions} />}
+      {!loading && isLargeScreen && filtersExpanded && <KpiRow transactions={displayItems} />}
 
       {/* ── Tabla header (solo desktop) ── */}
       {!loading && isLargeScreen && (
@@ -2166,7 +2166,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
       ) : (
         <ScrollView style={styles.scrollView}>
           {/* KPI cards en mobile dentro del scroll — solo si el panel de Filtros está expandido */}
-          {!isLargeScreen && filtersExpanded && <KpiRow transactions={transactions} />}
+          {!isLargeScreen && filtersExpanded && <KpiRow transactions={displayItems} />}
           {paginatedTransactions.length === 0 ? (
             <ThemedText style={styles.noDataText}>No hay transacciones para mostrar</ThemedText>
           ) : (
@@ -2363,7 +2363,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
                         borderBottomWidth: 1, borderBottomColor: COLOR.border,
                       }}
                     >
-                      <Text style={{ fontSize: 14, color: COLOR.ink1 }}>{s.name}</Text>
+                      <Text style={{ fontSize: 14, color: COLOR.ink }}>{s.name}</Text>
                       {extraDepositStoreId === s.id && (
                         <MaterialCommunityIcons name="check-circle" size={18} color={COLOR.income} />
                       )}
@@ -2377,7 +2377,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
                 onPress={() => setExtraDepositDatePickerVisible(true)}
                 style={{ borderWidth: 1, borderColor: COLOR.border, borderRadius: RADIUS.r2, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
               >
-                <Text style={{ fontSize: 14, color: extraDepositDate ? COLOR.ink1 : COLOR.ink3 }}>
+                <Text style={{ fontSize: 14, color: extraDepositDate ? COLOR.ink : COLOR.inkMute }}>
                   {extraDepositDate || 'Fecha del depósito *'}
                 </Text>
                 <MaterialCommunityIcons name="calendar" size={18} color={COLOR.ink2} />
@@ -2410,12 +2410,12 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
                   const result = await ImageService.selectImage();
                   if (!result.canceled && result.assets?.[0]) {
                     const asset = result.assets[0];
-                    setExtraDepositImage({ uri: asset.uri, name: asset.fileName ?? 'comprobante.jpg', type: asset.mimeType ?? 'image/jpeg' });
+                    setExtraDepositImage({ uri: asset.uri, name: asset.name ?? 'comprobante.jpg', type: asset.mimeType ?? 'image/jpeg' });
                   }
                 }}
                 style={{ borderWidth: 1, borderColor: COLOR.border, borderRadius: RADIUS.r2, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
               >
-                <Text style={{ fontSize: 14, color: extraDepositImage ? COLOR.ink1 : COLOR.ink3 }}>
+                <Text style={{ fontSize: 14, color: extraDepositImage ? COLOR.ink : COLOR.inkMute }}>
                   {extraDepositImage ? extraDepositImage.name : 'Comprobante (opcional)'}
                 </Text>
                 <MaterialCommunityIcons name="camera-outline" size={18} color={COLOR.ink2} />
@@ -2472,7 +2472,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
       <ExcelManager
         visible={showExcelManager}
         onDismiss={() => setShowExcelManager(false)}
-        transactions={transactions}
+        transactions={displayItems}
         onImportSuccess={handleImportSuccess}
       />
 

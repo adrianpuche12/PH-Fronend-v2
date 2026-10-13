@@ -31,6 +31,7 @@ export const TRANSACTION_LABELS: Record<string, string> = {
   'SALARY': 'Salario',
   'SUPPLIER': 'Proveedor',
   'CLOSING': 'Cierre',
+  'DEPOSIT_GROUP': 'Depósito Bancario',
 };
 
 export const TRANSACTION_TYPES: Record<string, string> = {

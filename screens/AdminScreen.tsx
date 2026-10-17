@@ -682,24 +682,34 @@ const AdminScreen = ({ allowedStoreIds }: { allowedStoreIds?: number[] } = {}) =
   };
 
   // Filtro por tipo de transacción
-  const INCOME_TYPES = ['income', 'CLOSING'];
+  // CLOSING PENDING permanece en la lista como referencia pero NO se cuenta como ingreso
+  // (los DEPOSITED se convierten a DEPOSIT_GROUP que sí son ingreso)
+  const INCOME_TYPES = ['income'];
   const EXPENSE_TYPES = ['expense', 'SALARY', 'SUPPLIER', 'GASTO_ADMIN', 'gasto_admin'];
 
   // Reemplaza los cierres DEPOSITED por un único DepositGroup por bankDepositId.
   // Los cierres PENDING permanecen como items individuales.
   const displayItems: DisplayItem[] = useMemo(() => {
+    // Aux: rastrea si el grupo ya tiene bankDeclaredAmount (para evitar acumular teórico encima)
+    const groupHasBankDeclared = new Map<number, boolean>();
     const groups = new Map<number, DepositGroup>();
     const result: DisplayItem[] = [];
     for (const tx of transactions) {
       if (tx.type === 'CLOSING' && tx.depositStatus === 'DEPOSITED' && tx.bankDepositId != null) {
         const gid = tx.bankDepositId;
         const sName = tx.store?.name ?? tx.storeName ?? '—';
-        // bankDeclaredAmount: monto real declarado en el banco (BankDeposit.declaredAmount)
-        // Es el mismo para todos los cierres del mismo depósito, por eso no se acumula
         const hasBankDeclared = tx.bankDeclaredAmount != null;
         if (groups.has(gid)) {
           const g = groups.get(gid)!;
-          if (!hasBankDeclared) g.amount += tx.declaredCashAmount ?? tx.amount;
+          if (hasBankDeclared) {
+            // bankDeclaredAmount es el mismo para todos los cierres del mismo depósito —
+            // sobreescribir siempre garantiza el valor correcto sin importar el orden de llegada
+            g.amount = tx.bankDeclaredAmount!;
+            groupHasBankDeclared.set(gid, true);
+          } else if (!groupHasBankDeclared.get(gid)) {
+            // Solo acumular teórico si ningún cierre del grupo tuvo bankDeclaredAmount todavía
+            g.amount += tx.declaredCashAmount ?? tx.amount;
+          }
           g.closingCount += 1;
           if (!g.storeNames.includes(sName)) g.storeNames.push(sName);
           if (tx.periodStart && (!g.periodStart || tx.periodStart < g.periodStart)) g.periodStart = tx.periodStart;
@@ -719,6 +729,7 @@ const AdminScreen = ({ allowedStoreIds }: { allowedStoreIds?: number[] } = {}) =
             extraordinary: tx.extraordinary === true,
             notes: (tx as any).bankDepositNotes ?? undefined,
           };
+          if (hasBankDeclared) groupHasBankDeclared.set(gid, true);
           groups.set(gid, g);
           result.push(g);
         }
@@ -975,8 +986,8 @@ const AdminScreen = ({ allowedStoreIds }: { allowedStoreIds?: number[] } = {}) =
 
       const url = editingDepositGroup.extraordinary
         ? `${REACT_APP_API_URL}/api/v2/deposits/extraordinary/${editingDepositGroup.id}`
-        : `${REACT_APP_API_URL}/api/v2/deposits/${editingDepositGroup.id}`;
-      const method = editingDepositGroup.extraordinary ? 'PATCH' : 'PUT';
+        : `${REACT_APP_API_URL}/api/v2/deposits/${editingDepositGroup.id}/declared-amount`;
+      const method = 'PATCH';
 
       const res = await fetch(url, {
         method,

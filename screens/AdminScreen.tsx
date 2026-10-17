@@ -82,6 +82,7 @@ interface Transaction {
   bankDeclaredAmount?: number;
   closingShiftId?: number;
   extraordinary?: boolean;
+  gastoAdminId?: number;
 }
 
 interface DepositGroup {
@@ -599,8 +600,9 @@ const AdminScreen = ({ allowedStoreIds }: { allowedStoreIds?: number[] } = {}) =
         return newOp;
       });
 
-      // El filtrado de fecha ya lo hizo el backend; solo necesitamos el array tal cual
-      const transactionsData: Transaction[] = transRaw;
+      const transactionsData: Transaction[] = transRaw.map((tx: Transaction) =>
+        tx.gastoAdminId != null ? { ...tx, type: 'GASTO_ADMIN' as const } : tx
+      );
 
       const merged = [...operationsData, ...transactionsData];
       const filtered = (allowedStoreIds && allowedStoreIds.length > 0)

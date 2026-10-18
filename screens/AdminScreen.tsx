@@ -2287,6 +2287,8 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
                 style={styles.modalButton}
                 buttonColor={COLOR.brand}
                 textColor={COLOR.inkOnBrand}
+                loading={depositEditSaving}
+                disabled={depositEditSaving}
               >
                 Guardar
               </Button>

@@ -80,6 +80,7 @@ interface Transaction {
   depositStatus?: string;
   bankDepositId?: number;
   bankDeclaredAmount?: number;
+  bankDifference?: number;
   closingShiftId?: number;
   extraordinary?: boolean;
   gastoAdminId?: number;
@@ -89,6 +90,7 @@ interface DepositGroup {
   type: 'DEPOSIT_GROUP';
   id: number;
   amount: number;
+  difference?: number;
   date?: string;
   imageUri?: string;
   storeNames: string[];
@@ -707,6 +709,7 @@ const AdminScreen = ({ allowedStoreIds }: { allowedStoreIds?: number[] } = {}) =
             // bankDeclaredAmount es el mismo para todos los cierres del mismo depósito —
             // sobreescribir siempre garantiza el valor correcto sin importar el orden de llegada
             g.amount = tx.bankDeclaredAmount!;
+            if (tx.bankDifference != null) g.difference = tx.bankDifference;
             groupHasBankDeclared.set(gid, true);
           } else if (!groupHasBankDeclared.get(gid)) {
             // Solo acumular teórico si ningún cierre del grupo tuvo bankDeclaredAmount todavía
@@ -722,6 +725,7 @@ const AdminScreen = ({ allowedStoreIds }: { allowedStoreIds?: number[] } = {}) =
             type: 'DEPOSIT_GROUP',
             id: gid,
             amount: tx.bankDeclaredAmount ?? tx.declaredCashAmount ?? tx.amount,
+            difference: tx.bankDifference ?? undefined,
             date: tx.date,
             imageUri: tx.imageUri,
             storeNames: [sName],
@@ -1605,6 +1609,29 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
                 <MaterialCommunityIcons name="bank-check" size={11} color="#166534" />
                 <Text style={[styles.depositBadgeText, { color: '#166534' }]}>Depositado</Text>
               </View>
+              {dg.difference != null && (() => {
+                const diff = dg.difference;
+                const absDiff = Math.abs(diff);
+                const diffStr = `L ${absDiff.toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                if (diff === 0) return (
+                  <View style={[styles.depositBadge, { backgroundColor: '#DCFCE7', borderColor: '#166534', borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 3 }]}>
+                    <MaterialCommunityIcons name="check-circle" size={11} color="#166534" />
+                    <Text style={[styles.depositBadgeText, { color: '#166534' }]}>Cuadrado</Text>
+                  </View>
+                );
+                if (diff > 0) return (
+                  <View style={[styles.depositBadge, { backgroundColor: '#FFF7ED', borderColor: '#EA580C', borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 3 }]}>
+                    <MaterialCommunityIcons name="arrow-up-circle" size={11} color="#EA580C" />
+                    <Text style={[styles.depositBadgeText, { color: '#EA580C' }]}>Sobra {diffStr}</Text>
+                  </View>
+                );
+                return (
+                  <View style={[styles.depositBadge, { backgroundColor: '#FEF2F2', borderColor: '#DC2626', borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 3 }]}>
+                    <MaterialCommunityIcons name="arrow-down-circle" size={11} color="#DC2626" />
+                    <Text style={[styles.depositBadgeText, { color: '#DC2626' }]}>Falta {diffStr}</Text>
+                  </View>
+                );
+              })()}
             </View>
             {isLargeScreen && (
               <Text style={styles.txStore} numberOfLines={1}>{dg.storeNames.join(', ')}</Text>

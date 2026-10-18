@@ -23,7 +23,7 @@ interface AuthState {
 
 
 interface AuthContextType extends AuthState {
-  login: (username: string, password: string) => Promise<boolean>;
+  login: (username: string, password: string, signal?: AbortSignal) => Promise<boolean>;
   logout: () => Promise<void>;
   setFirstLoginFalse: () => Promise<void>;
   isAuthenticated: boolean;
@@ -198,7 +198,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const login = async (username: string, password: string): Promise<boolean> => {
+  const login = async (username: string, password: string, signal?: AbortSignal): Promise<boolean> => {
     try {
       const response = await axios.post(
         `${API_KEYCLOAK_ADAPTER_URL}/token`,
@@ -210,7 +210,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }),
         {
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          withCredentials: false
+          withCredentials: false,
+          timeout: 90000,
+          signal,
         }
       );
 
@@ -238,7 +240,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!isAdmin) {
         try {
           const profileResp = await axios.get(
-            `${REACT_APP_API_URL}/api/v2/users/by-username/${encodeURIComponent(userName.toLowerCase())}`
+            `${REACT_APP_API_URL}/api/v2/users/by-username/${encodeURIComponent(userName.toLowerCase())}`,
+            { timeout: 90000, signal }
           );
           firstLogin   = profileResp.data?.firstLogin   ?? false;
           permissions  = profileResp.data?.permissions  ?? [];
@@ -295,6 +298,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setAuthState(prev => ({ ...prev, loading: false, error: null }));
       // Re-throw para mensajes específicos ya marcados
       if (error.suspended || error.serverError) throw error;
+      // Solicitud cancelada (usuario reintentó) → silencioso
+      if (axios.isCancel(error)) return false;
+      // Timeout o error de red → servidor no respondió
+      if (error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK') {
+        const err: any = new Error('TIMEOUT');
+        err.serverError = true;
+        throw err;
+      }
       // Keycloak bloquea login de cuenta deshabilitada con "Account disabled"
       const errorDesc: string = error?.response?.data?.error_description ?? '';
       if (errorDesc.toLowerCase().includes('account disabled')) {

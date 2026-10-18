@@ -15,7 +15,9 @@ const LoginScreen = () => {
   const [error, setError]               = useState('');
   const [secureTextEntry, setSecure]    = useState(true);
 
-  const passwordRef = useRef<RNTextInput>(null);
+  const passwordRef   = useRef<RNTextInput>(null);
+  const abortRef      = useRef<AbortController | null>(null);
+  const loginCallId   = useRef(0);
   const { login } = useAuth();
 
   const handleLogin = async () => {
@@ -23,28 +25,40 @@ const LoginScreen = () => {
       setError('Por favor completá todos los campos');
       return;
     }
+
+    // Cancelar request anterior si el usuario presionó "Reintentar"
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
+    const callId = ++loginCallId.current;
+
     setIsLoading(true);
     setSlowStart(false);
     setError('');
 
     // Si tarda más de 4s mostrar aviso de inicio en frío
-    const slowTimer = setTimeout(() => setSlowStart(true), 4000);
+    const slowTimer = setTimeout(() => {
+      if (loginCallId.current === callId) setSlowStart(true);
+    }, 4000);
 
     try {
-      const success = await login(username.trim(), password.trim());
+      const success = await login(username.trim(), password.trim(), abortRef.current.signal);
+      if (loginCallId.current !== callId) return;
       if (!success) setError('Usuario o contraseña incorrectos');
     } catch (err: any) {
+      if (loginCallId.current !== callId) return;
       if (err?.suspended) {
         setError('Tu cuenta fue suspendida. Contactá al encargado.');
       } else if (err?.serverError) {
-        setError('No se pudo verificar tu cuenta. Intentá más tarde.');
+        setError('El sistema tardó en responder. Presioná "Reintentar" para volver a intentar.');
       } else {
         setError('Error al iniciar sesión');
       }
     } finally {
-      clearTimeout(slowTimer);
-      setIsLoading(false);
-      setSlowStart(false);
+      if (loginCallId.current === callId) {
+        clearTimeout(slowTimer);
+        setIsLoading(false);
+        setSlowStart(false);
+      }
     }
   };
 
@@ -141,9 +155,20 @@ const LoginScreen = () => {
               </Button>
 
               {slowStart && (
-                <Title style={styles.slowStartText}>
-                  El sistema está iniciando, por favor esperá unos segundos…
-                </Title>
+                <>
+                  <Title style={styles.slowStartText}>
+                    El sistema está iniciando, por favor esperá unos segundos…
+                  </Title>
+                  <Button
+                    mode="outlined"
+                    onPress={handleLogin}
+                    style={styles.retryButton}
+                    labelStyle={styles.retryButtonText}
+                    textColor={COLOR.brandDeep}
+                  >
+                    Reintentar
+                  </Button>
+                </>
               )}
 
               <Title style={styles.helperText}>
@@ -231,6 +256,14 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: FONT_SIZE.body,
     fontWeight: FONT_WEIGHT.bold as any,
+  },
+  retryButton: {
+    marginBottom: SPACE.s4,
+    borderColor: COLOR.brandDeep,
+    borderRadius: RADIUS.full,
+  },
+  retryButtonText: {
+    fontSize: FONT_SIZE.body,
   },
   helperText: {
     fontSize: FONT_SIZE.caption,

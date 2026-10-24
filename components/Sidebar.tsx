@@ -56,7 +56,7 @@ const SIDEBAR_W_COLLAPSED = 88;
 const ANIM_DURATION       = 250;
 
 export type SidebarScreen =
-  | 'dashboard' | 'operations' | 'inventory' | 'stores'
+  | 'home' | 'dashboard' | 'operations' | 'inventory' | 'stores'
   | 'sales' | 'salesHistory' | 'users';
 
 interface MenuItem { key: SidebarScreen; label: string; icon: string }

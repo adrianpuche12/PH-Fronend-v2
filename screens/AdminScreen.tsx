@@ -264,6 +264,7 @@ const CompactDateFilters = ({
   setDepositFilter,
   includeAll = true,
   allLabel = 'Todos los locales',
+  onExtraDepositPress,
 }: {
   startDate?: Date;
   endDate?: Date;
@@ -282,6 +283,7 @@ const CompactDateFilters = ({
   setDepositFilter: (filter: 'all' | 'pending' | 'deposited') => void;
   includeAll?: boolean;
   allLabel?: string;
+  onExtraDepositPress: () => void;
 }) => {
   const { width: screenWidth } = useWindowDimensions();
   const isLargeScreen = screenWidth >= 900;
@@ -318,14 +320,17 @@ const CompactDateFilters = ({
           />
         </View>
 
-        {/* Selector de tienda — dropdown */}
-        <StoreDropdown
-          stores={activeStores}
-          selectedId={selectedStore}
-          onSelect={(id) => setSelectedStore(id)}
-          includeAll={includeAll}
-          allLabel={allLabel}
-        />
+        {/* Depósito extraordinario */}
+        <Button
+          mode="contained"
+          onPress={onExtraDepositPress}
+          buttonColor={COLOR.brand}
+          textColor={COLOR.white}
+          labelStyle={{ fontSize: 12 }}
+          icon="bank-plus"
+        >
+          Dep. extraordinario
+        </Button>
 
         {/* Botones — una fila en desktop, grid 2 col en mobile */}
         <View style={{ flexDirection: 'row', flexWrap: isLargeScreen ? 'nowrap' : 'wrap', gap: 8, paddingHorizontal: 4, marginTop: 4 }}>
@@ -2085,6 +2090,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
                   setDepositFilter={(f) => { setDepositFilter(f); setCurrentPage(1); }}
                   includeAll={!allowedStoreIds || visibleStores.length > 1}
                   allLabel={allowedStoreIds ? 'Todos mis locales' : 'Todos los locales'}
+                  onExtraDepositPress={() => setExtraDepositModalVisible(true)}
                 />
                 <BalanceCard transactions={filteredByDeposit} />
               </View>
@@ -2123,16 +2129,13 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
             </View>
 
             <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-              <Button
-                mode="contained"
-                onPress={() => setExtraDepositModalVisible(true)}
-                buttonColor={COLOR.brand}
-                textColor={COLOR.white}
-                labelStyle={{ fontSize: 12 }}
-                icon="bank-plus"
-              >
-                Dep. extraordinario
-              </Button>
+              <StoreDropdown
+                stores={visibleStores}
+                selectedId={selectedStore}
+                onSelect={(id) => setSelectedStore(id)}
+                includeAll={!allowedStoreIds || visibleStores.length > 1}
+                allLabel={allowedStoreIds ? 'Todos mis locales' : 'Todos los locales'}
+              />
               <Button
                 mode="outlined"
                 onPress={() => setFiltersExpanded(v => !v)}
@@ -2166,6 +2169,7 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
                 setDepositFilter={(f) => { setDepositFilter(f); setCurrentPage(1); }}
                 includeAll={!allowedStoreIds || visibleStores.length > 1}
                 allLabel={allowedStoreIds ? 'Todos mis locales' : 'Todos los locales'}
+                onExtraDepositPress={() => setExtraDepositModalVisible(true)}
               />
               <BalanceCard transactions={filteredByDeposit} />
             </View>

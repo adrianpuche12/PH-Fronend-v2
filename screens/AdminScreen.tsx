@@ -106,7 +106,7 @@ type DisplayItem = Transaction | DepositGroup;
 const ITEMS_PER_PAGE = 5;
 
 const CollapsibleBalanceCard = ({ transactions }: { transactions: any[] }) => {
-  const [isCollapsed, setIsCollapsed] = React.useState(true);
+  const [isCollapsed, setIsCollapsed] = React.useState(false);
   const animatedHeight = useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
@@ -421,7 +421,7 @@ const AdminScreen = ({ allowedStoreIds }: { allowedStoreIds?: number[] } = {}) =
   const [showAdminExpenses, setShowAdminExpenses] = useState(false);
   const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [depositFilter, setDepositFilter] = useState<'all' | 'pending' | 'deposited'>('all');
-  const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [filtersExpanded, setFiltersExpanded] = useState(true);
 
   // Estados para el modal de edición
   const [editModalVisible, setEditModalVisible] = useState(false);

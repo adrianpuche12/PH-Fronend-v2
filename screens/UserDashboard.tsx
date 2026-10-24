@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, View, Text, StyleSheet, TouchableOpacity, useWindowDimensions, Modal, Image } from 'react-native';
+import { Animated, View, Text, StyleSheet, TouchableOpacity, useWindowDimensions, Modal, Image, ScrollView } from 'react-native';
 import { ActivityIndicator, IconButton } from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import axios from 'axios';
@@ -15,7 +15,7 @@ import DynamicFormScreen from './DynamicFormScreen';
 import AdminScreen from './AdminScreen';
 import SocioDashboardScreen from './SocioDashboardScreen';
 
-type UserScreen = 'sales' | 'inventory' | 'salesHistory' | 'operaciones' | 'socioDashboard';
+type UserScreen = 'home' | 'sales' | 'inventory' | 'salesHistory' | 'operaciones' | 'socioDashboard';
 
 interface UserMenuItem {
   key: UserScreen;
@@ -137,9 +137,8 @@ const UserContent = () => {
     hasPermission(permissions, item.permission) &&
     (!item.showWhen || item.showWhen({ storeIds }))
   );
-  const defaultScreen = filteredMenu[0]?.key ?? 'sales';
 
-  const [active, setActive]         = useState<UserScreen>(defaultScreen);
+  const [active, setActive]         = useState<UserScreen>('home');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [ready, setReady]           = useState(false);
 
@@ -198,6 +197,24 @@ const UserContent = () => {
           </View>
         )}
 
+        {active === 'home' && (
+          <ScrollView contentContainerStyle={styles.homeContainer}>
+            <Text style={styles.homeTitle}>¿Qué querés hacer?</Text>
+            <View style={styles.homeGrid}>
+              {filteredMenu.map(item => (
+                <TouchableOpacity
+                  key={item.key}
+                  style={styles.homeCard}
+                  onPress={() => setActive(item.key)}
+                  activeOpacity={0.75}
+                >
+                  <MaterialCommunityIcons name={item.icon} size={32} color={COLOR.brandDeep} />
+                  <Text style={styles.homeCardLabel}>{item.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+        )}
         {active === 'socioDashboard' && <SocioDashboardScreen />}
         {active === 'sales'          && <POSScreen hideStoreSelector />}
         {active === 'inventory'      && <InventoryScreen />}
@@ -330,4 +347,39 @@ const styles = StyleSheet.create({
   mobileDrawerLabelActive: { color: COLOR.ink, fontWeight: FONT_WEIGHT.bold as any },
   mobileDrawerLogout:   { flexDirection: 'row', alignItems: 'center', gap: SPACE.s3, padding: SPACE.s4, borderTopWidth: 1, borderTopColor: COLOR.border, marginTop: SPACE.s2 },
   mobileDrawerLogoutText: { fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.semibold as any, color: COLOR.expense },
+
+  homeContainer: {
+    padding: SPACE.s5,
+    flexGrow: 1,
+  },
+  homeTitle: {
+    fontSize: FONT_SIZE.h2,
+    fontWeight: FONT_WEIGHT.bold as any,
+    color: COLOR.ink,
+    marginBottom: SPACE.s4,
+    textAlign: 'center',
+  },
+  homeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACE.s3,
+    justifyContent: 'center',
+  },
+  homeCard: {
+    width: '45%',
+    backgroundColor: COLOR.surface,
+    borderRadius: RADIUS.r3,
+    paddingVertical: SPACE.s5,
+    paddingHorizontal: SPACE.s3,
+    alignItems: 'center',
+    gap: SPACE.s2,
+    borderWidth: 1,
+    borderColor: COLOR.border,
+  },
+  homeCardLabel: {
+    fontSize: FONT_SIZE.label,
+    fontWeight: FONT_WEIGHT.semibold as any,
+    color: COLOR.ink,
+    textAlign: 'center',
+  },
 });

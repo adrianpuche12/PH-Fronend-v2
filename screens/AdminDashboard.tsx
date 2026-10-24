@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, useWindowDimensions, TouchableOpacity, Text } from 'react-native';
+import { View, StyleSheet, useWindowDimensions, TouchableOpacity, Text, ScrollView } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Sidebar, { SidebarScreen } from '../components/Sidebar';
 import { StoreProvider } from '../context/StoreContext';
 import { UIPreferencesProvider } from '../context/UIPreferencesContext';
-import { COLOR, SPACE, FONT_SIZE, FONT_WEIGHT, CONTROL, BREAKPOINT } from '../theme';
+import { COLOR, SPACE, FONT_SIZE, FONT_WEIGHT, CONTROL, BREAKPOINT, RADIUS } from '../theme';
 import AdminScreen from './AdminScreen';
 import StoresScreen from './StoresScreen';
 import InventoryScreen from './InventoryScreen';
@@ -14,6 +14,7 @@ import DashboardScreen from './DashboardScreen';
 import UsersScreen from './UsersScreen';
 
 const SCREEN_TITLE: Record<SidebarScreen, string> = {
+  home:         'Inicio',
   dashboard:    'Dashboard',
   operations:   'Operaciones',
   inventory:    'Inventario',
@@ -23,11 +24,20 @@ const SCREEN_TITLE: Record<SidebarScreen, string> = {
   sales:        'Ventas',
 };
 
+const ADMIN_HOME_ITEMS: { key: SidebarScreen; label: string; icon: string }[] = [
+  { key: 'dashboard',    label: 'Dashboard',        icon: 'view-dashboard-outline' },
+  { key: 'salesHistory', label: 'Historial ventas',  icon: 'receipt-text-outline' },
+  { key: 'inventory',    label: 'Inventario',        icon: 'package-variant' },
+  { key: 'users',        label: 'Usuarios',          icon: 'account-multiple-outline' },
+  { key: 'operations',   label: 'Operaciones',       icon: 'cog-outline' },
+  { key: 'stores',       label: 'Locales',           icon: 'store-outline' },
+];
+
 const AdminDashboard = () => {
   const { width } = useWindowDimensions();
   const isTabletOrDesktop = width >= BREAKPOINT.tablet;
 
-  const [activeScreen, setActiveScreen] = useState<SidebarScreen>('dashboard');
+  const [activeScreen, setActiveScreen] = useState<SidebarScreen>('home');
   const [drawerOpen, setDrawerOpen]     = useState(false);
 
   return (
@@ -65,6 +75,24 @@ const AdminDashboard = () => {
           )}
 
           {/* Pantalla activa */}
+          {activeScreen === 'home' && (
+            <ScrollView contentContainerStyle={styles.homeContainer}>
+              <Text style={styles.homeTitle}>¿Qué querés hacer?</Text>
+              <View style={styles.homeGrid}>
+                {ADMIN_HOME_ITEMS.map(item => (
+                  <TouchableOpacity
+                    key={item.key}
+                    style={styles.homeCard}
+                    onPress={() => setActiveScreen(item.key)}
+                    activeOpacity={0.75}
+                  >
+                    <MaterialCommunityIcons name={item.icon} size={32} color={COLOR.brandDeep} />
+                    <Text style={styles.homeCardLabel}>{item.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+          )}
           {activeScreen === 'dashboard'    && <DashboardScreen />}
           {activeScreen === 'users'        && <UsersScreen />}
           {activeScreen === 'operations'   && <AdminScreen />}
@@ -94,6 +122,41 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     backgroundColor: COLOR.bg,
+  },
+
+  homeContainer: {
+    padding: SPACE.s5,
+    flexGrow: 1,
+  },
+  homeTitle: {
+    fontSize: FONT_SIZE.h2,
+    fontWeight: FONT_WEIGHT.bold as any,
+    color: COLOR.ink,
+    marginBottom: SPACE.s4,
+    textAlign: 'center',
+  },
+  homeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACE.s3,
+    justifyContent: 'center',
+  },
+  homeCard: {
+    width: '45%',
+    backgroundColor: COLOR.surface,
+    borderRadius: RADIUS.r3,
+    paddingVertical: SPACE.s5,
+    paddingHorizontal: SPACE.s3,
+    alignItems: 'center',
+    gap: SPACE.s2,
+    borderWidth: 1,
+    borderColor: COLOR.border,
+  },
+  homeCardLabel: {
+    fontSize: FONT_SIZE.label,
+    fontWeight: FONT_WEIGHT.semibold as any,
+    color: COLOR.ink,
+    textAlign: 'center',
   },
   content: {
     flex: 1,

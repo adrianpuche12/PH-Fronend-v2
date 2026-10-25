@@ -607,9 +607,9 @@ const AdminScreen = ({ allowedStoreIds }: { allowedStoreIds?: number[] } = {}) =
         return newOp;
       });
 
-      const transactionsData: Transaction[] = transRaw.map((tx: Transaction) =>
-        tx.gastoAdminId != null ? { ...tx, type: 'GASTO_ADMIN' as const } : tx
-      );
+      const transactionsData: Transaction[] = transRaw
+        .filter((tx: Transaction) => tx.gastoAdminId == null)
+        .map((tx: Transaction) => tx);
 
       const merged = [...operationsData, ...transactionsData];
       const filtered = (allowedStoreIds && allowedStoreIds.length > 0)

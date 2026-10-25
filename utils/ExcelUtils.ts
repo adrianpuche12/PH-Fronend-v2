@@ -203,22 +203,37 @@ export const exportToExcel = async (transactions: Transaction[], fileName?: stri
       });
     });
 
-    // ── Fila de totales ────────────────────────────────────────────────────────
-    const totalAmount = transactions.reduce((sum, tx) => sum + tx.amount, 0);
-    const totalsRow = worksheet.addRow([
-      'TOTAL',
-      totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-      '', '', '', '', '', '', '',
-    ]);
-    totalsRow.height = 24;
-    totalsRow.eachCell({ includeEmpty: true }, (cell) => {
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5C430' } };
-      cell.font = { bold: true, size: 11, color: { argb: 'FF1A1A1A' } };
-      cell.border = {
-        top:    { style: 'medium', color: { argb: 'FFD4AC0D' } },
-        bottom: { style: 'medium', color: { argb: 'FFD4AC0D' } },
-      };
-      cell.alignment = { vertical: 'middle' };
+    // ── Filas de resumen ───────────────────────────────────────────────────────
+    const INCOME_TYPES   = new Set(['income', 'CLOSING', 'DEPOSIT_GROUP']);
+    const LOCAL_EXPENSES = new Set(['expense', 'SALARY', 'SUPPLIER']);
+    const ADMIN_EXPENSES = new Set(['GASTO_ADMIN']);
+
+    const totalIngresos       = transactions.filter(tx => INCOME_TYPES.has(tx.type)).reduce((s, tx) => s + tx.amount, 0);
+    const totalEgresosLocales = transactions.filter(tx => LOCAL_EXPENSES.has(tx.type)).reduce((s, tx) => s + tx.amount, 0);
+    const totalEgresosAdmin   = transactions.filter(tx => ADMIN_EXPENSES.has(tx.type)).reduce((s, tx) => s + tx.amount, 0);
+    const gananciaNeta        = totalIngresos - totalEgresosLocales - totalEgresosAdmin;
+
+    const fmt = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const summaryLines: Array<[string, string, string]> = [
+      ['INGRESOS',                fmt(totalIngresos),       'FFF5C430'],
+      ['EGRESOS LOCALES',         fmt(totalEgresosLocales), 'FFF5C430'],
+      ['EGRESOS ADMINISTRATIVOS', fmt(totalEgresosAdmin),   'FFF5C430'],
+      ['GANANCIA NETA',           fmt(gananciaNeta),        gananciaNeta >= 0 ? 'FF90EE90' : 'FFFFB3B3'],
+    ];
+
+    summaryLines.forEach(([label, value, bgColor], idx) => {
+      const summaryRow = worksheet.addRow([label, value, '', '', '', '', '', '', '']);
+      summaryRow.height = 24;
+      summaryRow.eachCell({ includeEmpty: true }, (cell) => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } };
+        cell.font = { bold: true, size: 11, color: { argb: 'FF1A1A1A' } };
+        cell.border = {
+          top:    { style: idx === 0 ? 'medium' : 'thin', color: { argb: 'FFD4AC0D' } },
+          bottom: { style: idx === summaryLines.length - 1 ? 'medium' : 'thin', color: { argb: 'FFD4AC0D' } },
+        };
+        cell.alignment = { vertical: 'middle' };
+      });
     });
 
     const actualFileName = fileName || `Control de Gastos ${format(new Date(), 'MMMM yyyy')}`;

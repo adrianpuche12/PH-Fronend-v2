@@ -320,17 +320,19 @@ const CompactDateFilters = ({
           />
         </View>
 
-        {/* Depósito extraordinario */}
-        <Button
-          mode="contained"
-          onPress={onExtraDepositPress}
-          buttonColor={COLOR.brand}
-          textColor={COLOR.white}
-          labelStyle={{ fontSize: 12 }}
-          icon="bank-plus"
-        >
-          Dep. extraordinario
-        </Button>
+        {/* Depósito extraordinario — en mobile ya está en el header fijo */}
+        {isLargeScreen && (
+          <Button
+            mode="contained"
+            onPress={onExtraDepositPress}
+            buttonColor={COLOR.brand}
+            textColor={COLOR.white}
+            labelStyle={{ fontSize: 12 }}
+            icon="bank-plus"
+          >
+            Dep. extraordinario
+          </Button>
+        )}
 
         {/* Botones — una fila en desktop, grid 2 col en mobile */}
         <View style={{ flexDirection: 'row', flexWrap: isLargeScreen ? 'nowrap' : 'wrap', gap: 8, paddingHorizontal: 4, marginTop: 4 }}>
@@ -2063,6 +2065,19 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
               </TouchableOpacity>
             ))}
           </View>
+
+          {/* Selector de local — siempre visible en mobile cuando hay más de un local */}
+          {(!allowedStoreIds || visibleStores.length > 1) && (
+            <View style={{ paddingHorizontal: 12, paddingBottom: 8 }}>
+              <StoreDropdown
+                stores={visibleStores}
+                selectedId={selectedStore}
+                onSelect={(id) => { setSelectedStore(id); fetchData(startDate, endDate, id); }}
+                includeAll={!allowedStoreIds || visibleStores.length > 1}
+                allLabel={allowedStoreIds ? 'Todos mis locales' : 'Todos los locales'}
+              />
+            </View>
+          )}
 
           {/* Filtros colapsables con scroll */}
           {filtersExpanded && (

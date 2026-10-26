@@ -218,11 +218,15 @@ const UserContent = () => {
         {active === 'socioDashboard' && <SocioDashboardScreen />}
         {active === 'sales'          && <POSScreen hideStoreSelector />}
         {active === 'inventory'      && <InventoryScreen />}
-        {active === 'salesHistory'   && <SalesHistoryScreen usernameFilter={userName ?? undefined} />}
+        {active === 'salesHistory'   && (
+          <SalesHistoryScreen
+            usernameFilter={permissions.includes('SALES_HISTORY') && !permissions.includes('POS') ? undefined : (userName ?? undefined)}
+          />
+        )}
         {active === 'operaciones'    && (
           storeIds.length > 0
             ? <AdminScreen allowedStoreIds={storeIds} />
-            : <DynamicFormScreen />
+            : <AdminScreen />
         )}
       </View>
 

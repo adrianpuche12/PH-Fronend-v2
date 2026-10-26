@@ -144,6 +144,12 @@ export default function UsersScreen() {
   const [savingPerms, setSavingPerms]           = useState(false);
   const [permsError, setPermsError]             = useState('');
 
+  // Modal acceso a locales
+  const [storeAccessModal, setStoreAccessModal]     = useState<AppUser | null>(null);
+  const [editStoreIds, setEditStoreIds]             = useState<number[]>([]);
+  const [savingStoreAccess, setSavingStoreAccess]   = useState(false);
+  const [storeAccessError, setStoreAccessError]     = useState('');
+
   // ConfirmDialog
   const [confirmDlg, setConfirmDlg] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
   const askConfirm = (title: string, message: string, onConfirm: () => void) =>
@@ -308,6 +314,21 @@ export default function UsersScreen() {
     } finally { setSavingPerms(false); }
   };
 
+  // ── Acceso a locales ──────────────────────────────────────────────────────
+
+  const handleStoreAccessSave = async () => {
+    setSavingStoreAccess(true);
+    setStoreAccessError('');
+    try {
+      await axios.put(`${API}/api/v2/users/${storeAccessModal!.id}/store-access`, { storeIds: editStoreIds });
+      setSnackbar(`Acceso a locales de ${storeAccessModal!.fullName} actualizado`);
+      setStoreAccessModal(null);
+      loadAll();
+    } catch (e: any) {
+      setStoreAccessError(e.response?.data?.error || 'No se pudo actualizar el acceso a locales.');
+    } finally { setSavingStoreAccess(false); }
+  };
+
   // ── Eliminar ───────────────────────────────────────────────────────────────
 
   const handleDelete = (user: AppUser) => {
@@ -395,6 +416,9 @@ export default function UsersScreen() {
                   {isExternal(user.role as ProfileType) && (
                     <IconButton icon="shield-edit" size={20} iconColor={COLOR.brand} onPress={() => { setPermissionsModal(user); setEditPerms(user.permissions ?? []); setPermsError(''); }} style={{ margin: 0 }} />
                   )}
+                  {isExternal(user.role as ProfileType) && (
+                    <IconButton icon="map-marker-multiple" size={20} iconColor={COLOR.info} onPress={() => { setStoreAccessModal(user); setEditStoreIds(user.storeIds ?? []); setStoreAccessError(''); }} style={{ margin: 0 }} />
+                  )}
                   <IconButton icon="lock-reset" size={20} iconColor={COLOR.ink2} onPress={() => { setResetModal(user); setNewPassword(''); }} style={{ margin: 0 }} />
                   <IconButton icon="delete" size={20} iconColor={COLOR.expense} onPress={() => handleDelete(user)} style={{ margin: 0 }} />
                 </View>
@@ -433,6 +457,9 @@ export default function UsersScreen() {
                   )}
                   {isExternal(user.role as ProfileType) && (
                     <IconButton icon="shield-edit" size={22} iconColor={COLOR.brand} onPress={() => { setPermissionsModal(user); setEditPerms(user.permissions ?? []); setPermsError(''); }} style={{ margin: 0 }} />
+                  )}
+                  {isExternal(user.role as ProfileType) && (
+                    <IconButton icon="map-marker-multiple" size={22} iconColor={COLOR.info} onPress={() => { setStoreAccessModal(user); setEditStoreIds(user.storeIds ?? []); setStoreAccessError(''); }} style={{ margin: 0 }} />
                   )}
                   <IconButton icon="lock-reset" size={22} iconColor={COLOR.ink2} onPress={() => { setResetModal(user); setNewPassword(''); }} style={{ margin: 0 }} />
                   <IconButton icon="delete" size={22} iconColor={COLOR.expense} onPress={() => handleDelete(user)} style={{ margin: 0 }} />
@@ -715,6 +742,48 @@ export default function UsersScreen() {
             <View style={styles.modalActions}>
               <Button mode="outlined" onPress={() => { setPermissionsModal(null); setPermsError(''); }} style={{ flex: 1 }}>Cancelar</Button>
               <Button mode="contained" onPress={handlePermissionsSave} loading={savingPerms} buttonColor={COLOR.brand} textColor={COLOR.inkOnBrand} style={{ flex: 1 }}>Guardar</Button>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Modal acceso a locales ── */}
+      <Modal visible={!!storeAccessModal} transparent animationType="fade" onRequestClose={() => { setStoreAccessModal(null); setStoreAccessError(''); }}>
+        <View style={styles.overlay}>
+          <View style={[styles.modal, { maxWidth: 420 }]}>
+            <Text style={styles.modalTitle}>Acceso a locales</Text>
+            <Text style={styles.modalSub}>{storeAccessModal?.fullName} · {ROLE_LABEL[storeAccessModal?.role ?? ''] ?? storeAccessModal?.role}</Text>
+            <Text style={[styles.fieldHint, { marginBottom: 8 }]}>Dejalo vacío para dar acceso a todos los locales.</Text>
+
+            {stores.map(s => {
+              const selected = editStoreIds.includes(s.id);
+              return (
+                <TouchableOpacity
+                  key={s.id}
+                  style={styles.permRow}
+                  onPress={() => setEditStoreIds(prev =>
+                    selected ? prev.filter(id => id !== s.id) : [...prev, s.id]
+                  )}
+                  activeOpacity={0.7}
+                >
+                  <MaterialCommunityIcons name="store-outline" size={20} color={selected ? COLOR.info : COLOR.inkMute} style={{ width: 28 }} />
+                  <Text style={[styles.permLabel, selected && { color: COLOR.info, fontWeight: FONT_WEIGHT.semibold as any }]}>{s.name}</Text>
+                  <View style={[styles.permToggle, selected && { backgroundColor: COLOR.info }]}>
+                    <View style={[styles.permThumb, selected && styles.permThumbOn]} />
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+
+            {!!storeAccessError && (
+              <View style={styles.modalErrorBanner}>
+                <MaterialCommunityIcons name="alert-circle-outline" size={18} color={COLOR.expense} />
+                <Text style={styles.modalErrorText}>{storeAccessError}</Text>
+              </View>
+            )}
+            <View style={styles.modalActions}>
+              <Button mode="outlined" onPress={() => { setStoreAccessModal(null); setStoreAccessError(''); }} style={{ flex: 1 }}>Cancelar</Button>
+              <Button mode="contained" onPress={handleStoreAccessSave} loading={savingStoreAccess} buttonColor={COLOR.info} textColor={COLOR.white} style={{ flex: 1 }}>Guardar</Button>
             </View>
           </View>
         </View>

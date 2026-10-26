@@ -75,16 +75,24 @@ const MENU_USER: MenuItem[] = [
   { key: 'inventory',    label: 'Inventario', icon: 'package-variant' },
 ];
 
+const buildUserMenu = (permissions: string[]): MenuItem[] => {
+  const items: MenuItem[] = [...MENU_USER];
+  if (permissions.includes('SALES_HISTORY')) {
+    items.push({ key: 'salesHistory', label: 'Historial ventas', icon: 'receipt-text-outline' });
+  }
+  return items;
+};
+
 // ─── Sidebar desktop colapsable ───────────────────────────────────────────────
 
 const SidebarDesktop = ({ active, onSelect }: {
   active: SidebarScreen;
   onSelect: (s: SidebarScreen) => void;
 }) => {
-  const { logout, roles } = useAuth();
+  const { logout, roles, permissions } = useAuth();
   const { sidebarCollapsed, toggleSidebar } = useUIPreferences();
   const isAdmin = roles.includes('admin');
-  const menu = isAdmin ? MENU_ADMIN : MENU_USER;
+  const menu = isAdmin ? MENU_ADMIN : buildUserMenu(permissions);
 
   // Animación de ancho
   const animW = useRef(new Animated.Value(
@@ -201,9 +209,9 @@ const SidebarMobile = ({ active, onSelect, visible, onClose }: {
   visible: boolean;
   onClose: () => void;
 }) => {
-  const { logout, roles } = useAuth();
+  const { logout, roles, permissions } = useAuth();
   const isAdmin = roles.includes('admin');
-  const menu = isAdmin ? MENU_ADMIN : MENU_USER;
+  const menu = isAdmin ? MENU_ADMIN : buildUserMenu(permissions);
 
   const { userName } = useAuth();
 

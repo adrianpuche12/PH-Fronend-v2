@@ -226,7 +226,7 @@ const UserContent = () => {
         {active === 'operaciones'    && (
           storeIds.length > 0
             ? <AdminScreen allowedStoreIds={storeIds} />
-            : <AdminScreen />
+            : <DynamicFormScreen />
         )}
       </View>
 

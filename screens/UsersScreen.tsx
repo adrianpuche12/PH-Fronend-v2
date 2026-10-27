@@ -413,9 +413,7 @@ export default function UsersScreen() {
                   {!isExternal(user.role as ProfileType) && (
                     <IconButton icon="store-edit" size={20} iconColor={COLOR.info} onPress={() => { setReassignModal(user); setReassignStoreId(String(user.storeId)); }} style={{ margin: 0 }} />
                   )}
-                  {isExternal(user.role as ProfileType) && (
-                    <IconButton icon="shield-edit" size={20} iconColor={COLOR.brand} onPress={() => { setPermissionsModal(user); setEditPerms(user.permissions ?? []); setPermsError(''); }} style={{ margin: 0 }} />
-                  )}
+                  <IconButton icon="shield-edit" size={20} iconColor={COLOR.brand} onPress={() => { setPermissionsModal(user); setEditPerms(user.permissions ?? []); setPermsError(''); }} style={{ margin: 0 }} />
                   {isExternal(user.role as ProfileType) && (
                     <IconButton icon="map-marker-multiple" size={20} iconColor={COLOR.info} onPress={() => { setStoreAccessModal(user); setEditStoreIds(user.storeIds ?? []); setStoreAccessError(''); }} style={{ margin: 0 }} />
                   )}
@@ -455,9 +453,7 @@ export default function UsersScreen() {
                   {!isExternal(user.role as ProfileType) && (
                     <IconButton icon="store-edit" size={22} iconColor={COLOR.info} onPress={() => { setReassignModal(user); setReassignStoreId(String(user.storeId)); }} style={{ margin: 0 }} />
                   )}
-                  {isExternal(user.role as ProfileType) && (
-                    <IconButton icon="shield-edit" size={22} iconColor={COLOR.brand} onPress={() => { setPermissionsModal(user); setEditPerms(user.permissions ?? []); setPermsError(''); }} style={{ margin: 0 }} />
-                  )}
+                  <IconButton icon="shield-edit" size={22} iconColor={COLOR.brand} onPress={() => { setPermissionsModal(user); setEditPerms(user.permissions ?? []); setPermsError(''); }} style={{ margin: 0 }} />
                   {isExternal(user.role as ProfileType) && (
                     <IconButton icon="map-marker-multiple" size={22} iconColor={COLOR.info} onPress={() => { setStoreAccessModal(user); setEditStoreIds(user.storeIds ?? []); setStoreAccessError(''); }} style={{ margin: 0 }} />
                   )}

@@ -3,7 +3,8 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, useWindowDimensions, RefreshControl, Modal, Image,
 } from 'react-native';
-import { TextInput, IconButton } from 'react-native-paper';
+import { TextInput, IconButton, Button } from 'react-native-paper';
+import { ImageService } from '../utils/ImageService';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLOR, SPACE, RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW } from '../theme';
 import { formatHnl, formatDate, formatTime } from '../utils/format';
@@ -85,6 +86,7 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
   const [editForm, setEditForm]           = useState<Record<string, string>>({});
   const [editSaving, setEditSaving]       = useState(false);
   const [editError, setEditError]         = useState('');
+  const [editImage, setEditImage]         = useState<{uri: string; name: string; type: string} | null>(null);
 
   // ── Modal eliminar cierre ─────────────────────────────────────────────────
   const [deletingShift, setDeletingShift]   = useState<ShiftRecord | null>(null);
@@ -121,6 +123,7 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
       notes:               shift.notes ?? '',
     });
     setEditError('');
+    setEditImage(null);
     setEditingShift(shift);
   };
 
@@ -131,6 +134,17 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
     const parseNum = (v: string) => v.trim() === '' ? null : parseFloat(v.replace(',', '.'));
     const parseDate = (v: string) => v.trim() === '' ? null : v.trim().replace(' ', 'T');
     try {
+      let imageUri: string | null = editingShift.imageUri ?? null;
+      if (editImage) {
+        const uploadResult = await ImageService.uploadImage(
+          editImage.uri, ImageService.generateFileName('CIERRE'), 'comprobantes'
+        );
+        if (!uploadResult.success) {
+          setEditError('No se pudo subir el comprobante.');
+          return;
+        }
+        imageUri = uploadResult.imageUri ?? null;
+      }
       const payload: Record<string, unknown> = {
         username:           editForm.username.trim() || null,
         openedAt:           parseDate(editForm.openedAt),
@@ -141,7 +155,7 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
         totalShiftExpenses: parseNum(editForm.totalShiftExpenses),
         declaredCashAmount: parseNum(editForm.declaredCashAmount),
         notes:              editForm.notes.trim() || null,
-        imageUri:           editingShift.imageUri ?? null,
+        imageUri,
       };
       await axios.put(`${API}/api/v2/shifts/${editingShift.id}/edit`, payload);
       setEditingShift(null);
@@ -517,6 +531,35 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
                 onChangeText={v => setEditForm(p => ({ ...p, notes: v }))}
                 mode="outlined" style={styles.editInput} multiline numberOfLines={3}
                 activeOutlineColor={COLOR.brand} />
+
+              <View style={{ marginTop: SPACE.s2, marginBottom: SPACE.s1 }}>
+                <Text style={{ fontSize: 13, color: COLOR.ink2, marginBottom: 6 }}>Comprobante (opcional)</Text>
+                {editImage ? (
+                  <View style={{ alignItems: 'center', gap: 8 }}>
+                    <Image source={{ uri: editImage.uri }} style={{ width: 120, height: 120, borderRadius: 8, borderWidth: 1, borderColor: COLOR.border }} />
+                    <Button mode="outlined" onPress={() => setEditImage(null)} textColor={COLOR.expense}>Quitar imagen</Button>
+                  </View>
+                ) : editingShift?.imageUri ? (
+                  <View style={{ alignItems: 'center', gap: 8 }}>
+                    <Image source={{ uri: editingShift.imageUri }} style={{ width: 120, height: 120, borderRadius: 8, borderWidth: 1, borderColor: COLOR.border }} />
+                    <Button mode="outlined" icon="camera" onPress={async () => {
+                      const result = await ImageService.selectImage();
+                      if (!result.canceled && result.assets?.[0]) {
+                        const a = result.assets[0];
+                        setEditImage({ uri: a.uri, name: a.name || ImageService.generateFileName('CIERRE'), type: a.mimeType || 'image/jpeg' });
+                      }
+                    }}>Cambiar comprobante</Button>
+                  </View>
+                ) : (
+                  <Button mode="outlined" icon="camera" onPress={async () => {
+                    const result = await ImageService.selectImage();
+                    if (!result.canceled && result.assets?.[0]) {
+                      const a = result.assets[0];
+                      setEditImage({ uri: a.uri, name: a.name || ImageService.generateFileName('CIERRE'), type: a.mimeType || 'image/jpeg' });
+                    }
+                  }}>Seleccionar comprobante</Button>
+                )}
+              </View>
 
               {!!editError && (
                 <View style={styles.editErrorBanner}>

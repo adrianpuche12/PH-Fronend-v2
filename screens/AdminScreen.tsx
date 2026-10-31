@@ -474,6 +474,7 @@ const AdminScreen = ({ allowedStoreIds }: { allowedStoreIds?: number[] } = {}) =
   const [depositEditAmount, setDepositEditAmount] = useState('');
   const [depositEditNotes, setDepositEditNotes] = useState('');
   const [depositEditImage, setDepositEditImage] = useState<{uri: string; name: string; type: string} | null>(null);
+  const [depositExistingImageUri, setDepositExistingImageUri] = useState<string | null>(null);
   const [depositEditSaving, setDepositEditSaving] = useState(false);
   const [depositEditDatePickerVisible, setDepositEditDatePickerVisible] = useState(false);
   const [depositDeleteModalVisible, setDepositDeleteModalVisible] = useState(false);
@@ -968,6 +969,7 @@ const AdminScreen = ({ allowedStoreIds }: { allowedStoreIds?: number[] } = {}) =
     setDepositEditAmount(item.amount?.toString() ?? '0');
     setDepositEditNotes('');
     setDepositEditImage(null);
+    setDepositExistingImageUri(item.imageUri ?? null);
     // Reutiliza el modal de edición existente con un Transaction ficticio
     setEditingTransaction({ type: 'DEPOSIT_GROUP', id: item.id, amount: item.amount } as any);
     setEditModalVisible(true);
@@ -1216,6 +1218,17 @@ const renderEditFields = () => {
               <View style={{ alignItems: 'center', gap: 8 }}>
                 <Image source={{ uri: depositEditImage.uri }} style={{ width: 100, height: 100, borderRadius: 8, borderWidth: 1, borderColor: COLOR.border }} />
                 <Button mode="outlined" onPress={() => setDepositEditImage(null)} textColor={COLOR.expense}>Quitar imagen</Button>
+              </View>
+            ) : depositExistingImageUri ? (
+              <View style={{ alignItems: 'center', gap: 8 }}>
+                <Image source={{ uri: depositExistingImageUri }} style={{ width: 100, height: 100, borderRadius: 8, borderWidth: 1, borderColor: COLOR.border }} />
+                <Button mode="outlined" icon="camera" onPress={async () => {
+                  const result = await ImageService.selectImage();
+                  if (!result.canceled && result.assets?.[0]) {
+                    const a = result.assets[0];
+                    setDepositEditImage({ uri: a.uri, name: a.name || ImageService.generateFileName('DEP'), type: a.mimeType || 'image/jpeg' });
+                  }
+                }}>Cambiar comprobante</Button>
               </View>
             ) : (
               <Button

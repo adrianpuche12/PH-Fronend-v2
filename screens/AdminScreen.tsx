@@ -2044,6 +2044,19 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
             </View>
           </View>
 
+          {/* Selector de local — siempre visible en mobile cuando hay más de un local */}
+          {(!allowedStoreIds || visibleStores.length > 1) && (
+            <View style={{ paddingHorizontal: 12, paddingBottom: 8 }}>
+              <StoreDropdown
+                stores={visibleStores}
+                selectedId={selectedStore}
+                onSelect={(id) => { setSelectedStore(id); fetchData(startDate, endDate, id); }}
+                includeAll={!allowedStoreIds || visibleStores.length > 1}
+                allLabel={allowedStoreIds ? 'Todos mis locales' : 'Todos los locales'}
+              />
+            </View>
+          )}
+
           {/* Filtro tipo: siempre visible */}
           <View style={{ flexDirection: 'row', marginHorizontal: 12, marginBottom: 8, borderRadius: RADIUS.r2, overflow: 'hidden', borderWidth: 1, borderColor: COLOR.border }}>
             {([
@@ -2065,19 +2078,6 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
               </TouchableOpacity>
             ))}
           </View>
-
-          {/* Selector de local — siempre visible en mobile cuando hay más de un local */}
-          {(!allowedStoreIds || visibleStores.length > 1) && (
-            <View style={{ paddingHorizontal: 12, paddingBottom: 8 }}>
-              <StoreDropdown
-                stores={visibleStores}
-                selectedId={selectedStore}
-                onSelect={(id) => { setSelectedStore(id); fetchData(startDate, endDate, id); }}
-                includeAll={!allowedStoreIds || visibleStores.length > 1}
-                allLabel={allowedStoreIds ? 'Todos mis locales' : 'Todos los locales'}
-              />
-            </View>
-          )}
 
           {/* Filtros colapsables con scroll */}
           {filtersExpanded && (

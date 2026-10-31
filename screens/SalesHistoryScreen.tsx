@@ -141,6 +141,7 @@ export default function SalesHistoryScreen({ usernameFilter }: Props) {
         totalShiftExpenses: parseNum(editForm.totalShiftExpenses),
         declaredCashAmount: parseNum(editForm.declaredCashAmount),
         notes:              editForm.notes.trim() || null,
+        imageUri:           editingShift.imageUri ?? null,
       };
       await axios.put(`${API}/api/v2/shifts/${editingShift.id}/edit`, payload);
       setEditingShift(null);

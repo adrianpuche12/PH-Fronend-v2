@@ -895,7 +895,7 @@ const InventoryScreen = () => {
             ) : filteredByStock.length === 0 ? (
               <Text style={styles.empty}>No hay productos para mostrar.</Text>
             ) : (
-              <ScrollView key={`${stockFilter}-${selectedCat ?? 'all'}`}>
+              <ScrollView key={`${stockFilter}-${selectedCat ?? 'all'}-${search}`}>
                 {/* Header tabla (solo desktop) */}
                 {isDesktop && (
                   <View style={[styles.row, styles.rowHeader]}>

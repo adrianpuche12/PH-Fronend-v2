@@ -555,7 +555,7 @@ const AdminScreen = ({ allowedStoreIds }: { allowedStoreIds?: number[] } = {}) =
       let adminExpensesData: Transaction[] = [];
       if (response.ok) adminExpensesData = await response.json();
       if (allowedStoreIds && allowedStoreIds.length > 0) {
-        adminExpensesData = adminExpensesData.filter(t => t.storeId != null && allowedStoreIds.includes(t.storeId));
+        adminExpensesData = adminExpensesData.filter(t => { const sid = t.storeId ?? t.store?.id; return sid != null && allowedStoreIds.includes(sid); });
       }
 
       hasLoadedRef.current = true;
@@ -616,7 +616,7 @@ const AdminScreen = ({ allowedStoreIds }: { allowedStoreIds?: number[] } = {}) =
 
       const merged = [...operationsData, ...transactionsData];
       const filtered = (allowedStoreIds && allowedStoreIds.length > 0)
-        ? merged.filter(t => t.storeId != null && allowedStoreIds.includes(t.storeId))
+        ? merged.filter(t => { const sid = t.storeId ?? t.store?.id; return sid != null && allowedStoreIds.includes(sid); })
         : merged;
       const sortedTransactions = filtered.sort((a, b) => {
         if (!a.date) return 1;

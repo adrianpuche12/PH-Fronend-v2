@@ -134,6 +134,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
   const [summary, setSummary]               = useState<DailySummary | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [closingDone, setClosingDone]       = useState(false);
+  const [closingLoading, setClosingLoading] = useState(false);
 
   // Apertura — fondo inicial y local elegido (admin)
   const [openingCash, setOpeningCash]           = useState('');
@@ -558,7 +559,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
   };
 
   const handleConfirmClosing = async () => {
-    if (!shift) return;
+    if (!shift || closingLoading) return;
     if (declaredCash.trim() === '') {
       setClosingModalError('Ingresá el efectivo que tenés en mano para continuar.');
       return;
@@ -569,6 +570,7 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
       return;
     }
     setClosingModalError('');
+    setClosingLoading(true);
     console.log('[DEBUG-closing] imageUri before POST:', closingImageUri);
     try {
       const res = await axios.post(`${API}/api/v2/shifts/${shift.id}/closing`, {
@@ -582,6 +584,8 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
       setClosingDone(true);
     } catch (e: any) {
       setClosingModalError(e.response?.data?.error || 'No se pudo confirmar el cierre. Intentá de nuevo.');
+    } finally {
+      setClosingLoading(false);
     }
   };
 
@@ -1412,7 +1416,8 @@ export default function POSScreen({ hideStoreSelector = false }: { hideStoreSele
                     textColor={COLOR.inkOnBrand}
                     style={{ flex: 1 }}
                     onPress={handleConfirmClosing}
-                    disabled={uploadingClosingImg}
+                    loading={closingLoading}
+                    disabled={uploadingClosingImg || closingLoading}
                   >
                     Confirmar cierre
                   </Button>

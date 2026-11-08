@@ -85,14 +85,18 @@ const buildUserMenu = (permissions: string[]): MenuItem[] => {
 
 // ─── Sidebar desktop colapsable ───────────────────────────────────────────────
 
+const RESTRICTED_SCREENS: SidebarScreen[] = ['users', 'stores'];
+
 const SidebarDesktop = ({ active, onSelect }: {
   active: SidebarScreen;
   onSelect: (s: SidebarScreen) => void;
 }) => {
-  const { logout, roles, permissions } = useAuth();
+  const { logout, roles, permissions, appUserRole } = useAuth();
   const { sidebarCollapsed, toggleSidebar } = useUIPreferences();
   const isAdmin = roles.includes('admin');
-  const menu = isAdmin ? MENU_ADMIN : buildUserMenu(permissions);
+  const isRestricted = appUserRole === 'SOCIO' || appUserRole === 'CONTADOR';
+  const adminMenu = isRestricted ? MENU_ADMIN.filter(m => !RESTRICTED_SCREENS.includes(m.key)) : MENU_ADMIN;
+  const menu = isAdmin ? adminMenu : buildUserMenu(permissions);
 
   // Animación de ancho
   const animW = useRef(new Animated.Value(
@@ -209,11 +213,11 @@ const SidebarMobile = ({ active, onSelect, visible, onClose }: {
   visible: boolean;
   onClose: () => void;
 }) => {
-  const { logout, roles, permissions } = useAuth();
+  const { logout, roles, permissions, appUserRole, userName } = useAuth();
   const isAdmin = roles.includes('admin');
-  const menu = isAdmin ? MENU_ADMIN : buildUserMenu(permissions);
-
-  const { userName } = useAuth();
+  const isRestricted = appUserRole === 'SOCIO' || appUserRole === 'CONTADOR';
+  const adminMenu = isRestricted ? MENU_ADMIN.filter(m => !RESTRICTED_SCREENS.includes(m.key)) : MENU_ADMIN;
+  const menu = isAdmin ? adminMenu : buildUserMenu(permissions);
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>

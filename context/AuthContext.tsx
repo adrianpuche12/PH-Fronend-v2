@@ -17,6 +17,7 @@ interface AuthState {
   permissions: string[];
   storeId: number | null;
   storeIds: number[];
+  appUserRole: string | null;
   loading: boolean;
   error: string | null;
 }
@@ -117,6 +118,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     permissions: [],
     storeId: null,
     storeIds: [],
+    appUserRole: null,
     loading: true,
     error: null,
   });
@@ -237,6 +239,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let permissions: string[] = [];
       let storeId: number | null = null;
       let storeIds: number[] = [];
+      let appUserRole: string | null = null;
       if (!isAdmin) {
         try {
           const profileResp = await axios.get(
@@ -247,6 +250,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           permissions  = profileResp.data?.permissions  ?? [];
           storeId      = profileResp.data?.storeId      ?? null;
           storeIds     = profileResp.data?.storeIds     ?? [];
+          appUserRole  = profileResp.data?.role         ?? null;
         } catch (profileErr: any) {
           const profileStatus: number = profileErr.response?.status ?? 0;
           if (profileStatus === 403 &&
@@ -261,6 +265,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           err.suspended = true;
           throw err;
         }
+      } else {
+        // Para admins en Keycloak: obtener su rol de negocio (ADMIN/SOCIO/CONTADOR)
+        // 404 → no tiene perfil en DB (ej: admin principal) → queda null = acceso total
+        try {
+          const profileResp = await axios.get(
+            `${REACT_APP_API_URL}/api/v2/users/by-username/${encodeURIComponent(userName.toLowerCase())}`,
+            { timeout: 15000, signal }
+          );
+          appUserRole = profileResp.data?.role ?? null;
+        } catch {
+          // Sin perfil en DB o error de red → acceso total (comportamiento anterior)
+        }
       }
 
       await Storage.multiSet([
@@ -274,6 +290,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ['permissions', JSON.stringify(permissions)],
         ['storeId', storeId !== null ? String(storeId) : ''],
         ['storeIds', JSON.stringify(storeIds)],
+        ['appUserRole', appUserRole ?? ''],
       ]);
 
       setAxiosAuthHeader(access_token);
@@ -288,6 +305,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         permissions,
         storeId,
         storeIds,
+        appUserRole,
         loading: false,
         error: null,
       });
@@ -331,6 +349,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         'permissions',
         'storeId',
         'storeIds',
+        'appUserRole',
       ]);
 
       setAxiosAuthHeader(null);
@@ -345,6 +364,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         permissions: [],
         storeId: null,
         storeIds: [],
+        appUserRole: null,
         loading: false,
         error: null,
       });
@@ -372,6 +392,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           'permissions',
           'storeId',
           'storeIds',
+          'appUserRole',
         ]);
 
         const storageMap = Object.fromEntries(storageData);
@@ -404,6 +425,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 permissions: storageMap.permissions ? JSON.parse(storageMap.permissions) : [],
                 storeId: storageMap.storeId ? Number(storageMap.storeId) : null,
                 storeIds: storageMap.storeIds ? JSON.parse(storageMap.storeIds) : [],
+                appUserRole: storageMap.appUserRole || null,
                 loading: false,
                 error: null,
               });

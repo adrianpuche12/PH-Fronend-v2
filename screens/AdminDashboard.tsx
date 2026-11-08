@@ -12,6 +12,7 @@ import POSScreen from './POSScreen';
 import SalesHistoryScreen from './SalesHistoryScreen';
 import DashboardScreen from './DashboardScreen';
 import UsersScreen from './UsersScreen';
+import { useAuth } from '../context/AuthContext';
 
 const SCREEN_TITLE: Record<SidebarScreen, string> = {
   home:         'Inicio',
@@ -36,6 +37,11 @@ const ADMIN_HOME_ITEMS: { key: SidebarScreen; label: string; icon: string }[] = 
 const AdminDashboard = () => {
   const { width } = useWindowDimensions();
   const isTabletOrDesktop = width >= BREAKPOINT.tablet;
+  const { appUserRole } = useAuth();
+  const isRestricted = appUserRole === 'SOCIO' || appUserRole === 'CONTADOR';
+  const homeItems = isRestricted
+    ? ADMIN_HOME_ITEMS.filter(i => i.key !== 'users' && i.key !== 'stores')
+    : ADMIN_HOME_ITEMS;
 
   const [activeScreen, setActiveScreen] = useState<SidebarScreen>('home');
   const [drawerOpen, setDrawerOpen]     = useState(false);
@@ -79,7 +85,7 @@ const AdminDashboard = () => {
             <ScrollView contentContainerStyle={styles.homeContainer}>
               <Text style={styles.homeTitle}>¿Qué querés hacer?</Text>
               <View style={styles.homeGrid}>
-                {ADMIN_HOME_ITEMS.map(item => (
+                {homeItems.map(item => (
                   <TouchableOpacity
                     key={item.key}
                     style={styles.homeCard}
@@ -94,10 +100,10 @@ const AdminDashboard = () => {
             </ScrollView>
           )}
           {activeScreen === 'dashboard'    && <DashboardScreen />}
-          {activeScreen === 'users'        && <UsersScreen />}
+          {activeScreen === 'users'        && !isRestricted && <UsersScreen />}
           {activeScreen === 'operations'   && <AdminScreen />}
           {activeScreen === 'inventory'    && <InventoryScreen />}
-          {activeScreen === 'stores'       && <StoresScreen />}
+          {activeScreen === 'stores'       && !isRestricted && <StoresScreen />}
           {activeScreen === 'sales'        && <POSScreen />}
           {activeScreen === 'salesHistory' && <SalesHistoryScreen />}
         </View>

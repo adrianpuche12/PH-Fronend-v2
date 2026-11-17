@@ -40,7 +40,11 @@ const AdminDashboard = () => {
   const { appUserRole } = useAuth();
   const isRestricted = appUserRole === 'SOCIO' || appUserRole === 'CONTADOR';
   const homeItems = isRestricted
-    ? ADMIN_HOME_ITEMS.filter(i => i.key !== 'users' && i.key !== 'stores')
+    ? ADMIN_HOME_ITEMS.filter(i => {
+        if (i.key === 'users' || i.key === 'stores') return false;
+        if (appUserRole === 'CONTADOR' && (i.key === 'inventory' || i.key === 'dashboard' || i.key === 'salesHistory')) return false;
+        return true;
+      })
     : ADMIN_HOME_ITEMS;
 
   const [activeScreen, setActiveScreen] = useState<SidebarScreen>('home');
@@ -99,13 +103,13 @@ const AdminDashboard = () => {
               </View>
             </ScrollView>
           )}
-          {activeScreen === 'dashboard'    && <DashboardScreen />}
+          {activeScreen === 'dashboard'    && appUserRole !== 'CONTADOR' && <DashboardScreen />}
           {activeScreen === 'users'        && !isRestricted && <UsersScreen />}
           {activeScreen === 'operations'   && <AdminScreen />}
-          {activeScreen === 'inventory'    && <InventoryScreen />}
+          {activeScreen === 'inventory'    && appUserRole !== 'CONTADOR' && <InventoryScreen />}
           {activeScreen === 'stores'       && !isRestricted && <StoresScreen />}
           {activeScreen === 'sales'        && <POSScreen />}
-          {activeScreen === 'salesHistory' && <SalesHistoryScreen />}
+          {activeScreen === 'salesHistory' && appUserRole !== 'CONTADOR' && <SalesHistoryScreen />}
         </View>
 
         {/* Drawer solo en mobile */}

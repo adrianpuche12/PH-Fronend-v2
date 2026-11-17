@@ -85,8 +85,6 @@ const buildUserMenu = (permissions: string[]): MenuItem[] => {
 
 // ─── Sidebar desktop colapsable ───────────────────────────────────────────────
 
-const RESTRICTED_SCREENS: SidebarScreen[] = ['users', 'stores'];
-
 const SidebarDesktop = ({ active, onSelect }: {
   active: SidebarScreen;
   onSelect: (s: SidebarScreen) => void;
@@ -95,7 +93,10 @@ const SidebarDesktop = ({ active, onSelect }: {
   const { sidebarCollapsed, toggleSidebar } = useUIPreferences();
   const isAdmin = roles.includes('admin');
   const isRestricted = appUserRole === 'SOCIO' || appUserRole === 'CONTADOR';
-  const adminMenu = isRestricted ? MENU_ADMIN.filter(m => !RESTRICTED_SCREENS.includes(m.key)) : MENU_ADMIN;
+  const restrictedScreens: SidebarScreen[] = appUserRole === 'CONTADOR'
+    ? ['users', 'stores', 'inventory', 'dashboard', 'salesHistory']
+    : ['users', 'stores'];
+  const adminMenu = isRestricted ? MENU_ADMIN.filter(m => !restrictedScreens.includes(m.key)) : MENU_ADMIN;
   const menu = isAdmin ? adminMenu : buildUserMenu(permissions);
 
   // Animación de ancho
@@ -216,7 +217,10 @@ const SidebarMobile = ({ active, onSelect, visible, onClose }: {
   const { logout, roles, permissions, appUserRole, userName } = useAuth();
   const isAdmin = roles.includes('admin');
   const isRestricted = appUserRole === 'SOCIO' || appUserRole === 'CONTADOR';
-  const adminMenu = isRestricted ? MENU_ADMIN.filter(m => !RESTRICTED_SCREENS.includes(m.key)) : MENU_ADMIN;
+  const restrictedScreens: SidebarScreen[] = appUserRole === 'CONTADOR'
+    ? ['users', 'stores', 'inventory', 'dashboard', 'salesHistory']
+    : ['users', 'stores'];
+  const adminMenu = isRestricted ? MENU_ADMIN.filter(m => !restrictedScreens.includes(m.key)) : MENU_ADMIN;
   const menu = isAdmin ? adminMenu : buildUserMenu(permissions);
 
   return (

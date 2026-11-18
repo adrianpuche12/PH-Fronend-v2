@@ -60,7 +60,7 @@ function RootLayoutNav() {
 
       const isAdmin = roles.includes('admin');
       if (isAdmin) {
-        if (currentSegment === 'login' || currentSegment === 'change-password') {
+        if (currentSegment !== 'admin') {
           router.replace('/admin');
         }
       } else {

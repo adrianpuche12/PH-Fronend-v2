@@ -57,7 +57,7 @@ const ANIM_DURATION       = 250;
 
 export type SidebarScreen =
   | 'home' | 'dashboard' | 'operations' | 'inventory' | 'stores'
-  | 'sales' | 'salesHistory' | 'users';
+  | 'sales' | 'salesHistory' | 'users' | 'forms';
 
 interface MenuItem { key: SidebarScreen; label: string; icon: string }
 
@@ -67,6 +67,7 @@ const MENU_ADMIN: MenuItem[] = [
   { key: 'inventory',    label: 'Inventario',        icon: 'package-variant' },
   { key: 'users',        label: 'Usuarios',          icon: 'account-multiple-outline' },
   { key: 'operations',   label: 'Operaciones',       icon: 'cog-outline' },
+  { key: 'forms',        label: 'Nueva operación',   icon: 'plus-circle-outline' },
   { key: 'stores',       label: 'Locales',           icon: 'store-outline' },
 ];
 

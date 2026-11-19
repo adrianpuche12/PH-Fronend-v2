@@ -12,6 +12,7 @@ import POSScreen from './POSScreen';
 import SalesHistoryScreen from './SalesHistoryScreen';
 import DashboardScreen from './DashboardScreen';
 import UsersScreen from './UsersScreen';
+import DynamicFormScreen from './DynamicFormScreen';
 import { useAuth } from '../context/AuthContext';
 
 const SCREEN_TITLE: Record<SidebarScreen, string> = {
@@ -23,6 +24,7 @@ const SCREEN_TITLE: Record<SidebarScreen, string> = {
   salesHistory: 'Historial ventas',
   users:        'Usuarios',
   sales:        'Ventas',
+  forms:        'Nueva operación',
 };
 
 const ADMIN_HOME_ITEMS: { key: SidebarScreen; label: string; icon: string }[] = [
@@ -31,6 +33,7 @@ const ADMIN_HOME_ITEMS: { key: SidebarScreen; label: string; icon: string }[] = 
   { key: 'inventory',    label: 'Inventario',        icon: 'package-variant' },
   { key: 'users',        label: 'Usuarios',          icon: 'account-multiple-outline' },
   { key: 'operations',   label: 'Operaciones',       icon: 'cog-outline' },
+  { key: 'forms',        label: 'Nueva operación',   icon: 'plus-circle-outline' },
   { key: 'stores',       label: 'Locales',           icon: 'store-outline' },
 ];
 
@@ -106,6 +109,7 @@ const AdminDashboard = () => {
           {activeScreen === 'dashboard'    && appUserRole !== 'CONTADOR' && <DashboardScreen />}
           {activeScreen === 'users'        && !isRestricted && <UsersScreen />}
           {activeScreen === 'operations'   && <AdminScreen />}
+          {activeScreen === 'forms'        && <DynamicFormScreen />}
           {activeScreen === 'inventory'    && appUserRole !== 'CONTADOR' && <InventoryScreen />}
           {activeScreen === 'stores'       && !isRestricted && <StoresScreen />}
           {activeScreen === 'sales'        && <POSScreen />}
